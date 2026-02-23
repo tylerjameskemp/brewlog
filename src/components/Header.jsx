@@ -4,7 +4,7 @@
 // Simple nav with tabs for switching views.
 // "props" are values passed from the parent component (App).
 
-export default function Header({ view, setView, onSettingsClick }) {
+export default function Header({ view, setView, onSettingsClick, settingsMenu }) {
   const tabs = [
     { id: 'brew', label: 'New Brew' },
     { id: 'beans', label: 'Beans' },
@@ -39,14 +39,17 @@ export default function Header({ view, setView, onSettingsClick }) {
           </nav>
 
           {/* Settings gear */}
-          <button
-            onClick={onSettingsClick}
-            className="p-2 text-brew-400 hover:text-brew-600 rounded-lg
-                       hover:bg-brew-50 transition-colors"
-            title="Equipment Settings"
-          >
-            ⚙️
-          </button>
+          <div className="relative">
+            <button
+              onClick={onSettingsClick}
+              className="p-2 text-brew-400 hover:text-brew-600 rounded-lg
+                         hover:bg-brew-50 transition-colors"
+              title="Settings"
+            >
+              ⚙️
+            </button>
+            {settingsMenu}
+          </div>
         </div>
       </div>
     </header>

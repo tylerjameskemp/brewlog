@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getBrews, getEquipment, getBeans } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
+import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
 import BrewHistory from './components/BrewHistory'
 import BeanLibrary from './components/BeanLibrary'
@@ -29,6 +30,7 @@ function App() {
   const [equipment, setEquipment] = useState(null)    // User's gear profile
   const [beans, setBeans] = useState([])              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal
+  const [showSettings, setShowSettings] = useState(false) // Settings dropdown
 
   // --- LOAD DATA ON STARTUP ---
   // useEffect runs code when the component first appears ("mounts").
@@ -48,7 +50,18 @@ function App() {
       <Header
         view={view}
         setView={setView}
-        onSettingsClick={() => setShowSetup(true)}
+        onSettingsClick={() => setShowSettings(prev => !prev)}
+        settingsMenu={showSettings && (
+          <SettingsMenu
+            onEquipmentClick={() => setShowSetup(true)}
+            onImportComplete={() => {
+              setBrews(getBrews())
+              setEquipment(getEquipment())
+              setBeans(getBeans())
+            }}
+            onClose={() => setShowSettings(false)}
+          />
+        )}
       />
 
       <main className="max-w-2xl mx-auto px-4 pb-24">
