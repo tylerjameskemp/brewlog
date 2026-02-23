@@ -126,8 +126,37 @@ export function exportData() {
 }
 
 export function importData(data) {
-  // Import a previously exported backup
+  // Full replace: clear all keys first, then write what's in the import
+  localStorage.removeItem(STORAGE_KEYS.BREWS)
+  localStorage.removeItem(STORAGE_KEYS.EQUIPMENT)
+  localStorage.removeItem(STORAGE_KEYS.BEANS)
   if (data.brews) localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews))
   if (data.equipment) localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
   if (data.beans) localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(data.beans))
+}
+
+export function mergeData(data) {
+  // Merge imported data with existing: local wins on ID conflicts, new records are added
+  if (data.brews && Array.isArray(data.brews)) {
+    const existing = getBrews()
+    const existingIds = new Set(existing.map(b => b.id))
+    const newBrews = data.brews.filter(b => !existingIds.has(b.id))
+    if (newBrews.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify([...existing, ...newBrews]))
+    }
+  }
+
+  if (data.beans && Array.isArray(data.beans)) {
+    const existing = getBeans()
+    const existingIds = new Set(existing.map(b => b.id))
+    const newBeans = data.beans.filter(b => !existingIds.has(b.id))
+    if (newBeans.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify([...existing, ...newBeans]))
+    }
+  }
+
+  // Equipment: only use imported if local is null
+  if (data.equipment && !getEquipment()) {
+    localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
+  }
 }
