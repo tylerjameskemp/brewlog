@@ -68,7 +68,7 @@ function App() {
       <main className="max-w-2xl mx-auto px-4 pb-32 md:pb-24">
         {/* First-time setup prompt */}
         {needsSetup && (
-          <div className="mt-8 p-6 bg-white rounded-2xl shadow-sm border border-brew-100">
+          <div className="mt-8 p-6 bg-white rounded-2xl shadow-sm border border-brew-100 animate-fade-in-up motion-reduce:animate-none">
             <h2 className="text-xl font-semibold text-brew-800 mb-2">
               Welcome to BrewLog
             </h2>
@@ -87,34 +87,37 @@ function App() {
         )}
 
         {/* Main views — controlled by the nav tabs */}
-        {view === 'brew' && !needsSetup && (
-          <BrewForm
-            equipment={equipment}
-            beans={beans}
-            setBeans={setBeans}
-            onBrewSaved={(updatedBrews) => setBrews(updatedBrews)}
-          />
-        )}
+        <div key={view} className="animate-fade-in motion-reduce:animate-none">
+          {view === 'brew' && !needsSetup && (
+            <BrewForm
+              equipment={equipment}
+              beans={beans}
+              setBeans={setBeans}
+              onBrewSaved={(updatedBrews) => setBrews(updatedBrews)}
+            />
+          )}
 
-        {view === 'beans' && (
-          <BeanLibrary
-            beans={beans}
-            setBeans={setBeans}
-            brews={brews}
-            onBrewsChange={setBrews}
-          />
-        )}
+          {view === 'beans' && (
+            <BeanLibrary
+              beans={beans}
+              setBeans={setBeans}
+              brews={brews}
+              onBrewsChange={setBrews}
+            />
+          )}
 
-        {view === 'history' && (
-          <BrewHistory
-            brews={brews}
-            onBrewsChange={setBrews}
-          />
-        )}
+          {view === 'history' && (
+            <BrewHistory
+              brews={brews}
+              onBrewsChange={setBrews}
+              onNavigate={setView}
+            />
+          )}
 
-        {view === 'trends' && (
-          <BrewTrends brews={brews} />
-        )}
+          {view === 'trends' && (
+            <BrewTrends brews={brews} />
+          )}
+        </div>
       </main>
 
       <MobileNav activeView={view} onChangeView={setView} />

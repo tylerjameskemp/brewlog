@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   BREWS: 'brewlog_brews',
   EQUIPMENT: 'brewlog_equipment',
   BEANS: 'brewlog_beans',
+  UI_PREFS: 'brewlog_ui_prefs',
 }
 
 // --- BREW LOGS ---
@@ -103,6 +104,21 @@ export function renameBrewBean(oldName, newName) {
     localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
   }
   return brews
+}
+
+// --- UI PREFERENCES ---
+
+export function getUIPref(key) {
+  const data = localStorage.getItem(STORAGE_KEYS.UI_PREFS)
+  const prefs = data ? JSON.parse(data) : {}
+  return prefs[key] ?? null
+}
+
+export function setUIPref(key, value) {
+  const data = localStorage.getItem(STORAGE_KEYS.UI_PREFS)
+  const prefs = data ? JSON.parse(data) : {}
+  prefs[key] = value
+  localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify(prefs))
 }
 
 // --- UTILITY ---

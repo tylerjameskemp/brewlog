@@ -9,11 +9,15 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 export default function BrewTrends({ brews }) {
   if (brews.length < 3) {
+    const remaining = 3 - brews.length
     return (
-      <div className="mt-12 text-center text-brew-400">
+      <div className="mt-12 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
         <div className="text-4xl mb-3">📈</div>
-        <p className="text-lg font-medium">Log more brews to see trends</p>
-        <p className="text-sm mt-1">You need at least 3 brews to spot patterns</p>
+        <p className="text-lg font-medium text-brew-700">Brew Trends</p>
+        <p className="text-sm mt-2 max-w-xs mx-auto">
+          Log {remaining} more brew{remaining !== 1 ? 's' : ''} to unlock trend charts
+          for your rating, grind setting, and brew time.
+        </p>
       </div>
     )
   }
