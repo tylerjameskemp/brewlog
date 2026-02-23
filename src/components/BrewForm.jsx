@@ -1,0 +1,419 @@
+import { useState, useEffect } from 'react'
+import { v4 as uuidv4 } from 'uuid'
+import { saveBrew, getLastBrew, saveBean, getBeans } from '../data/storage'
+import { BREW_METHODS, GRINDERS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
+import FlavorPicker from './FlavorPicker'
+
+// ============================================================
+// BREW FORM — The main brew logging interface
+// ============================================================
+// This is the heart of the app. It pre-fills from your last brew
+// (your Feb 9 idea) and lets you quickly log what changed.
+//
+// DESIGN PRINCIPLE: Start with the defaults, change what's different.
+// Most brews are similar to the last one. Make the common case easy.
+
+export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
+  // Get the user's grinder config for setting display
+  const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
+  const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
+
+  // Pre-fill from last brew or use sensible defaults
+  const lastBrew = getLastBrew()
+
+  const [form, setForm] = useState({
+    // Bean info
+    beanName: lastBrew?.beanName || '',
+    roaster: lastBrew?.roaster || '',
+    roastDate: lastBrew?.roastDate || '',
+
+    // Brew params — pre-filled from last brew
+    coffeeGrams: lastBrew?.coffeeGrams || 20,
+    waterGrams: lastBrew?.waterGrams || 320,
+    grindSetting: lastBrew?.grindSetting || 6,
+    waterTemp: lastBrew?.waterTemp || 205,
+
+    // Timing
+    bloomTime: lastBrew?.bloomTime || method.defaultBloomTime,
+    bloomWater: lastBrew?.bloomWater || 60,
+    totalTime: '', // Entered after brewing
+
+    // Tasting
+    flavors: [],
+    body: '',
+    rating: 0,
+    issues: [],
+
+    // Notes
+    notes: '',
+  })
+
+  const [saved, setSaved] = useState(false)
+
+  // Helper to update form fields
+  const update = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+    setSaved(false)
+  }
+
+  // Calculate the brew ratio
+  const ratio = form.coffeeGrams > 0
+    ? (form.waterGrams / form.coffeeGrams).toFixed(1)
+    : '—'
+
+  // Format time display (e.g., "3:30")
+  const formatTime = (seconds) => {
+    if (!seconds) return ''
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
+
+  // Save the brew
+  const handleSave = () => {
+    const brew = {
+      id: uuidv4(),
+      ...form,
+      method: equipment?.brewMethod,
+      grinder: equipment?.grinder,
+      dripper: equipment?.dripper,
+      brewedAt: new Date().toISOString(),
+    }
+
+    const updatedBrews = saveBrew(brew)
+    onBrewSaved(updatedBrews)
+    setSaved(true)
+
+    // If this is a new bean, save it to the library
+    if (form.beanName && !beans.find(b => b.name === form.beanName)) {
+      const newBean = {
+        id: uuidv4(),
+        name: form.beanName,
+        roaster: form.roaster,
+        roastDate: form.roastDate,
+        addedAt: new Date().toISOString(),
+      }
+      const updatedBeans = saveBean(newBean)
+      setBeans(updatedBeans)
+    }
+  }
+
+  // --- SECTIONS ---
+  // The form is broken into collapsible sections.
+  // This keeps it from being overwhelming while still capturing detail.
+
+  return (
+    <div className="mt-6 space-y-4">
+      {/* ---- BEAN INFO ---- */}
+      <Section title="☕ Coffee" defaultOpen>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Bean Name</label>
+            <input
+              type="text"
+              value={form.beanName}
+              onChange={(e) => update('beanName', e.target.value)}
+              placeholder="e.g., Heart Columbia Javier Omar"
+              list="bean-suggestions"
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+            {/* Autocomplete from bean library */}
+            <datalist id="bean-suggestions">
+              {beans.map(b => <option key={b.id} value={b.name} />)}
+            </datalist>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Roaster</label>
+            <input
+              type="text"
+              value={form.roaster}
+              onChange={(e) => update('roaster', e.target.value)}
+              placeholder="e.g., Heart, Tandem"
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Roast Date</label>
+            <input
+              type="date"
+              value={form.roastDate}
+              onChange={(e) => update('roastDate', e.target.value)}
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+        </div>
+      </Section>
+
+      {/* ---- BREW PARAMETERS ---- */}
+      <Section title="⚖️ Recipe" defaultOpen>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Coffee dose */}
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">
+              Coffee (g)
+            </label>
+            <input
+              type="number"
+              value={form.coffeeGrams}
+              onChange={(e) => update('coffeeGrams', Number(e.target.value))}
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+
+          {/* Water */}
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">
+              Water (g)
+            </label>
+            <input
+              type="number"
+              value={form.waterGrams}
+              onChange={(e) => update('waterGrams', Number(e.target.value))}
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+
+          {/* Ratio display */}
+          <div className="col-span-2 px-3 py-2 bg-brew-50 rounded-lg text-center">
+            <span className="text-xs text-brew-500">Ratio: </span>
+            <span className="text-sm font-mono font-semibold text-brew-700">
+              1:{ratio}
+            </span>
+          </div>
+
+          {/* Grind setting */}
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">
+              Grind ({grinder.name})
+            </label>
+            {grinder.settingType === 'numeric' || grinder.settingType === 'clicks' ? (
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={grinder.min}
+                  max={grinder.max}
+                  value={form.grindSetting}
+                  onChange={(e) => update('grindSetting', Number(e.target.value))}
+                  className="flex-1 accent-brew-500"
+                />
+                <span className="text-sm font-mono font-semibold text-brew-700 w-8 text-center">
+                  {form.grindSetting}
+                </span>
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={form.grindSetting}
+                onChange={(e) => update('grindSetting', e.target.value)}
+                placeholder="Describe grind..."
+                className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-brew-400"
+              />
+            )}
+          </div>
+
+          {/* Water temp */}
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">
+              Water Temp (°F)
+            </label>
+            <input
+              type="number"
+              value={form.waterTemp}
+              onChange={(e) => update('waterTemp', Number(e.target.value))}
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+        </div>
+      </Section>
+
+      {/* ---- TIMING ---- */}
+      <Section title="⏱ Timing">
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Bloom (sec)</label>
+            <input
+              type="number"
+              value={form.bloomTime}
+              onChange={(e) => update('bloomTime', Number(e.target.value))}
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Bloom Water (g)</label>
+            <input
+              type="number"
+              value={form.bloomWater}
+              onChange={(e) => update('bloomWater', Number(e.target.value))}
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Total (sec)</label>
+            <input
+              type="number"
+              value={form.totalTime}
+              onChange={(e) => update('totalTime', Number(e.target.value))}
+              placeholder={method.defaultTotalTime}
+              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+            {form.totalTime && (
+              <div className="text-xs text-brew-400 mt-1 text-center">
+                {formatTime(form.totalTime)}
+              </div>
+            )}
+          </div>
+        </div>
+      </Section>
+
+      {/* ---- TASTING NOTES ---- */}
+      <Section title="👅 Tasting">
+        {/* Flavor picker */}
+        <div className="mb-4">
+          <label className="text-xs font-medium text-brew-500 mb-2 block">Flavors</label>
+          <FlavorPicker
+            selected={form.flavors}
+            onChange={(flavors) => update('flavors', flavors)}
+          />
+        </div>
+
+        {/* Body */}
+        <div className="mb-4">
+          <label className="text-xs font-medium text-brew-500 mb-2 block">Body</label>
+          <div className="flex flex-wrap gap-1.5">
+            {BODY_OPTIONS.map(body => (
+              <button
+                key={body}
+                onClick={() => update('body', form.body === body ? '' : body)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
+                  ${form.body === body
+                    ? 'border-brew-500 bg-brew-500 text-white'
+                    : 'border-brew-200 text-brew-500 hover:border-brew-300'
+                  }`}
+              >
+                {body}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Rating */}
+        <div>
+          <label className="text-xs font-medium text-brew-500 mb-2 block">Rating</label>
+          <div className="flex gap-2">
+            {RATING_SCALE.map(({ value, label, emoji }) => (
+              <button
+                key={value}
+                onClick={() => update('rating', value)}
+                className={`flex-1 py-3 rounded-xl text-center transition-all
+                  ${form.rating === value
+                    ? 'bg-brew-100 ring-2 ring-brew-500 scale-105'
+                    : 'bg-brew-50 hover:bg-brew-100'
+                  }`}
+              >
+                <div className="text-xl">{emoji}</div>
+                <div className="text-[10px] text-brew-500 mt-0.5">{label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ---- ISSUES ---- */}
+      <Section title="🔧 Issues">
+        <div className="flex flex-wrap gap-1.5">
+          {BREW_ISSUES.map(issue => (
+            <button
+              key={issue}
+              onClick={() => {
+                const issues = form.issues.includes(issue)
+                  ? form.issues.filter(i => i !== issue)
+                  : [...form.issues, issue]
+                update('issues', issues)
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
+                ${form.issues.includes(issue)
+                  ? 'border-red-300 bg-red-50 text-red-600'
+                  : 'border-brew-200 text-brew-500 hover:border-brew-300'
+                }`}
+            >
+              {issue}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {/* ---- NOTES ---- */}
+      <Section title="📝 Notes">
+        <textarea
+          value={form.notes}
+          onChange={(e) => update('notes', e.target.value)}
+          placeholder="What happened? What would you change next time?"
+          rows={4}
+          className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                     text-brew-800 placeholder:text-brew-300
+                     focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
+        />
+      </Section>
+
+      {/* ---- SAVE BUTTON ---- */}
+      <button
+        onClick={handleSave}
+        disabled={saved}
+        className={`w-full py-4 rounded-2xl font-semibold text-lg transition-all
+          ${saved
+            ? 'bg-green-500 text-white'
+            : 'bg-brew-600 text-white hover:bg-brew-700 active:scale-[0.98]'
+          }`}
+      >
+        {saved ? '✓ Brew Saved!' : 'Save Brew'}
+      </button>
+
+      {/* Quick diff from last brew */}
+      {lastBrew && !saved && (
+        <div className="p-3 bg-brew-50 rounded-xl text-xs text-brew-500">
+          <strong>Last brew:</strong> {lastBrew.beanName || 'Unknown'} —{' '}
+          {lastBrew.coffeeGrams}g / {lastBrew.waterGrams}g —{' '}
+          grind {lastBrew.grindSetting} —{' '}
+          {lastBrew.rating ? RATING_SCALE.find(r => r.value === lastBrew.rating)?.emoji : ''}
+          {lastBrew.rating ? ` ${lastBrew.rating}/5` : 'no rating'}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- COLLAPSIBLE SECTION COMPONENT ---
+// Keeps the form clean by letting sections collapse
+function Section({ title, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <div className="bg-white rounded-2xl border border-brew-100 overflow-hidden shadow-sm">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-5 py-4 flex justify-between items-center text-left
+                   hover:bg-brew-50/50 transition-colors"
+      >
+        <span className="text-sm font-semibold text-brew-800">{title}</span>
+        <span className={`text-brew-400 transition-transform ${open ? 'rotate-180' : ''}`}>
+          ▾
+        </span>
+      </button>
+      {open && (
+        <div className="px-5 pb-5">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
