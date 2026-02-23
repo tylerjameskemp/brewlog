@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { deleteBrew } from '../data/storage'
+import { deleteBrew, getUIPref, setUIPref } from '../data/storage'
 import { RATING_SCALE } from '../data/defaults'
 
 // ============================================================
@@ -156,17 +156,29 @@ function TagComparison({ label, shared, uniqueA, uniqueB, changed, sharedClass, 
 
 // --- Main component ---
 
-export default function BrewHistory({ brews, onBrewsChange }) {
+export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
   const [expandedId, setExpandedId] = useState(null)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
+  const [showDiffHint, setShowDiffHint] = useState(() => !getUIPref('seenDiffExplanation'))
 
   if (brews.length === 0) {
     return (
-      <div className="mt-12 text-center text-brew-400">
+      <div className="mt-12 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
         <div className="text-4xl mb-3">📋</div>
-        <p className="text-lg font-medium">No brews logged yet</p>
-        <p className="text-sm mt-1">Go brew some coffee and come back!</p>
+        <p className="text-lg font-medium text-brew-700">No brews logged yet</p>
+        <p className="text-sm mt-2 text-brew-400 max-w-xs mx-auto">
+          Your brew history will show up here with details on what you changed between sessions.
+        </p>
+        {onNavigate && (
+          <button
+            onClick={() => onNavigate('brew')}
+            className="mt-5 px-6 py-3 bg-brew-600 text-white rounded-xl font-medium
+                       hover:bg-brew-700 active:scale-[0.98] transition-all"
+          >
+            Log Your First Brew
+          </button>
+        )}
       </div>
     )
   }
@@ -420,6 +432,24 @@ export default function BrewHistory({ brews, onBrewsChange }) {
         </div>
       )}
 
+      {/* Diff badge explanation (one-time) */}
+      {showDiffHint && !compareMode && brews.length >= 2 && (
+        <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 animate-fade-in-up motion-reduce:animate-none">
+          <p className="text-xs text-amber-700 flex-1">
+            The badges below show what you changed from your previous brew — like grind size, dose, or temperature.
+          </p>
+          <button
+            onClick={() => {
+              setUIPref('seenDiffExplanation', true)
+              setShowDiffHint(false)
+            }}
+            className="text-amber-400 hover:text-amber-600 text-sm flex-shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Brew list */}
       {brews.map((brew, index) => {
         const isExpanded = !compareMode && expandedId === brew.id
@@ -502,8 +532,13 @@ export default function BrewHistory({ brews, onBrewsChange }) {
             )}
 
             {/* Expanded detail */}
-            {isExpanded && (
-              <div className="px-5 pb-5 border-t border-brew-50">
+            <div
+              aria-hidden={!isExpanded}
+              className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
+                isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+              }`}
+            >
+              {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
                 {/* Flavors */}
                 {brew.flavors?.length > 0 && (
                   <div className="mt-3">
@@ -568,8 +603,8 @@ export default function BrewHistory({ brews, onBrewsChange }) {
                 >
                   Delete this brew
                 </button>
-              </div>
-            )}
+              </div>}
+            </div>
           </div>
         )
       })}

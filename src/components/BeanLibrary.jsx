@@ -117,10 +117,14 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
       </div>
 
       {beans.length === 0 ? (
-        <div className="mt-12 text-center text-brew-400">
+        <div className="mt-12 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
           <div className="text-4xl mb-3">🫘</div>
-          <p className="text-lg font-medium">No beans yet</p>
-          <p className="text-sm mt-1">Beans are saved automatically when you log a brew, or add one manually.</p>
+          <p className="text-lg font-medium text-brew-700">Your Bean Library</p>
+          <p className="text-sm mt-2 max-w-xs mx-auto">
+            Keep track of every bean you brew. See tasting notes across sessions and
+            build your personal catalog. Beans are added automatically when you log a brew,
+            or tap "+ Add Bean" to add one manually.
+          </p>
         </div>
       ) : (
       <div className="space-y-3">
@@ -170,8 +174,13 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
               </button>
 
               {/* Expanded content */}
-              {isExpanded && (
-                <div className="px-5 pb-5 border-t border-brew-50">
+              <div
+                aria-hidden={!isExpanded}
+                className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
+                  isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
                   {/* Action buttons */}
                   <div className="flex gap-2 mt-3 mb-4 flex-wrap">
                     <button
@@ -258,8 +267,8 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
                       <p className="text-sm">No brews yet with this bean</p>
                     </div>
                   )}
-                </div>
-              )}
+                </div>}
+              </div>
             </div>
           )
         })}
@@ -388,8 +397,8 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-fade-in motion-reduce:animate-none" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in motion-reduce:animate-none" onClick={e => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-brew-800">
