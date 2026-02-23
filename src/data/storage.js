@@ -84,6 +84,12 @@ export function updateBean(id, updates) {
   return beans
 }
 
+export function deleteBean(id) {
+  const beans = getBeans().filter(b => b.id !== id)
+  localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
+  return beans
+}
+
 // --- UTILITY ---
 
 export function getLastBrew() {

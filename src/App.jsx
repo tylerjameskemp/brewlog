@@ -3,6 +3,7 @@ import { getBrews, getEquipment, getBeans } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import BrewForm from './components/BrewForm'
 import BrewHistory from './components/BrewHistory'
+import BeanLibrary from './components/BeanLibrary'
 import Header from './components/Header'
 
 // ============================================================
@@ -77,6 +78,14 @@ function App() {
             beans={beans}
             setBeans={setBeans}
             onBrewSaved={(updatedBrews) => setBrews(updatedBrews)}
+          />
+        )}
+
+        {view === 'beans' && (
+          <BeanLibrary
+            beans={beans}
+            setBeans={setBeans}
+            brews={brews}
           />
         )}
 

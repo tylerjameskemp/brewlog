@@ -7,6 +7,7 @@
 export default function Header({ view, setView, onSettingsClick }) {
   const tabs = [
     { id: 'brew', label: 'New Brew' },
+    { id: 'beans', label: 'Beans' },
     { id: 'history', label: 'History' },
   ]
 
