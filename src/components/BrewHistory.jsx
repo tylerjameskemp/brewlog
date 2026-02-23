@@ -16,10 +16,21 @@ import { RATING_SCALE } from '../data/defaults'
 // --- Comparison helpers (pure functions) ---
 
 function formatTime(seconds) {
-  if (!seconds) return '—'
+  if (seconds == null) return '—'
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function formatDate(isoString) {
+  const d = new Date(isoString)
+  return d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 function compareBrews(brewA, brewB) {
@@ -80,6 +91,14 @@ function compareBrews(brewA, brewB) {
   if (brewA.rating !== brewB.rating) simpleChanges.push('Rating')
   if ((brewA.method || '') !== (brewB.method || '')) simpleChanges.push('Method')
 
+  // Body
+  const bodyChanged = (brewA.body || '') !== (brewB.body || '')
+
+  // Rating
+  const ratingA = RATING_SCALE.find(r => r.value === brewA.rating)
+  const ratingB = RATING_SCALE.find(r => r.value === brewB.rating)
+  const ratingChanged = brewA.rating !== brewB.rating
+
   return {
     params,
     diffs: [...diffs, ...simpleChanges],
@@ -87,6 +106,14 @@ function compareBrews(brewA, brewB) {
     flavorsChanged,
     issues: { shared: sharedIssues, uniqueA: uniqueIssuesA, uniqueB: uniqueIssuesB },
     issuesChanged: uniqueIssuesA.length > 0 || uniqueIssuesB.length > 0,
+    body: {
+      a: brewA.body || '—', b: brewB.body || '—', changed: bodyChanged,
+    },
+    rating: {
+      a: ratingA ? `${ratingA.emoji} ${ratingA.label}` : '—',
+      b: ratingB ? `${ratingB.emoji} ${ratingB.label}` : '—',
+      changed: ratingChanged,
+    },
   }
 }
 
@@ -99,6 +126,29 @@ function ComparisonRow({ label, valueA, valueB, changed }) {
       </div>
       <div className={`w-[32.5%] text-xs font-mono ${changed ? 'text-amber-700 font-semibold' : 'text-brew-700'}`}>
         {valueB}
+      </div>
+    </div>
+  )
+}
+
+function TagComparison({ label, shared, uniqueA, uniqueB, changed, sharedClass, uniqueClass }) {
+  if (shared.length === 0 && uniqueA.length === 0 && uniqueB.length === 0) return null
+  return (
+    <div className={`px-3 py-2 ${changed ? 'bg-amber-50/50' : ''}`}>
+      <div className="text-xs font-medium text-brew-500 mb-1.5">{label}</div>
+      <div className="flex gap-4">
+        {[uniqueA, uniqueB].map((unique, col) => (
+          <div key={col} className="flex-1">
+            <div className="flex flex-wrap gap-1">
+              {shared.map(t => (
+                <span key={t} className={`px-2 py-0.5 rounded-full text-[10px] ${sharedClass}`}>{t}</span>
+              ))}
+              {unique.map(t => (
+                <span key={t} className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${uniqueClass}`}>{t}</span>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -119,18 +169,6 @@ export default function BrewHistory({ brews, onBrewsChange }) {
         <p className="text-sm mt-1">Go brew some coffee and come back!</p>
       </div>
     )
-  }
-
-  // Format an ISO date string to something readable
-  const formatDate = (isoString) => {
-    const d = new Date(isoString)
-    return d.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
   }
 
   // Compute differences between a brew and the one before it
@@ -320,86 +358,45 @@ export default function BrewHistory({ brews, onBrewsChange }) {
             </div>
 
             {/* Flavors */}
-            {(comparison.flavors.shared.length > 0 || comparison.flavors.uniqueA.length > 0 || comparison.flavors.uniqueB.length > 0) && (
-              <div className={`px-3 py-2 ${comparison.flavorsChanged ? 'bg-amber-50/50' : ''}`}>
-                <div className="text-xs font-medium text-brew-500 mb-1.5">Flavors</div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <div className="flex flex-wrap gap-1">
-                      {comparison.flavors.shared.map(f => (
-                        <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-600 rounded-full text-[10px]">{f}</span>
-                      ))}
-                      {comparison.flavors.uniqueA.map(f => (
-                        <span key={f} className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-medium">{f}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-wrap gap-1">
-                      {comparison.flavors.shared.map(f => (
-                        <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-600 rounded-full text-[10px]">{f}</span>
-                      ))}
-                      {comparison.flavors.uniqueB.map(f => (
-                        <span key={f} className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-medium">{f}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <TagComparison
+              label="Flavors"
+              shared={comparison.flavors.shared}
+              uniqueA={comparison.flavors.uniqueA}
+              uniqueB={comparison.flavors.uniqueB}
+              changed={comparison.flavorsChanged}
+              sharedClass="bg-brew-100 text-brew-600"
+              uniqueClass="bg-amber-100 text-amber-700"
+            />
 
             {/* Body */}
             <ComparisonRow
               label="Body"
-              valueA={comparisonBrews[0].body || '—'}
-              valueB={comparisonBrews[1].body || '—'}
-              changed={comparisonBrews[0].body !== comparisonBrews[1].body}
+              valueA={comparison.body.a}
+              valueB={comparison.body.b}
+              changed={comparison.body.changed}
             />
 
             {/* Rating */}
-            {(() => {
-              const ratingA = RATING_SCALE.find(r => r.value === comparisonBrews[0].rating)
-              const ratingB = RATING_SCALE.find(r => r.value === comparisonBrews[1].rating)
-              const changed = comparisonBrews[0].rating !== comparisonBrews[1].rating
-              return (
-                <ComparisonRow
-                  label="Rating"
-                  valueA={ratingA ? `${ratingA.emoji} ${ratingA.label}` : '—'}
-                  valueB={ratingB ? `${ratingB.emoji} ${ratingB.label}` : '—'}
-                  changed={changed}
-                />
-              )
-            })()}
+            <ComparisonRow
+              label="Rating"
+              valueA={comparison.rating.a}
+              valueB={comparison.rating.b}
+              changed={comparison.rating.changed}
+            />
           </div>
 
           {/* Issues */}
           {(comparison.issues.shared.length > 0 || comparison.issues.uniqueA.length > 0 || comparison.issues.uniqueB.length > 0) && (
             <div className="border-b border-brew-50">
-              <div className={`px-3 py-2 ${comparison.issuesChanged ? 'bg-amber-50/50' : ''}`}>
-                <div className="text-xs font-medium text-brew-500 mb-1.5">Issues</div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <div className="flex flex-wrap gap-1">
-                      {comparison.issues.shared.map(i => (
-                        <span key={i} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-[10px]">{i}</span>
-                      ))}
-                      {comparison.issues.uniqueA.map(i => (
-                        <span key={i} className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-medium">{i}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-wrap gap-1">
-                      {comparison.issues.shared.map(i => (
-                        <span key={i} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-[10px]">{i}</span>
-                      ))}
-                      {comparison.issues.uniqueB.map(i => (
-                        <span key={i} className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-medium">{i}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <TagComparison
+                label="Issues"
+                shared={comparison.issues.shared}
+                uniqueA={comparison.issues.uniqueA}
+                uniqueB={comparison.issues.uniqueB}
+                changed={comparison.issuesChanged}
+                sharedClass="bg-red-50 text-red-500"
+                uniqueClass="bg-amber-100 text-amber-700"
+              />
             </div>
           )}
 
