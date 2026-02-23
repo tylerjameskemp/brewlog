@@ -6,6 +6,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent 300ms tap delay and accidental double-tap zoom */
+html {
+  touch-action: manipulation;
+}
+
 /* Custom global styles */
 body {
   @apply bg-brew-50 text-brew-900 font-sans;
@@ -15,4 +20,37 @@ body {
 /* Subtle transitions on interactive elements */
 button, input, select, textarea {
   @apply transition-all duration-150;
+}
+
+/* Safe area padding utilities for notched iPhones */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Custom range input styling for touch-friendly grind slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: #f5e6d0;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #a0673c;
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #a0673c;
+  border: none;
+  cursor: pointer;
 }

@@ -252,7 +252,7 @@ export default function BrewHistory({ brews, onBrewsChange }) {
               setSelectedIds([])
               setExpandedId(null)
             }}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               compareMode
                 ? 'bg-amber-100 text-amber-700'
                 : 'bg-brew-100 text-brew-600 hover:bg-brew-200'
@@ -446,7 +446,7 @@ export default function BrewHistory({ brews, onBrewsChange }) {
             >
               {/* Selection indicator (compare mode only) */}
               {compareMode && (
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                   isSelected
                     ? 'border-amber-500 bg-amber-500 text-white'
                     : 'border-brew-200'
@@ -462,12 +462,12 @@ export default function BrewHistory({ brews, onBrewsChange }) {
 
               {/* Main info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2 min-w-0">
                   <span className="text-sm font-semibold text-brew-800 truncate">
                     {brew.beanName || 'Unknown beans'}
                   </span>
                   {brew.roaster && (
-                    <span className="text-xs text-brew-400">{brew.roaster}</span>
+                    <span className="text-xs text-brew-400 truncate flex-shrink-0">{brew.roaster}</span>
                   )}
                 </div>
                 <div className="text-xs text-brew-400 mt-0.5">
@@ -564,7 +564,8 @@ export default function BrewHistory({ brews, onBrewsChange }) {
                 {/* Delete */}
                 <button
                   onClick={() => handleDelete(brew.id)}
-                  className="mt-3 text-xs text-red-400 hover:text-red-600 transition-colors"
+                  className="mt-3 text-sm px-3 py-2 min-h-[44px] rounded-lg text-red-400
+                             hover:text-red-600 hover:bg-red-50 transition-colors"
                 >
                   Delete this brew
                 </button>

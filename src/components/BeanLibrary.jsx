@@ -173,25 +173,28 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
               {isExpanded && (
                 <div className="px-5 pb-5 border-t border-brew-50">
                   {/* Action buttons */}
-                  <div className="flex gap-3 mt-3 mb-4">
+                  <div className="flex gap-2 mt-3 mb-4 flex-wrap">
                     <button
                       onClick={() => handleOpenEdit(bean)}
-                      className="text-xs text-brew-500 hover:text-brew-700 transition-colors"
+                      className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-brew-500
+                                 hover:text-brew-700 hover:bg-brew-50 transition-colors"
                     >
                       Edit bean
                     </button>
                     {deletingBeanId === bean.id ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-red-500">Delete this bean? Brews won't be affected.</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-red-500 py-2">Delete this bean? Brews won't be affected.</span>
                         <button
                           onClick={() => handleDelete(bean.id)}
-                          className="text-xs font-medium text-red-600 hover:text-red-800 transition-colors"
+                          className="text-sm px-4 py-2.5 min-h-[44px] font-medium text-red-600
+                                     hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           Delete
                         </button>
                         <button
                           onClick={() => setDeletingBeanId(null)}
-                          className="text-xs text-brew-400 hover:text-brew-600 transition-colors"
+                          className="text-sm px-4 py-2.5 min-h-[44px] text-brew-400
+                                     hover:text-brew-600 hover:bg-brew-50 rounded-lg transition-colors"
                         >
                           Cancel
                         </button>
@@ -199,7 +202,8 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
                     ) : (
                       <button
                         onClick={() => setDeletingBeanId(bean.id)}
-                        className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                        className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-red-400
+                                   hover:text-red-600 hover:bg-red-50 transition-colors"
                       >
                         Delete bean
                       </button>
@@ -302,13 +306,13 @@ function TagSelectWithOther({ label, options, value, onChange }) {
   return (
     <div>
       <label className="block text-sm font-medium text-brew-700 mb-2">{label}</label>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {options.map(option => (
           <button
             key={option}
             type="button"
             onClick={() => handleTagClick(option)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
+            className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
               ${value === option
                 ? 'border-brew-500 bg-brew-500 text-white'
                 : 'border-brew-200 text-brew-500 hover:border-brew-300'
@@ -320,7 +324,7 @@ function TagSelectWithOther({ label, options, value, onChange }) {
         <button
           type="button"
           onClick={handleOtherClick}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
+          className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
             ${showOtherInput
               ? 'border-brew-500 bg-brew-500 text-white'
               : 'border-brew-200 text-brew-500 hover:border-brew-300'
@@ -335,7 +339,7 @@ function TagSelectWithOther({ label, options, value, onChange }) {
           value={isOther ? value : ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={`Custom ${label.toLowerCase()}...`}
-          className="mt-2 w-full p-3 rounded-xl border border-brew-200 text-sm
+          className="mt-2 w-full p-3 rounded-xl border border-brew-200 text-base
                      focus:outline-none focus:ring-2 focus:ring-brew-400"
         />
       )}
@@ -384,14 +388,20 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-brew-800">
               {bean ? 'Edit Bean' : 'Add Bean'}
             </h2>
-            <button onClick={onClose} className="text-brew-400 hover:text-brew-600 text-xl">✕</button>
+            <button
+              onClick={onClose}
+              className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center
+                         text-brew-400 hover:text-brew-600 text-xl rounded-lg hover:bg-brew-50"
+            >
+              ✕
+            </button>
           </div>
 
           <div className="space-y-5">
@@ -405,7 +415,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
                 value={form.name}
                 onChange={(e) => update('name', e.target.value)}
                 placeholder="e.g., Heart Columbia Javier Omar"
-                className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
               {duplicateWarning && (
@@ -423,7 +433,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
                 value={form.roaster}
                 onChange={(e) => update('roaster', e.target.value)}
                 placeholder="e.g., Heart, Tandem, Onyx"
-                className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
             </div>
@@ -451,7 +461,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
                 type="date"
                 value={form.roastDate}
                 onChange={(e) => update('roastDate', e.target.value)}
-                className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
             </div>

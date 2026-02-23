@@ -7,6 +7,7 @@ import BrewHistory from './components/BrewHistory'
 import BeanLibrary from './components/BeanLibrary'
 import BrewTrends from './components/BrewTrends'
 import Header from './components/Header'
+import MobileNav from './components/MobileNav'
 
 // ============================================================
 // APP — The main component that holds everything together
@@ -64,7 +65,7 @@ function App() {
         )}
       />
 
-      <main className="max-w-2xl mx-auto px-4 pb-24">
+      <main className="max-w-2xl mx-auto px-4 pb-32 md:pb-24">
         {/* First-time setup prompt */}
         {needsSetup && (
           <div className="mt-8 p-6 bg-white rounded-2xl shadow-sm border border-brew-100">
@@ -115,6 +116,8 @@ function App() {
           <BrewTrends brews={brews} />
         )}
       </main>
+
+      <MobileNav activeView={view} onChangeView={setView} />
 
       {/* Equipment setup modal/overlay */}
       {showSetup && (
