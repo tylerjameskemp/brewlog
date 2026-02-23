@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { saveBean, updateBean, deleteBean } from '../data/storage'
+import { saveBean, updateBean, deleteBean, renameBrewBean } from '../data/storage'
 import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE } from '../data/defaults'
 
 // ============================================================
@@ -10,20 +10,30 @@ import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE } from '../data/defaults'
 // Click a card to expand and see all brews made with that bean.
 // Add/edit beans via a modal form. Delete with inline confirmation.
 
-export default function BeanLibrary({ beans, setBeans, brews }) {
+export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
   const [expandedBeanId, setExpandedBeanId] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingBean, setEditingBean] = useState(null)
   const [deletingBeanId, setDeletingBeanId] = useState(null)
 
-  // Pre-compute brew counts per bean name
+  // Pre-compute brew counts per bean name (normalized for case/whitespace)
   const brewCounts = useMemo(() => {
     const counts = new Map()
     brews.forEach(b => {
-      counts.set(b.beanName, (counts.get(b.beanName) || 0) + 1)
+      const key = b.beanName?.trim().toLowerCase() || ''
+      counts.set(key, (counts.get(key) || 0) + 1)
     })
     return counts
   }, [brews])
+
+  // Memoize brews for the currently expanded bean
+  const expandedBeanBrews = useMemo(() => {
+    if (!expandedBeanId) return []
+    const expandedBean = beans.find(b => b.id === expandedBeanId)
+    if (!expandedBean) return []
+    const key = expandedBean.name.trim().toLowerCase()
+    return brews.filter(b => b.beanName?.trim().toLowerCase() === key)
+  }, [brews, beans, expandedBeanId])
 
   const formatDate = (dateStr) => {
     if (!dateStr) return null
@@ -61,6 +71,11 @@ export default function BeanLibrary({ beans, setBeans, brews }) {
 
   const handleSaveBean = (formData) => {
     if (editingBean) {
+      // If bean name changed, cascade the rename to all matching brews
+      if (editingBean.name !== formData.name) {
+        const updatedBrews = renameBrewBean(editingBean.name, formData.name)
+        onBrewsChange(updatedBrews)
+      }
       const updated = updateBean(editingBean.id, formData)
       setBeans(updated)
     } else {
@@ -83,49 +98,14 @@ export default function BeanLibrary({ beans, setBeans, brews }) {
     setExpandedBeanId(null)
   }
 
-  // Get brews for a specific bean
-  const getBrewsForBean = (beanName) => {
-    return brews.filter(b => b.beanName === beanName)
-  }
-
-  // Empty state
-  if (beans.length === 0) {
-    return (
-      <div className="mt-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-brew-800">Your Beans</h2>
-          <button
-            onClick={handleOpenAdd}
-            className="px-4 py-2 bg-brew-600 text-white rounded-xl text-sm font-medium
-                       hover:bg-brew-700 active:scale-[0.98] transition-all"
-          >
-            + Add Bean
-          </button>
-        </div>
-        <div className="mt-12 text-center text-brew-400">
-          <div className="text-4xl mb-3">🫘</div>
-          <p className="text-lg font-medium">No beans yet</p>
-          <p className="text-sm mt-1">Beans are saved automatically when you log a brew, or add one manually.</p>
-        </div>
-
-        {showForm && (
-          <BeanFormModal
-            bean={editingBean}
-            beans={beans}
-            onSave={handleSaveBean}
-            onClose={() => { setShowForm(false); setEditingBean(null) }}
-          />
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="mt-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-brew-800">
           Your Beans
-          <span className="text-xs text-brew-400 font-normal ml-2">{beans.length} bean{beans.length !== 1 ? 's' : ''}</span>
+          {beans.length > 0 && (
+            <span className="text-xs text-brew-400 font-normal ml-2">{beans.length} bean{beans.length !== 1 ? 's' : ''}</span>
+          )}
         </h2>
         <button
           onClick={handleOpenAdd}
@@ -136,11 +116,19 @@ export default function BeanLibrary({ beans, setBeans, brews }) {
         </button>
       </div>
 
+      {beans.length === 0 ? (
+        <div className="mt-12 text-center text-brew-400">
+          <div className="text-4xl mb-3">🫘</div>
+          <p className="text-lg font-medium">No beans yet</p>
+          <p className="text-sm mt-1">Beans are saved automatically when you log a brew, or add one manually.</p>
+        </div>
+      ) : (
       <div className="space-y-3">
         {beans.map(bean => {
           const isExpanded = expandedBeanId === bean.id
-          const count = brewCounts.get(bean.name) || 0
-          const beanBrews = isExpanded ? getBrewsForBean(bean.name) : []
+          const key = bean.name.trim().toLowerCase()
+          const count = brewCounts.get(key) || 0
+          const beanBrews = isExpanded ? expandedBeanBrews : []
           const meta = [bean.roaster, bean.origin, bean.process].filter(Boolean).join(' · ')
 
           return (
@@ -272,6 +260,7 @@ export default function BeanLibrary({ beans, setBeans, brews }) {
           )
         })}
       </div>
+      )}
 
       {/* Add/Edit modal */}
       {showForm && (

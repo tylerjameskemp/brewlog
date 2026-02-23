@@ -86,6 +86,7 @@ function App() {
             beans={beans}
             setBeans={setBeans}
             brews={brews}
+            onBrewsChange={setBrews}
           />
         )}
 
