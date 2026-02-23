@@ -6,7 +6,7 @@
 // timestamped JSON. Import validates, previews, and offers
 // merge (add new records) or replace (full overwrite) modes.
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { exportData, importData, mergeData, getBrews, getBeans, getEquipment } from '../data/storage'
 
 export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClose }) {
@@ -20,6 +20,7 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
   // Dismiss on click outside or Escape
   useEffect(() => {
     function handleClick(e) {
+      if (importStateRef.current) return // modal handles its own dismissal
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         onClose()
       }
@@ -80,6 +81,12 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (file.size > 5 * 1024 * 1024) {
+      setFeedback({ type: 'error', message: 'File too large. Maximum size is 5MB.' })
+      e.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
@@ -98,6 +105,10 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
           setFeedback({ type: 'error', message: 'Invalid file: "equipment" must be an object' })
           return
         }
+
+        // Filter out records missing a valid id
+        if (data.brews) data.brews = data.brews.filter(b => b && typeof b.id === 'string')
+        if (data.beans) data.beans = data.beans.filter(b => b && typeof b.id === 'string')
 
         setImportState(data)
       } catch {
@@ -128,10 +139,15 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
   }
 
   // --- IMPORT CONFIRMATION MODAL ---
+  const localCounts = useMemo(() => {
+    if (!importState) return null
+    return { brews: getBrews(), beans: getBeans(), equipment: getEquipment() }
+  }, [importState])
+
   if (importState) {
-    const localBrews = getBrews()
-    const localBeans = getBeans()
-    const localEquipment = getEquipment()
+    const localBrews = localCounts.brews
+    const localBeans = localCounts.beans
+    const localEquipment = localCounts.equipment
 
     const importBrews = importState.brews?.length ?? 0
     const importBeans = importState.beans?.length ?? 0
@@ -172,22 +188,13 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
 
             <div className="space-y-3">
               {localBrews.length === 0 ? (
-                <>
-                  <button
-                    onClick={() => handleImportConfirm('replace')}
-                    className="w-full py-3 bg-brew-600 text-white rounded-xl font-medium
-                               hover:bg-brew-700 active:scale-[0.98] transition-all"
-                  >
-                    Import
-                  </button>
-                  <button
-                    onClick={() => setImportState(null)}
-                    className="w-full py-3 text-brew-500 rounded-xl font-medium
-                               hover:bg-brew-50 transition-all"
-                  >
-                    Cancel
-                  </button>
-                </>
+                <button
+                  onClick={() => handleImportConfirm('replace')}
+                  className="w-full py-3 bg-brew-600 text-white rounded-xl font-medium
+                             hover:bg-brew-700 active:scale-[0.98] transition-all"
+                >
+                  Import
+                </button>
               ) : (
                 <>
                   <button
@@ -204,15 +211,15 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
                   >
                     Replace — Overwrite all existing data
                   </button>
-                  <button
-                    onClick={() => setImportState(null)}
-                    className="w-full py-3 text-brew-500 rounded-xl font-medium
-                               hover:bg-brew-50 transition-all"
-                  >
-                    Cancel
-                  </button>
                 </>
               )}
+              <button
+                onClick={() => setImportState(null)}
+                className="w-full py-3 text-brew-500 rounded-xl font-medium
+                           hover:bg-brew-50 transition-all"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

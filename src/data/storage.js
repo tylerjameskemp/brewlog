@@ -126,18 +126,20 @@ export function exportData() {
 }
 
 export function importData(data) {
-  // Full replace: pre-serialize before clearing to avoid data loss on error
-  const serialized = {}
-  if (data.brews) serialized.brews = JSON.stringify(data.brews)
-  if (data.equipment) serialized.equipment = JSON.stringify(data.equipment)
-  if (data.beans) serialized.beans = JSON.stringify(data.beans)
-
-  localStorage.removeItem(STORAGE_KEYS.BREWS)
-  localStorage.removeItem(STORAGE_KEYS.EQUIPMENT)
-  localStorage.removeItem(STORAGE_KEYS.BEANS)
-  if (serialized.brews) localStorage.setItem(STORAGE_KEYS.BREWS, serialized.brews)
-  if (serialized.equipment) localStorage.setItem(STORAGE_KEYS.EQUIPMENT, serialized.equipment)
-  if (serialized.beans) localStorage.setItem(STORAGE_KEYS.BEANS, serialized.beans)
+  // Full replace: only touch keys present in the import payload
+  if ('brews' in data) {
+    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews || []))
+  }
+  if ('equipment' in data) {
+    if (data.equipment) {
+      localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.EQUIPMENT)
+    }
+  }
+  if ('beans' in data) {
+    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(data.beans || []))
+  }
 }
 
 export function mergeData(data) {
