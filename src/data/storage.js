@@ -90,6 +90,21 @@ export function deleteBean(id) {
   return beans
 }
 
+export function renameBrewBean(oldName, newName) {
+  const brews = getBrews()
+  let changed = false
+  brews.forEach(b => {
+    if (b.beanName === oldName) {
+      b.beanName = newName
+      changed = true
+    }
+  })
+  if (changed) {
+    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+  }
+  return brews
+}
+
 // --- UTILITY ---
 
 export function getLastBrew() {
