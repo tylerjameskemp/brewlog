@@ -1,13 +1,23 @@
+// ============================================================
+// SETTINGS MENU — Dropdown for settings, export, and import
+// ============================================================
+// Gear icon dropdown with three options: Equipment Setup,
+// Export Data, and Import Data. Export downloads all data as
+// timestamped JSON. Import validates, previews, and offers
+// merge (add new records) or replace (full overwrite) modes.
+
 import { useState, useEffect, useRef } from 'react'
 import { exportData, importData, mergeData, getBrews, getBeans, getEquipment } from '../data/storage'
 
 export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClose }) {
-  const [importState, setImportState] = useState(null) // null | { data, filename }
+  const [importState, setImportState] = useState(null) // null | parsed data object
   const [feedback, setFeedback] = useState(null) // null | { type: 'success'|'error', message }
   const fileInputRef = useRef(null)
   const menuRef = useRef(null)
+  const importStateRef = useRef(importState)
+  importStateRef.current = importState
 
-  // Dismiss on click outside
+  // Dismiss on click outside or Escape
   useEffect(() => {
     function handleClick(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -15,7 +25,13 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
       }
     }
     function handleEscape(e) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        if (importStateRef.current) {
+          setImportState(null)
+        } else {
+          onClose()
+        }
+      }
     }
     document.addEventListener('mousedown', handleClick)
     document.addEventListener('keydown', handleEscape)
@@ -78,12 +94,12 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
           setFeedback({ type: 'error', message: 'Invalid file: "beans" must be an array' })
           return
         }
-        if (data.equipment && typeof data.equipment !== 'object') {
+        if (data.equipment && (typeof data.equipment !== 'object' || Array.isArray(data.equipment))) {
           setFeedback({ type: 'error', message: 'Invalid file: "equipment" must be an object' })
           return
         }
 
-        setImportState({ data, filename: file.name })
+        setImportState(data)
       } catch {
         setFeedback({ type: 'error', message: 'Invalid JSON file. Please select a valid BrewLog export.' })
       }
@@ -97,36 +113,31 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
   function handleImportConfirm(mode) {
     try {
       if (mode === 'replace') {
-        importData(importState.data)
+        importData(importState)
       } else {
-        mergeData(importState.data)
+        mergeData(importState)
       }
       onImportComplete()
       setImportState(null)
       setFeedback({ type: 'success', message: mode === 'replace' ? 'Data replaced successfully' : 'Data merged successfully' })
     } catch (err) {
-      if (err.name === 'QuotaExceededError') {
-        setFeedback({ type: 'error', message: 'Import failed: storage quota exceeded' })
-      } else {
-        setFeedback({ type: 'error', message: 'Import failed: ' + err.message })
-      }
+      console.error('Import failed:', err)
+      setFeedback({ type: 'error', message: 'Import failed. The file may be corrupted or too large.' })
       setImportState(null)
     }
   }
 
-  // Summarize data for the confirmation modal
-  const localBrews = getBrews()
-  const localBeans = getBeans()
-  const localEquipment = getEquipment()
-
   // --- IMPORT CONFIRMATION MODAL ---
   if (importState) {
-    const { data } = importState
-    const importBrews = data.brews?.length ?? 0
-    const importBeans = data.beans?.length ?? 0
-    const hasImportEquipment = !!data.equipment
-    const exportedAt = data.exportedAt
-      ? new Date(data.exportedAt).toLocaleDateString()
+    const localBrews = getBrews()
+    const localBeans = getBeans()
+    const localEquipment = getEquipment()
+
+    const importBrews = importState.brews?.length ?? 0
+    const importBeans = importState.beans?.length ?? 0
+    const hasImportEquipment = !!importState.equipment
+    const exportedAt = importState.exportedAt
+      ? new Date(importState.exportedAt).toLocaleDateString()
       : 'unknown date'
 
     return (

@@ -49,7 +49,6 @@ function App() {
       <Header
         view={view}
         setView={setView}
-        showSettings={showSettings}
         onSettingsClick={() => setShowSettings(prev => !prev)}
         settingsMenu={showSettings && (
           <SettingsMenu

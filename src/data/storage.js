@@ -126,13 +126,18 @@ export function exportData() {
 }
 
 export function importData(data) {
-  // Full replace: clear all keys first, then write what's in the import
+  // Full replace: pre-serialize before clearing to avoid data loss on error
+  const serialized = {}
+  if (data.brews) serialized.brews = JSON.stringify(data.brews)
+  if (data.equipment) serialized.equipment = JSON.stringify(data.equipment)
+  if (data.beans) serialized.beans = JSON.stringify(data.beans)
+
   localStorage.removeItem(STORAGE_KEYS.BREWS)
   localStorage.removeItem(STORAGE_KEYS.EQUIPMENT)
   localStorage.removeItem(STORAGE_KEYS.BEANS)
-  if (data.brews) localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews))
-  if (data.equipment) localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
-  if (data.beans) localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(data.beans))
+  if (serialized.brews) localStorage.setItem(STORAGE_KEYS.BREWS, serialized.brews)
+  if (serialized.equipment) localStorage.setItem(STORAGE_KEYS.EQUIPMENT, serialized.equipment)
+  if (serialized.beans) localStorage.setItem(STORAGE_KEYS.BEANS, serialized.beans)
 }
 
 export function mergeData(data) {
