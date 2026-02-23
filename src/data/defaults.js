@@ -122,3 +122,18 @@ export const BREW_ISSUES = [
   'Too fast drawdown',
   'Inconsistent pour',
 ]
+
+// --- BEAN ORIGINS ---
+// Common coffee-producing countries for quick selection
+export const BEAN_ORIGINS = [
+  'Ethiopia', 'Colombia', 'Kenya', 'Guatemala', 'Costa Rica',
+  'Brazil', 'Peru', 'Honduras', 'Rwanda', 'Indonesia',
+  'Mexico', 'Panama', 'El Salvador', 'Burundi', 'India',
+]
+
+// --- BEAN PROCESSES ---
+// Common coffee processing methods
+export const BEAN_PROCESSES = [
+  'Washed', 'Natural', 'Honey', 'Anaerobic', 'Wet-hulled',
+  'Carbonic maceration', 'Swiss Water (decaf)',
+]

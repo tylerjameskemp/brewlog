@@ -85,7 +85,8 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     setSaved(true)
 
     // If this is a new bean, save it to the library
-    if (form.beanName && !beans.find(b => b.name === form.beanName)) {
+    const trimmedName = form.beanName.trim()
+    if (trimmedName && !beans.find(b => b.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
       const newBean = {
         id: uuidv4(),
         name: form.beanName,
