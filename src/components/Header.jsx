@@ -15,14 +15,14 @@ export default function Header({ view, setView, onSettingsClick, settingsMenu })
   return (
     <header className="bg-white border-b border-brew-100 sticky top-0 z-10">
       <div className="max-w-2xl mx-auto px-4">
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center justify-between h-12 md:h-14">
           {/* Logo / App name */}
           <h1 className="text-lg font-bold text-brew-800 tracking-tight">
             ☕ BrewLog
           </h1>
 
           {/* Nav tabs */}
-          <nav className="flex gap-1">
+          <nav className="hidden md:flex gap-1">
             {tabs.map(tab => (
               <button
                 key={tab.id}
@@ -42,7 +42,7 @@ export default function Header({ view, setView, onSettingsClick, settingsMenu })
           <div className="relative">
             <button
               onClick={onSettingsClick}
-              className="p-2 text-brew-400 hover:text-brew-600 rounded-lg
+              className="p-3 text-brew-400 hover:text-brew-600 rounded-lg
                          hover:bg-brew-50 transition-colors"
               title="Settings"
             >

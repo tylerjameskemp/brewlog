@@ -46,15 +46,16 @@ export default function FlavorPicker({ selected = [], onChange }) {
 
   return (
     <div className="space-y-3">
-      {/* Selected flavors shown at top */}
+      {/* Selected flavors shown at top — scrolls horizontally on narrow screens */}
       {selected.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pb-2 border-b border-brew-100">
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 border-b border-brew-100">
           {selected.map(flavor => (
             <button
               key={flavor}
               onClick={() => toggleFlavor(flavor)}
-              className="px-3 py-1 bg-brew-500 text-white text-xs rounded-full
-                         font-medium hover:bg-brew-600 transition-colors"
+              className="px-3 py-2 bg-brew-500 text-white text-xs rounded-full
+                         font-medium hover:bg-brew-600 transition-colors whitespace-nowrap
+                         min-h-[44px] flex items-center"
             >
               {flavor} ✕
             </button>
@@ -63,14 +64,14 @@ export default function FlavorPicker({ selected = [], onChange }) {
       )}
 
       {/* Category buttons — click to expand */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {Object.entries(categoryLabels).map(([category, label]) => (
           <button
             key={category}
             onClick={() => setExpandedCategory(
               expandedCategory === category ? null : category
             )}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
+            className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
               ${expandedCategory === category
                 ? 'border-brew-400 bg-brew-50 text-brew-700'
                 : 'border-brew-100 text-brew-500 hover:border-brew-200'
@@ -85,12 +86,12 @@ export default function FlavorPicker({ selected = [], onChange }) {
 
       {/* Expanded category — show individual flavors */}
       {expandedCategory && (
-        <div className="flex flex-wrap gap-1.5 p-3 bg-brew-50/50 rounded-xl">
+        <div className="flex flex-wrap gap-2 p-3 bg-brew-50/50 rounded-xl">
           {FLAVOR_DESCRIPTORS[expandedCategory]?.map(flavor => (
             <button
               key={flavor}
               onClick={() => toggleFlavor(flavor)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+              className={`px-4 py-2.5 rounded-full text-xs font-medium border transition-all
                 ${selected.includes(flavor)
                   ? 'border-brew-500 bg-brew-500 text-white'
                   : 'border-brew-200 bg-white text-brew-600 hover:border-brew-300'
@@ -115,13 +116,13 @@ export default function FlavorPicker({ selected = [], onChange }) {
           onChange={(e) => setCustomInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addCustom()}
           placeholder="Add custom flavor..."
-          className="flex-1 px-3 py-2 rounded-lg border border-brew-200 text-sm
+          className="flex-1 p-3 rounded-lg border border-brew-200 text-base
                      text-brew-800 placeholder:text-brew-300
                      focus:outline-none focus:ring-2 focus:ring-brew-400"
         />
         <button
           onClick={addCustom}
-          className="px-4 py-2 bg-brew-100 text-brew-600 rounded-lg text-sm
+          className="px-4 py-3 bg-brew-100 text-brew-600 rounded-lg text-sm
                      font-medium hover:bg-brew-200 transition-colors"
         >
           Add

@@ -36,14 +36,20 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
 
   return (
     // Full-screen overlay
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-brew-800">
               {existing ? 'Edit Gear' : 'Set Up Your Gear'}
             </h2>
-            <button onClick={onClose} className="text-brew-400 hover:text-brew-600 text-xl">✕</button>
+            <button
+              onClick={onClose}
+              className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center
+                         text-brew-400 hover:text-brew-600 text-xl rounded-lg hover:bg-brew-50"
+            >
+              ✕
+            </button>
           </div>
 
           <div className="space-y-5">
@@ -81,7 +87,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                     <button
                       key={mat}
                       onClick={() => update('dripper', mat)}
-                      className={`px-4 py-2 rounded-lg border text-sm capitalize
+                      className={`px-4 py-2.5 rounded-lg border text-sm capitalize
                         ${form.dripper === mat
                           ? 'border-brew-500 bg-brew-50 text-brew-800'
                           : 'border-brew-100 text-brew-500 hover:border-brew-200'
@@ -103,7 +109,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                 value={form.grinder}
                 onChange={(e) => update('grinder', e.target.value)}
                 className="w-full p-3 rounded-xl border border-brew-200 bg-white
-                           text-brew-800 focus:outline-none focus:ring-2 focus:ring-brew-400"
+                           text-base text-brew-800 focus:outline-none focus:ring-2 focus:ring-brew-400"
               >
                 {GRINDERS.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
@@ -120,7 +126,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                 value={form.kettle}
                 onChange={(e) => update('kettle', e.target.value)}
                 className="w-full p-3 rounded-xl border border-brew-200 bg-white
-                           text-brew-800 focus:outline-none focus:ring-2 focus:ring-brew-400"
+                           text-base text-brew-800 focus:outline-none focus:ring-2 focus:ring-brew-400"
               >
                 <option value="gooseneck-electric">Gooseneck Electric</option>
                 <option value="gooseneck-stovetop">Gooseneck Stovetop</option>
@@ -140,7 +146,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                 onChange={(e) => update('scale', e.target.value)}
                 placeholder="e.g., Acaia Pearl, Timemore Black Mirror"
                 className="w-full p-3 rounded-xl border border-brew-200
-                           text-brew-800 placeholder:text-brew-300
+                           text-base text-brew-800 placeholder:text-brew-300
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
             </div>
@@ -155,7 +161,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                   <button
                     key={filter}
                     onClick={() => update('filterType', filter)}
-                    className={`px-4 py-2 rounded-lg border text-sm capitalize
+                    className={`px-4 py-2.5 rounded-lg border text-sm capitalize
                       ${form.filterType === filter
                         ? 'border-brew-500 bg-brew-50 text-brew-800'
                         : 'border-brew-100 text-brew-500 hover:border-brew-200'
@@ -178,7 +184,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                 placeholder="e.g., Fellow Ode has fines issue, kettle holds 900ml..."
                 rows={3}
                 className="w-full p-3 rounded-xl border border-brew-200
-                           text-brew-800 placeholder:text-brew-300
+                           text-base text-brew-800 placeholder:text-brew-300
                            focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
               />
             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { saveBrew, getLastBrew, saveBean, getBeans } from '../data/storage'
 import { BREW_METHODS, GRINDERS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
@@ -18,8 +18,8 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
 
-  // Pre-fill from last brew or use sensible defaults
-  const lastBrew = getLastBrew()
+  // Pre-fill from last brew or use sensible defaults (lazy — parse once, not every render)
+  const [lastBrew] = useState(() => getLastBrew())
 
   const [form, setForm] = useState({
     // Bean info
@@ -49,6 +49,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
   })
 
   const [saved, setSaved] = useState(false)
+  const savingRef = useRef(false)
 
   // Helper to update form fields
   const update = (field, value) => {
@@ -69,8 +70,11 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  // Save the brew
+  // Save the brew (guarded against double-tap)
   const handleSave = () => {
+    if (savingRef.current) return
+    savingRef.current = true
+
     const brew = {
       id: uuidv4(),
       ...form,
@@ -116,7 +120,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               onChange={(e) => update('beanName', e.target.value)}
               placeholder="e.g., Heart Columbia Javier Omar"
               list="bean-suggestions"
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm
+              className="w-full p-3 rounded-xl border border-brew-200 text-base
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
             {/* Autocomplete from bean library */}
@@ -131,7 +135,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               value={form.roaster}
               onChange={(e) => update('roaster', e.target.value)}
               placeholder="e.g., Heart, Tandem"
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm
+              className="w-full p-3 rounded-xl border border-brew-200 text-base
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
@@ -141,7 +145,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               type="date"
               value={form.roastDate}
               onChange={(e) => update('roastDate', e.target.value)}
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm
+              className="w-full p-3 rounded-xl border border-brew-200 text-base
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
@@ -160,7 +164,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               type="number"
               value={form.coffeeGrams}
               onChange={(e) => update('coffeeGrams', Number(e.target.value))}
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
@@ -174,7 +178,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               type="number"
               value={form.waterGrams}
               onChange={(e) => update('waterGrams', Number(e.target.value))}
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
@@ -212,7 +216,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
                 value={form.grindSetting}
                 onChange={(e) => update('grindSetting', e.target.value)}
                 placeholder="Describe grind..."
-                className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
             )}
@@ -227,7 +231,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               type="number"
               value={form.waterTemp}
               onChange={(e) => update('waterTemp', Number(e.target.value))}
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
@@ -236,14 +240,14 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
 
       {/* ---- TIMING ---- */}
       <Section title="⏱ Timing">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div>
             <label className="text-xs font-medium text-brew-500 mb-1 block">Bloom (sec)</label>
             <input
               type="number"
               value={form.bloomTime}
               onChange={(e) => update('bloomTime', Number(e.target.value))}
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
@@ -253,18 +257,18 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               type="number"
               value={form.bloomWater}
               onChange={(e) => update('bloomWater', Number(e.target.value))}
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
-          <div>
+          <div className="col-span-2 md:col-span-1">
             <label className="text-xs font-medium text-brew-500 mb-1 block">Total (sec)</label>
             <input
               type="number"
               value={form.totalTime}
               onChange={(e) => update('totalTime', Number(e.target.value))}
               placeholder={method.defaultTotalTime}
-              className="w-full p-3 rounded-xl border border-brew-200 text-sm font-mono
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
             {form.totalTime && (
@@ -290,12 +294,12 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
         {/* Body */}
         <div className="mb-4">
           <label className="text-xs font-medium text-brew-500 mb-2 block">Body</label>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {BODY_OPTIONS.map(body => (
               <button
                 key={body}
                 onClick={() => update('body', form.body === body ? '' : body)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
+                className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
                   ${form.body === body
                     ? 'border-brew-500 bg-brew-500 text-white'
                     : 'border-brew-200 text-brew-500 hover:border-brew-300'
@@ -331,7 +335,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
 
       {/* ---- ISSUES ---- */}
       <Section title="🔧 Issues">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {BREW_ISSUES.map(issue => (
             <button
               key={issue}
@@ -341,7 +345,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
                   : [...form.issues, issue]
                 update('issues', issues)
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
+              className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
                 ${form.issues.includes(issue)
                   ? 'border-red-300 bg-red-50 text-red-600'
                   : 'border-brew-200 text-brew-500 hover:border-brew-300'
@@ -360,7 +364,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
           onChange={(e) => update('notes', e.target.value)}
           placeholder="What happened? What would you change next time?"
           rows={4}
-          className="w-full p-3 rounded-xl border border-brew-200 text-sm
+          className="w-full p-3 rounded-xl border border-brew-200 text-base
                      text-brew-800 placeholder:text-brew-300
                      focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
         />

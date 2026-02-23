@@ -12,6 +12,7 @@ import { exportData, importData, mergeData, getBrews, getBeans, getEquipment } f
 export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClose }) {
   const [importState, setImportState] = useState(null) // null | parsed data object
   const [feedback, setFeedback] = useState(null) // null | { type: 'success'|'error', message }
+  const [isImporting, setIsImporting] = useState(false)
   const fileInputRef = useRef(null)
   const menuRef = useRef(null)
   const importStateRef = useRef(importState)
@@ -122,6 +123,9 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
   }
 
   function handleImportConfirm(mode) {
+    if (isImporting) return
+    setIsImporting(true)
+
     try {
       if (mode === 'replace') {
         importData(importState)
@@ -135,6 +139,8 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
       console.error('Import failed:', err)
       setFeedback({ type: 'error', message: 'Import failed. The file may be corrupted or too large.' })
       setImportState(null)
+    } finally {
+      setIsImporting(false)
     }
   }
 
@@ -157,14 +163,15 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
       : 'unknown date'
 
     return (
-      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setImportState(null)}>
+        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-brew-800">Import Data</h2>
               <button
                 onClick={() => setImportState(null)}
-                className="text-brew-400 hover:text-brew-600 text-xl"
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center
+                           text-brew-400 hover:text-brew-600 text-xl rounded-lg hover:bg-brew-50"
               >
                 ✕
               </button>
@@ -229,7 +236,7 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
 
   // --- DROPDOWN MENU ---
   return (
-    <div ref={menuRef} className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-brew-100 shadow-lg z-50 overflow-hidden">
+    <div ref={menuRef} className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-brew-100 shadow-lg z-50 overflow-hidden">
       <input
         ref={fileInputRef}
         type="file"
