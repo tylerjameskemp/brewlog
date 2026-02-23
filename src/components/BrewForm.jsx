@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { saveBrew, getLastBrew, saveBean, getBeans } from '../data/storage'
 import { BREW_METHODS, GRINDERS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
@@ -18,8 +18,8 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
 
-  // Pre-fill from last brew or use sensible defaults
-  const lastBrew = getLastBrew()
+  // Pre-fill from last brew or use sensible defaults (lazy — parse once, not every render)
+  const [lastBrew] = useState(() => getLastBrew())
 
   const [form, setForm] = useState({
     // Bean info
@@ -49,6 +49,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
   })
 
   const [saved, setSaved] = useState(false)
+  const savingRef = useRef(false)
 
   // Helper to update form fields
   const update = (field, value) => {
@@ -69,8 +70,11 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  // Save the brew
+  // Save the brew (guarded against double-tap)
   const handleSave = () => {
+    if (savingRef.current) return
+    savingRef.current = true
+
     const brew = {
       id: uuidv4(),
       ...form,

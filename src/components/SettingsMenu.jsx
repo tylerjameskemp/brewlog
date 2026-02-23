@@ -12,6 +12,7 @@ import { exportData, importData, mergeData, getBrews, getBeans, getEquipment } f
 export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClose }) {
   const [importState, setImportState] = useState(null) // null | parsed data object
   const [feedback, setFeedback] = useState(null) // null | { type: 'success'|'error', message }
+  const [isImporting, setIsImporting] = useState(false)
   const fileInputRef = useRef(null)
   const menuRef = useRef(null)
   const importStateRef = useRef(importState)
@@ -122,6 +123,9 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
   }
 
   function handleImportConfirm(mode) {
+    if (isImporting) return
+    setIsImporting(true)
+
     try {
       if (mode === 'replace') {
         importData(importState)
@@ -135,6 +139,8 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
       console.error('Import failed:', err)
       setFeedback({ type: 'error', message: 'Import failed. The file may be corrupted or too large.' })
       setImportState(null)
+    } finally {
+      setIsImporting(false)
     }
   }
 

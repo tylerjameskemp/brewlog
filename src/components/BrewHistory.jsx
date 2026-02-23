@@ -214,15 +214,14 @@ export default function BrewHistory({ brews, onBrewsChange }) {
       return
     }
 
-    // Compare mode selection logic
-    if (selectedIds.includes(brew.id)) {
-      // Deselect
-      setSelectedIds(prev => prev.filter(id => id !== brew.id))
-    } else if (selectedIds.length < 2) {
-      // Select (only if we have room)
-      setSelectedIds(prev => [...prev, brew.id])
-    }
-    // If 2 already selected and tapping unselected — ignore
+    // Compare mode selection logic (updater function prevents stale closure on fast taps)
+    setSelectedIds(prev => {
+      if (prev.includes(brew.id)) {
+        return prev.filter(id => id !== brew.id)
+      }
+      if (prev.length >= 2) return prev
+      return [...prev, brew.id]
+    })
   }
 
   // Get the two selected brews sorted older-on-left
@@ -467,7 +466,7 @@ export default function BrewHistory({ brews, onBrewsChange }) {
                     {brew.beanName || 'Unknown beans'}
                   </span>
                   {brew.roaster && (
-                    <span className="text-xs text-brew-400 truncate flex-shrink-0">{brew.roaster}</span>
+                    <span className="text-xs text-brew-400 truncate">{brew.roaster}</span>
                   )}
                 </div>
                 <div className="text-xs text-brew-400 mt-0.5">

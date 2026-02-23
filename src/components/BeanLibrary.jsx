@@ -138,7 +138,7 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
             >
               {/* Card header — clickable to expand */}
               <button
-                onClick={() => setExpandedBeanId(isExpanded ? null : bean.id)}
+                onClick={() => { setExpandedBeanId(isExpanded ? null : bean.id); setDeletingBeanId(null) }}
                 className="w-full px-5 py-4 flex items-center gap-4 text-left
                            hover:bg-brew-50/50 transition-colors"
               >
