@@ -9,6 +9,7 @@ export default function Header({ view, setView, onSettingsClick }) {
     { id: 'brew', label: 'New Brew' },
     { id: 'beans', label: 'Beans' },
     { id: 'history', label: 'History' },
+    { id: 'trends', label: 'Trends' },
   ]
 
   return (

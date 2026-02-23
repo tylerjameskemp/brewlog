@@ -4,6 +4,7 @@ import EquipmentSetup from './components/EquipmentSetup'
 import BrewForm from './components/BrewForm'
 import BrewHistory from './components/BrewHistory'
 import BeanLibrary from './components/BeanLibrary'
+import BrewTrends from './components/BrewTrends'
 import Header from './components/Header'
 
 // ============================================================
@@ -95,6 +96,10 @@ function App() {
             brews={brews}
             onBrewsChange={setBrews}
           />
+        )}
+
+        {view === 'trends' && (
+          <BrewTrends brews={brews} />
         )}
       </main>
 
