@@ -171,27 +171,48 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
             </div>
 
             <div className="space-y-3">
-              <button
-                onClick={() => handleImportConfirm('merge')}
-                className="w-full py-3 bg-brew-600 text-white rounded-xl font-medium
-                           hover:bg-brew-700 active:scale-[0.98] transition-all"
-              >
-                Merge — Add new records only
-              </button>
-              <button
-                onClick={() => handleImportConfirm('replace')}
-                className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium
-                           hover:bg-amber-600 active:scale-[0.98] transition-all"
-              >
-                Replace — Overwrite all existing data
-              </button>
-              <button
-                onClick={() => setImportState(null)}
-                className="w-full py-3 text-brew-500 rounded-xl font-medium
-                           hover:bg-brew-50 transition-all"
-              >
-                Cancel
-              </button>
+              {localBrews.length === 0 ? (
+                <>
+                  <button
+                    onClick={() => handleImportConfirm('replace')}
+                    className="w-full py-3 bg-brew-600 text-white rounded-xl font-medium
+                               hover:bg-brew-700 active:scale-[0.98] transition-all"
+                  >
+                    Import
+                  </button>
+                  <button
+                    onClick={() => setImportState(null)}
+                    className="w-full py-3 text-brew-500 rounded-xl font-medium
+                               hover:bg-brew-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleImportConfirm('merge')}
+                    className="w-full py-3 bg-brew-600 text-white rounded-xl font-medium
+                               hover:bg-brew-700 active:scale-[0.98] transition-all"
+                  >
+                    Merge — Add new records only
+                  </button>
+                  <button
+                    onClick={() => handleImportConfirm('replace')}
+                    className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium
+                               hover:bg-amber-600 active:scale-[0.98] transition-all"
+                  >
+                    Replace — Overwrite all existing data
+                  </button>
+                  <button
+                    onClick={() => setImportState(null)}
+                    className="w-full py-3 text-brew-500 rounded-xl font-medium
+                               hover:bg-brew-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
