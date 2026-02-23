@@ -9,9 +9,157 @@ import { RATING_SCALE } from '../data/defaults'
 // Click a brew to expand and see full details.
 // The "diff" between consecutive brews is shown automatically —
 // this is the "what changed" feature from your concept.
+//
+// COMPARE MODE: Toggle to select 2 brews and see a side-by-side
+// comparison with differences highlighted in amber.
+
+// --- Comparison helpers (pure functions) ---
+
+function formatTime(seconds) {
+  if (seconds == null) return '—'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function formatDate(isoString) {
+  const d = new Date(isoString)
+  return d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function compareBrews(brewA, brewB) {
+  const fields = [
+    { key: 'coffeeGrams', label: 'Dose', unit: 'g', section: 'recipe' },
+    { key: 'waterGrams', label: 'Water', unit: 'g', section: 'recipe' },
+    { key: 'grindSetting', label: 'Grind', unit: '', section: 'recipe' },
+    { key: 'waterTemp', label: 'Temp', unit: '°F', section: 'recipe' },
+    { key: 'bloomTime', label: 'Bloom', format: formatTime, section: 'timing' },
+    { key: 'bloomWater', label: 'Bloom Water', unit: 'g', section: 'timing' },
+    { key: 'totalTime', label: 'Total Time', format: formatTime, section: 'timing' },
+  ]
+
+  const diffs = []
+  const params = []
+
+  for (const field of fields) {
+    const a = brewA[field.key]
+    const b = brewB[field.key]
+    const changed = a !== b
+    const fmt = field.format || (v => v != null ? `${v}${field.unit}` : '—')
+    params.push({ ...field, a, b, changed, aFormatted: fmt(a), bFormatted: fmt(b) })
+    if (changed) diffs.push(field.label)
+  }
+
+  // Ratio (derived)
+  const ratioA = brewA.coffeeGrams ? brewA.waterGrams / brewA.coffeeGrams : 0
+  const ratioB = brewB.coffeeGrams ? brewB.waterGrams / brewB.coffeeGrams : 0
+  const ratioChanged = ratioA.toFixed(1) !== ratioB.toFixed(1)
+  params.push({
+    key: 'ratio', label: 'Ratio', section: 'recipe',
+    a: ratioA, b: ratioB, changed: ratioChanged,
+    aFormatted: ratioA ? `1:${ratioA.toFixed(1)}` : '—',
+    bFormatted: ratioB ? `1:${ratioB.toFixed(1)}` : '—',
+  })
+  if (ratioChanged) diffs.push('Ratio')
+
+  // Array fields — flavors
+  const flavorsA = brewA.flavors || []
+  const flavorsB = brewB.flavors || []
+  const sharedFlavors = flavorsA.filter(f => flavorsB.includes(f))
+  const uniqueA = flavorsA.filter(f => !flavorsB.includes(f))
+  const uniqueB = flavorsB.filter(f => !flavorsA.includes(f))
+  const flavorsChanged = uniqueA.length > 0 || uniqueB.length > 0
+
+  // Array fields — issues
+  const issuesA = brewA.issues || []
+  const issuesB = brewB.issues || []
+  const sharedIssues = issuesA.filter(i => issuesB.includes(i))
+  const uniqueIssuesA = issuesA.filter(i => !issuesB.includes(i))
+  const uniqueIssuesB = issuesB.filter(i => !issuesA.includes(i))
+
+  // Simple fields
+  const simpleChanges = []
+  if (brewA.beanName !== brewB.beanName) simpleChanges.push('Bean')
+  if (brewA.roaster !== brewB.roaster) simpleChanges.push('Roaster')
+  if (brewA.body !== brewB.body) simpleChanges.push('Body')
+  if (brewA.rating !== brewB.rating) simpleChanges.push('Rating')
+  if ((brewA.method || '') !== (brewB.method || '')) simpleChanges.push('Method')
+
+  // Body
+  const bodyChanged = (brewA.body || '') !== (brewB.body || '')
+
+  // Rating
+  const ratingA = RATING_SCALE.find(r => r.value === brewA.rating)
+  const ratingB = RATING_SCALE.find(r => r.value === brewB.rating)
+  const ratingChanged = brewA.rating !== brewB.rating
+
+  return {
+    params,
+    diffs: [...diffs, ...simpleChanges],
+    flavors: { shared: sharedFlavors, uniqueA, uniqueB },
+    flavorsChanged,
+    issues: { shared: sharedIssues, uniqueA: uniqueIssuesA, uniqueB: uniqueIssuesB },
+    issuesChanged: uniqueIssuesA.length > 0 || uniqueIssuesB.length > 0,
+    body: {
+      a: brewA.body || '—', b: brewB.body || '—', changed: bodyChanged,
+    },
+    rating: {
+      a: ratingA ? `${ratingA.emoji} ${ratingA.label}` : '—',
+      b: ratingB ? `${ratingB.emoji} ${ratingB.label}` : '—',
+      changed: ratingChanged,
+    },
+  }
+}
+
+function ComparisonRow({ label, valueA, valueB, changed }) {
+  return (
+    <div className={`flex items-center py-2 px-3 ${changed ? 'bg-amber-50/50' : ''}`}>
+      <div className="w-[35%] text-xs font-medium text-brew-500">{label}</div>
+      <div className={`w-[32.5%] text-xs font-mono ${changed ? 'text-amber-700 font-semibold' : 'text-brew-700'}`}>
+        {valueA}
+      </div>
+      <div className={`w-[32.5%] text-xs font-mono ${changed ? 'text-amber-700 font-semibold' : 'text-brew-700'}`}>
+        {valueB}
+      </div>
+    </div>
+  )
+}
+
+function TagComparison({ label, shared, uniqueA, uniqueB, changed, sharedClass, uniqueClass }) {
+  if (shared.length === 0 && uniqueA.length === 0 && uniqueB.length === 0) return null
+  return (
+    <div className={`px-3 py-2 ${changed ? 'bg-amber-50/50' : ''}`}>
+      <div className="text-xs font-medium text-brew-500 mb-1.5">{label}</div>
+      <div className="flex gap-4">
+        {[uniqueA, uniqueB].map((unique, col) => (
+          <div key={col} className="flex-1">
+            <div className="flex flex-wrap gap-1">
+              {shared.map(t => (
+                <span key={t} className={`px-2 py-0.5 rounded-full text-[10px] ${sharedClass}`}>{t}</span>
+              ))}
+              {unique.map(t => (
+                <span key={t} className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${uniqueClass}`}>{t}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// --- Main component ---
 
 export default function BrewHistory({ brews, onBrewsChange }) {
   const [expandedId, setExpandedId] = useState(null)
+  const [compareMode, setCompareMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
 
   if (brews.length === 0) {
     return (
@@ -21,26 +169,6 @@ export default function BrewHistory({ brews, onBrewsChange }) {
         <p className="text-sm mt-1">Go brew some coffee and come back!</p>
       </div>
     )
-  }
-
-  // Format an ISO date string to something readable
-  const formatDate = (isoString) => {
-    const d = new Date(isoString)
-    return d.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
-
-  // Format seconds to m:ss
-  const formatTime = (seconds) => {
-    if (!seconds) return '—'
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
   }
 
   // Compute differences between a brew and the one before it
@@ -76,34 +204,257 @@ export default function BrewHistory({ brews, onBrewsChange }) {
     if (window.confirm('Delete this brew?')) {
       const updated = deleteBrew(id)
       onBrewsChange(updated)
+      setSelectedIds(prev => prev.filter(sid => sid !== id))
     }
   }
 
+  const handleCardClick = (brew) => {
+    if (!compareMode) {
+      setExpandedId(expandedId === brew.id ? null : brew.id)
+      return
+    }
+
+    // Compare mode selection logic
+    if (selectedIds.includes(brew.id)) {
+      // Deselect
+      setSelectedIds(prev => prev.filter(id => id !== brew.id))
+    } else if (selectedIds.length < 2) {
+      // Select (only if we have room)
+      setSelectedIds(prev => [...prev, brew.id])
+    }
+    // If 2 already selected and tapping unselected — ignore
+  }
+
+  // Get the two selected brews sorted older-on-left
+  const getComparisonBrews = () => {
+    if (selectedIds.length !== 2) return null
+    const selected = selectedIds.map(id => brews.find(b => b.id === id)).filter(Boolean)
+    if (selected.length !== 2) return null
+    // Sort by brewedAt — older first (left column)
+    return selected.sort((a, b) => new Date(a.brewedAt) - new Date(b.brewedAt))
+  }
+
+  const comparisonBrews = getComparisonBrews()
+  const comparison = comparisonBrews ? compareBrews(comparisonBrews[0], comparisonBrews[1]) : null
+
   return (
     <div className="mt-6 space-y-3">
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-semibold text-brew-800">
-          Brew History
-        </h2>
-        <span className="text-xs text-brew-400">{brews.length} brews logged</span>
+      {/* Header with compare toggle */}
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="text-lg font-semibold text-brew-800">Brew History</h2>
+          <p className="text-xs text-brew-400 mt-0.5">{brews.length} brews logged</p>
+        </div>
+        {brews.length >= 2 && (
+          <button
+            onClick={() => {
+              setCompareMode(!compareMode)
+              setSelectedIds([])
+              setExpandedId(null)
+            }}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+              compareMode
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-brew-100 text-brew-600 hover:bg-brew-200'
+            }`}
+          >
+            {compareMode ? 'Done' : 'Compare'}
+          </button>
+        )}
       </div>
 
+      {/* Selection hint */}
+      {compareMode && selectedIds.length < 2 && (
+        <div className="px-4 py-3 bg-amber-50 rounded-xl text-sm text-amber-700 text-center">
+          {selectedIds.length === 0
+            ? 'Tap two brews to compare them'
+            : 'Tap one more brew to compare'}
+        </div>
+      )}
+
+      {/* Comparison panel */}
+      {comparison && comparisonBrews && (
+        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm overflow-hidden">
+          {/* What Changed summary */}
+          <div className="px-5 py-4 border-b border-brew-50">
+            <h3 className="text-xs font-semibold text-brew-800 uppercase tracking-wide mb-2">What Changed</h3>
+            {comparison.diffs.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {comparison.diffs.map(d => (
+                  <span key={d} className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px] font-medium">
+                    {d}
+                  </span>
+                ))}
+                {comparison.flavorsChanged && (
+                  <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px] font-medium">
+                    Flavors
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-brew-400">No differences in brew parameters</p>
+            )}
+          </div>
+
+          {/* Brew headers */}
+          <div className="flex border-b border-brew-50">
+            {comparisonBrews.map((brew, i) => {
+              const ratingInfo = RATING_SCALE.find(r => r.value === brew.rating)
+              return (
+                <div key={brew.id} className={`flex-1 px-4 py-3 ${i === 0 ? 'border-r border-brew-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{ratingInfo?.emoji || '☕'}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-brew-800 truncate">
+                        {brew.beanName || 'Unknown beans'}
+                      </div>
+                      {brew.roaster && (
+                        <div className="text-[10px] text-brew-400">{brew.roaster}</div>
+                      )}
+                      <div className="text-[10px] text-brew-400">{formatDate(brew.brewedAt)}</div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Recipe section */}
+          <div className="border-b border-brew-50">
+            <div className="px-3 pt-3 pb-1">
+              <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Recipe</span>
+            </div>
+            {comparison.params.filter(p => p.section === 'recipe').map(p => (
+              <ComparisonRow
+                key={p.key}
+                label={p.label}
+                valueA={p.aFormatted}
+                valueB={p.bFormatted}
+                changed={p.changed}
+              />
+            ))}
+          </div>
+
+          {/* Timing section */}
+          <div className="border-b border-brew-50">
+            <div className="px-3 pt-3 pb-1">
+              <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Timing</span>
+            </div>
+            {comparison.params.filter(p => p.section === 'timing').map(p => (
+              <ComparisonRow
+                key={p.key}
+                label={p.label}
+                valueA={p.aFormatted}
+                valueB={p.bFormatted}
+                changed={p.changed}
+              />
+            ))}
+          </div>
+
+          {/* Tasting section */}
+          <div className="border-b border-brew-50">
+            <div className="px-3 pt-3 pb-1">
+              <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Tasting</span>
+            </div>
+
+            {/* Flavors */}
+            <TagComparison
+              label="Flavors"
+              shared={comparison.flavors.shared}
+              uniqueA={comparison.flavors.uniqueA}
+              uniqueB={comparison.flavors.uniqueB}
+              changed={comparison.flavorsChanged}
+              sharedClass="bg-brew-100 text-brew-600"
+              uniqueClass="bg-amber-100 text-amber-700"
+            />
+
+            {/* Body */}
+            <ComparisonRow
+              label="Body"
+              valueA={comparison.body.a}
+              valueB={comparison.body.b}
+              changed={comparison.body.changed}
+            />
+
+            {/* Rating */}
+            <ComparisonRow
+              label="Rating"
+              valueA={comparison.rating.a}
+              valueB={comparison.rating.b}
+              changed={comparison.rating.changed}
+            />
+          </div>
+
+          {/* Issues */}
+          {(comparison.issues.shared.length > 0 || comparison.issues.uniqueA.length > 0 || comparison.issues.uniqueB.length > 0) && (
+            <div className="border-b border-brew-50">
+              <TagComparison
+                label="Issues"
+                shared={comparison.issues.shared}
+                uniqueA={comparison.issues.uniqueA}
+                uniqueB={comparison.issues.uniqueB}
+                changed={comparison.issuesChanged}
+                sharedClass="bg-red-50 text-red-500"
+                uniqueClass="bg-amber-100 text-amber-700"
+              />
+            </div>
+          )}
+
+          {/* Notes */}
+          {(comparisonBrews[0].notes || comparisonBrews[1].notes) && (
+            <div className="px-3 py-3">
+              <div className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide mb-2">Notes</div>
+              <div className="flex gap-3">
+                <div className="flex-1 p-2 bg-brew-50 rounded-xl">
+                  <p className="text-xs text-brew-700 whitespace-pre-wrap">
+                    {comparisonBrews[0].notes || '—'}
+                  </p>
+                </div>
+                <div className="flex-1 p-2 bg-brew-50 rounded-xl">
+                  <p className="text-xs text-brew-700 whitespace-pre-wrap">
+                    {comparisonBrews[1].notes || '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Brew list */}
       {brews.map((brew, index) => {
-        const isExpanded = expandedId === brew.id
+        const isExpanded = !compareMode && expandedId === brew.id
+        const isSelected = selectedIds.includes(brew.id)
+        const selectionNumber = isSelected ? selectedIds.indexOf(brew.id) + 1 : null
         const diff = getDiff(brew, index)
         const ratingInfo = RATING_SCALE.find(r => r.value === brew.rating)
 
         return (
           <div
             key={brew.id}
-            className="bg-white rounded-2xl border border-brew-100 shadow-sm overflow-hidden"
+            className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+              isSelected
+                ? 'border-amber-200 bg-amber-50/30'
+                : 'border-brew-100'
+            }`}
           >
             {/* Summary row — always visible */}
             <button
-              onClick={() => setExpandedId(isExpanded ? null : brew.id)}
+              onClick={() => handleCardClick(brew)}
               className="w-full px-5 py-4 flex items-center gap-4 text-left
                          hover:bg-brew-50/50 transition-colors"
             >
+              {/* Selection indicator (compare mode only) */}
+              {compareMode && (
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                  isSelected
+                    ? 'border-amber-500 bg-amber-500 text-white'
+                    : 'border-brew-200'
+                }`}>
+                  {isSelected && <span className="text-xs font-bold">{selectionNumber}</span>}
+                </div>
+              )}
+
               {/* Rating emoji */}
               <div className="text-2xl flex-shrink-0">
                 {ratingInfo?.emoji || '☕'}
@@ -135,8 +486,8 @@ export default function BrewHistory({ brews, onBrewsChange }) {
               </div>
             </button>
 
-            {/* Changes from previous brew */}
-            {diff && !isExpanded && (
+            {/* Changes from previous brew (hidden in compare mode) */}
+            {!compareMode && diff && !isExpanded && (
               <div className="px-5 pb-3 -mt-1">
                 <div className="flex flex-wrap gap-1.5">
                   {diff.map((d, i) => (
