@@ -175,11 +175,12 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
 
               {/* Expanded content */}
               <div
-                className={`overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none ${
+                aria-hidden={!isExpanded}
+                className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
                   isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
                 }`}
               >
-                <div className="px-5 pb-5 border-t border-brew-50">
+                {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
                   {/* Action buttons */}
                   <div className="flex gap-2 mt-3 mb-4 flex-wrap">
                     <button
@@ -266,7 +267,7 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
                       <p className="text-sm">No brews yet with this bean</p>
                     </div>
                   )}
-                </div>
+                </div>}
               </div>
             </div>
           )

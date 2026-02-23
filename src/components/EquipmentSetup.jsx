@@ -13,6 +13,7 @@ const TOTAL_STEPS = 3
 export default function EquipmentSetup({ existing, onSave, onClose }) {
   const isEditing = !!existing
   const [step, setStep] = useState(isEditing ? 'all' : 1)
+  const [dismissed, setDismissed] = useState(false)
 
   const [form, setForm] = useState(existing || {
     brewMethod: 'v60',
@@ -28,6 +29,13 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  // Guard: onSave can only fire once from the confirmation screen
+  const dismiss = () => {
+    if (dismissed) return
+    setDismissed(true)
+    onSave(form)
+  }
+
   const handleSave = () => {
     saveEquipment(form)
     if (isEditing) {
@@ -40,9 +48,9 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
   // Auto-dismiss confirmation after 2 seconds
   useEffect(() => {
     if (step !== 'done') return
-    const timer = setTimeout(() => onSave(form), 2000)
+    const timer = setTimeout(dismiss, 2000)
     return () => clearTimeout(timer)
-  }, [step, form, onSave])
+  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-fade-in motion-reduce:animate-none" onClick={onClose}>
@@ -97,7 +105,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
               <div className="text-5xl mb-4">✓</div>
               <p className="text-brew-600 mb-6">Your gear is saved. Let's brew!</p>
               <button
-                onClick={() => onSave(form)}
+                onClick={dismiss}
                 className="px-8 py-3 bg-brew-600 text-white rounded-xl font-medium
                            hover:bg-brew-700 active:scale-[0.98] transition-all"
               >

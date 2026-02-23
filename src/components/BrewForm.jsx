@@ -415,13 +415,14 @@ function Section({ title, defaultOpen = false, children }) {
         </span>
       </button>
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none ${
+        aria-hidden={!open}
+        className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
           open ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="px-5 pb-5">
+        {open && <div className="px-5 pb-5">
           {children}
-        </div>
+        </div>}
       </div>
     </div>
   )

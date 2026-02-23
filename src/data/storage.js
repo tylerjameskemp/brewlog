@@ -109,16 +109,24 @@ export function renameBrewBean(oldName, newName) {
 // --- UI PREFERENCES ---
 
 export function getUIPref(key) {
-  const data = localStorage.getItem(STORAGE_KEYS.UI_PREFS)
-  const prefs = data ? JSON.parse(data) : {}
-  return prefs[key] ?? null
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.UI_PREFS)
+    const prefs = data ? JSON.parse(data) : {}
+    return prefs[key] ?? null
+  } catch {
+    return null
+  }
 }
 
 export function setUIPref(key, value) {
-  const data = localStorage.getItem(STORAGE_KEYS.UI_PREFS)
-  const prefs = data ? JSON.parse(data) : {}
-  prefs[key] = value
-  localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify(prefs))
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.UI_PREFS)
+    const prefs = data ? JSON.parse(data) : {}
+    prefs[key] = value
+    localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify(prefs))
+  } catch {
+    localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify({ [key]: value }))
+  }
 }
 
 // --- UTILITY ---

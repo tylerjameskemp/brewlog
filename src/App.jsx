@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getBrews, getEquipment, getBeans } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
@@ -32,6 +32,8 @@ function App() {
   const [beans, setBeans] = useState([])              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal
   const [showSettings, setShowSettings] = useState(false) // Settings dropdown
+  const viewRef = useRef(null)
+  const prevViewRef = useRef(view)
 
   // --- LOAD DATA ON STARTUP ---
   // useEffect runs code when the component first appears ("mounts").
@@ -41,6 +43,16 @@ function App() {
     setEquipment(getEquipment())
     setBeans(getBeans())
   }, []) // Empty array = run once on mount
+
+  // Replay fade-in animation on view change (without destroying component state)
+  useEffect(() => {
+    if (view !== prevViewRef.current && viewRef.current) {
+      viewRef.current.classList.remove('animate-fade-in')
+      void viewRef.current.offsetWidth // force reflow to restart animation
+      viewRef.current.classList.add('animate-fade-in')
+      prevViewRef.current = view
+    }
+  }, [view])
 
   // If no equipment is set up yet, show the setup screen first
   // This is the "one-time onboarding" flow
@@ -79,7 +91,7 @@ function App() {
             <button
               onClick={() => setShowSetup(true)}
               className="px-6 py-3 bg-brew-600 text-white rounded-xl font-medium
-                         hover:bg-brew-700 active:scale-95"
+                         hover:bg-brew-700 active:scale-[0.98] transition-all"
             >
               Set Up My Gear
             </button>
@@ -87,7 +99,7 @@ function App() {
         )}
 
         {/* Main views — controlled by the nav tabs */}
-        <div key={view} className="animate-fade-in motion-reduce:animate-none">
+        <div ref={viewRef} className="animate-fade-in motion-reduce:animate-none">
           {view === 'brew' && !needsSetup && (
             <BrewForm
               equipment={equipment}

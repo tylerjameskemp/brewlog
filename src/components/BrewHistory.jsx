@@ -174,7 +174,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
           <button
             onClick={() => onNavigate('brew')}
             className="mt-5 px-6 py-3 bg-brew-600 text-white rounded-xl font-medium
-                       hover:bg-brew-700 active:scale-95"
+                       hover:bg-brew-700 active:scale-[0.98] transition-all"
           >
             Log Your First Brew
           </button>
@@ -533,11 +533,12 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
 
             {/* Expanded detail */}
             <div
-              className={`overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none ${
+              aria-hidden={!isExpanded}
+              className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
                 isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
               }`}
             >
-              <div className="px-5 pb-5 border-t border-brew-50">
+              {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
                 {/* Flavors */}
                 {brew.flavors?.length > 0 && (
                   <div className="mt-3">
@@ -602,7 +603,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                 >
                   Delete this brew
                 </button>
-              </div>
+              </div>}
             </div>
           </div>
         )

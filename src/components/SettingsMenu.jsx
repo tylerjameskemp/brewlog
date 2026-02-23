@@ -163,8 +163,8 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
       : 'unknown date'
 
     return (
-      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setImportState(null)}>
-        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-fade-in motion-reduce:animate-none" onClick={() => setImportState(null)}>
+        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in motion-reduce:animate-none" onClick={e => e.stopPropagation()}>
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-brew-800">Import Data</h2>
