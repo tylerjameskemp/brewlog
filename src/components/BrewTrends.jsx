@@ -1,27 +1,11 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 // ============================================================
-// BREW TRENDS — Visual charts showing brewing patterns over time
+// BREW TRENDS -- Visual charts showing brewing patterns over time
 // ============================================================
 // Displays three stacked line charts (Rating, Grind Setting, Brew
 // Time) for the last 20 brews. Uses Recharts for rendering.
 // Read-only — no mutations, just visual feedback.
-
-function CustomTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
-  const data = payload[0].payload
-  return (
-    <div className="bg-brew-50 border border-brew-200 rounded-lg px-3 py-2 shadow-sm">
-      <p className="text-xs font-medium text-brew-800">{data.beanName || 'Unknown'}</p>
-      <p className="text-xs text-brew-500">{label}</p>
-      {payload.map((entry, i) => (
-        <p key={i} className="text-sm font-mono text-brew-700 mt-0.5">
-          {entry.value}{entry.dataKey === 'totalTime' ? 's' : ''}
-        </p>
-      ))}
-    </div>
-  )
-}
 
 export default function BrewTrends({ brews }) {
   if (brews.length < 3) {
@@ -57,27 +41,9 @@ export default function BrewTrends({ brews }) {
   }))
 
   const charts = [
-    {
-      title: 'Rating',
-      dataKey: 'rating',
-      stroke: '#7c4f2e',
-      domain: [1, 5],
-      tickFormatter: undefined,
-    },
-    {
-      title: 'Grind Setting',
-      dataKey: 'grindSetting',
-      stroke: '#c08552',
-      domain: undefined,
-      tickFormatter: undefined,
-    },
-    {
-      title: 'Brew Time',
-      dataKey: 'totalTime',
-      stroke: '#d4a574',
-      domain: undefined,
-      tickFormatter: formatTime,
-    },
+    { title: 'Rating',        dataKey: 'rating',       stroke: '#7c4f2e', domain: [1, 5] },
+    { title: 'Grind Setting', dataKey: 'grindSetting', stroke: '#c08552' },
+    { title: 'Brew Time',     dataKey: 'totalTime',    stroke: '#d4a574', tickFormatter: formatTime },
   ]
 
   return (
@@ -120,6 +86,22 @@ export default function BrewTrends({ brews }) {
             </LineChart>
           </ResponsiveContainer>
         </div>
+      ))}
+    </div>
+  )
+}
+
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const data = payload[0].payload
+  return (
+    <div className="bg-brew-50 border border-brew-200 rounded-lg px-3 py-2 shadow-sm">
+      <p className="text-xs font-medium text-brew-800">{data.beanName || 'Unknown'}</p>
+      <p className="text-xs text-brew-500">{label}</p>
+      {payload.map((entry, i) => (
+        <p key={i} className="text-sm font-mono text-brew-700 mt-0.5">
+          {entry.value}{entry.dataKey === 'totalTime' ? 's' : ''}
+        </p>
       ))}
     </div>
   )
