@@ -75,9 +75,12 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     if (savingRef.current) return
     savingRef.current = true
 
+    const trimmedName = form.beanName.trim()
+
     const brew = {
       id: uuidv4(),
       ...form,
+      beanName: trimmedName,
       method: equipment?.brewMethod,
       grinder: equipment?.grinder,
       dripper: equipment?.dripper,
@@ -88,17 +91,15 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     onBrewSaved(updatedBrews)
     setSaved(true)
 
-    // If this is a new bean, save it to the library
-    const trimmedName = form.beanName.trim()
-    if (trimmedName && !beans.find(b => b.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
-      const newBean = {
+    // If this is a new bean, save it to the library (saveBean deduplicates)
+    if (trimmedName) {
+      const updatedBeans = saveBean({
         id: uuidv4(),
         name: trimmedName,
         roaster: form.roaster,
         roastDate: form.roastDate,
         addedAt: new Date().toISOString(),
-      }
-      const updatedBeans = saveBean(newBean)
+      })
       setBeans(updatedBeans)
     }
   }
