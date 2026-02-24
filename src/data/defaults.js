@@ -51,8 +51,8 @@ export const BREW_METHODS = [
 // --- GRINDERS ---
 // Your Fellow Ode is first. Settings are specific to each grinder.
 export const GRINDERS = [
-  { id: 'fellow-ode', name: 'Fellow Ode', settingType: 'numeric', min: 1, max: 11 },
-  { id: 'fellow-ode-2', name: 'Fellow Ode Gen 2', settingType: 'numeric', min: 1, max: 11 },
+  { id: 'fellow-ode', name: 'Fellow Ode', settingType: 'numeric', min: 1, max: 11, step: 0.5 },
+  { id: 'fellow-ode-2', name: 'Fellow Ode Gen 2', settingType: 'numeric', min: 1, max: 11, step: 0.5 },
   { id: 'baratza-encore', name: 'Baratza Encore', settingType: 'numeric', min: 1, max: 40 },
   { id: 'comandante', name: 'Comandante C40', settingType: 'clicks', min: 0, max: 40 },
   { id: 'timemore-c2', name: 'Timemore C2', settingType: 'clicks', min: 0, max: 36 },

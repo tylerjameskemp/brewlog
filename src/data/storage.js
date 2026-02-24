@@ -21,7 +21,13 @@ const STORAGE_KEYS = {
 export function getBrews() {
   // Read from localStorage, parse the JSON string back into an array
   const data = localStorage.getItem(STORAGE_KEYS.BREWS)
-  return data ? JSON.parse(data) : []
+  if (!data) return []
+  const brews = JSON.parse(data)
+  return brews.sort((a, b) => {
+    const dateA = a.brewedAt ? new Date(a.brewedAt).getTime() : 0
+    const dateB = b.brewedAt ? new Date(b.brewedAt).getTime() : 0
+    return dateB - dateA // newest first
+  })
 }
 
 export function saveBrew(brew) {
@@ -70,6 +76,10 @@ export function getBeans() {
 
 export function saveBean(bean) {
   const beans = getBeans()
+  const normalized = bean.name?.trim().toLowerCase()
+  if (normalized && beans.some(b => b.name?.trim().toLowerCase() === normalized)) {
+    return beans // Already exists, skip
+  }
   beans.unshift(bean)
   localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
@@ -89,6 +99,21 @@ export function deleteBean(id) {
   const beans = getBeans().filter(b => b.id !== id)
   localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
+}
+
+export function deduplicateBeans() {
+  const beans = getBeans()
+  const seen = new Map()
+  const deduped = beans.filter(b => {
+    const key = b.name?.trim().toLowerCase()
+    if (!key || seen.has(key)) return false
+    seen.set(key, true)
+    return true
+  })
+  if (deduped.length !== beans.length) {
+    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
+  }
+  return deduped
 }
 
 export function renameBrewBean(oldName, newName) {
