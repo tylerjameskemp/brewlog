@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getBrews, getEquipment, getBeans } from './data/storage'
+import { getBrews, getEquipment, getBeans, deduplicateBeans } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
@@ -27,22 +27,13 @@ function App() {
   // Think of these as variables that React watches for changes.
 
   const [view, setView] = useState('brew')           // Which screen to show
-  const [brews, setBrews] = useState([])              // All logged brews
-  const [equipment, setEquipment] = useState(null)    // User's gear profile
-  const [beans, setBeans] = useState([])              // Bean library
+  const [brews, setBrews] = useState(() => getBrews())              // All logged brews
+  const [equipment, setEquipment] = useState(() => getEquipment())    // User's gear profile
+  const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal
   const [showSettings, setShowSettings] = useState(false) // Settings dropdown
   const viewRef = useRef(null)
   const prevViewRef = useRef(view)
-
-  // --- LOAD DATA ON STARTUP ---
-  // useEffect runs code when the component first appears ("mounts").
-  // Here we're loading saved data from localStorage.
-  useEffect(() => {
-    setBrews(getBrews())
-    setEquipment(getEquipment())
-    setBeans(getBeans())
-  }, []) // Empty array = run once on mount
 
   // Replay fade-in animation on view change (without destroying component state)
   useEffect(() => {

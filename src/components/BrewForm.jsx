@@ -93,7 +93,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     if (trimmedName && !beans.find(b => b.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
       const newBean = {
         id: uuidv4(),
-        name: form.beanName,
+        name: trimmedName,
         roaster: form.roaster,
         roastDate: form.roastDate,
         addedAt: new Date().toISOString(),
@@ -202,6 +202,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
                   type="range"
                   min={grinder.min}
                   max={grinder.max}
+                  step={grinder.step || 1}
                   value={form.grindSetting}
                   onChange={(e) => update('grindSetting', Number(e.target.value))}
                   className="flex-1 accent-brew-500"
