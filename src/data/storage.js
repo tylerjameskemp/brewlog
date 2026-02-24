@@ -88,10 +88,21 @@ export function saveBean(bean) {
 export function updateBean(id, updates) {
   const beans = getBeans()
   const index = beans.findIndex(b => b.id === id)
-  if (index !== -1) {
-    beans[index] = { ...beans[index], ...updates }
-    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
+  if (index === -1) return beans
+
+  beans[index] = { ...beans[index], ...updates }
+
+  // If name changed, remove any other bean with the same normalized name (merge)
+  const newName = updates.name?.trim().toLowerCase()
+  if (newName) {
+    const deduped = beans.filter(b =>
+      b.id === id || b.name?.trim().toLowerCase() !== newName
+    )
+    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
+    return deduped
   }
+
+  localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
 }
 
@@ -119,9 +130,10 @@ export function deduplicateBeans() {
 export function renameBrewBean(oldName, newName) {
   const brews = getBrews()
   let changed = false
+  const oldNorm = oldName.trim().toLowerCase()
   brews.forEach(b => {
-    if (b.beanName === oldName) {
-      b.beanName = newName
+    if (b.beanName?.trim().toLowerCase() === oldNorm) {
+      b.beanName = newName.trim()
       changed = true
     }
   })

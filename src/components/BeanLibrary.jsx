@@ -429,7 +429,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
               />
               {duplicateWarning && (
                 <p className="text-xs text-amber-600 mt-1">
-                  A bean with this name already exists. Save again to confirm.
+                  A bean with this name already exists. Saving will merge them into one entry.
                 </p>
               )}
             </div>
@@ -481,12 +481,14 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
             onClick={handleSave}
             disabled={!form.name.trim()}
             className={`mt-6 w-full py-3 rounded-xl font-medium transition-all
-              ${form.name.trim()
-                ? 'bg-brew-600 text-white hover:bg-brew-700 active:scale-[0.98]'
-                : 'bg-brew-200 text-brew-400 cursor-not-allowed'
+              ${!form.name.trim()
+                ? 'bg-brew-200 text-brew-400 cursor-not-allowed'
+                : duplicateWarning
+                  ? 'bg-amber-500 text-white hover:bg-amber-600 active:scale-[0.98]'
+                  : 'bg-brew-600 text-white hover:bg-brew-700 active:scale-[0.98]'
               }`}
           >
-            {bean ? 'Update Bean' : 'Save Bean'}
+            {duplicateWarning ? 'Merge Beans' : bean ? 'Update Bean' : 'Save Bean'}
           </button>
         </div>
       </div>
