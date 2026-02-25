@@ -429,7 +429,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
               />
               {duplicateWarning && (
                 <p className="text-xs text-amber-600 mt-1">
-                  A bean with this name already exists. Save again to confirm.
+                  A bean with this name already exists. Saving will merge them into one entry.
                 </p>
               )}
             </div>
