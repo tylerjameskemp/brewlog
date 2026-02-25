@@ -65,18 +65,21 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
   }
 
   // Bean name change handler — pre-fills recipe from last brew of same bean
+  // Also fills roaster from bean library and roastDate from last brew (fallback to library)
   // Only looks up localStorage when typed name exactly matches a known bean (not on every keystroke)
   const handleBeanNameChange = (newName) => {
     const trimmed = newName.trim()
-    const knownBean = trimmed && beans.some(b => b.name?.trim().toLowerCase() === trimmed.toLowerCase())
+    const matchedBean = trimmed && beans.find(b => b.name?.trim().toLowerCase() === trimmed.toLowerCase())
 
-    if (knownBean) {
+    if (matchedBean) {
       const beanBrew = getLastBrewOfBean(trimmed)
       if (beanBrew) {
-        // Pre-fill RECIPE fields only (not tasting, not brew execution) — single setForm call
+        // Pre-fill recipe + bean info from last brew and library
         setForm(prev => ({
           ...prev,
           beanName: newName,
+          roaster: matchedBean.roaster || prev.roaster,
+          roastDate: beanBrew.roastDate || matchedBean.roastDate || prev.roastDate,
           coffeeGrams: beanBrew.coffeeGrams || prev.coffeeGrams,
           waterGrams: beanBrew.waterGrams || prev.waterGrams,
           grindSetting: beanBrew.grindSetting ?? prev.grindSetting,
@@ -90,6 +93,16 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
         setSaved(false)
         return
       }
+
+      // Known bean but never brewed — fill roaster and roastDate from library only
+      setForm(prev => ({
+        ...prev,
+        beanName: newName,
+        roaster: matchedBean.roaster || prev.roaster,
+        roastDate: matchedBean.roastDate || prev.roastDate,
+      }))
+      setSaved(false)
+      return
     }
 
     // No match — just update the bean name
