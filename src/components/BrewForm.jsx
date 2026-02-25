@@ -406,7 +406,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
           rows={4}
           className="w-full p-3 rounded-xl border border-brew-200 text-base
                      text-brew-800 placeholder:text-brew-300
-                     focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
+                     focus:outline-none focus:ring-2 focus:ring-brew-400 resize-y"
         />
       </Section>
 

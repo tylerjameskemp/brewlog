@@ -382,12 +382,12 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                 <div className="text-xs font-medium text-brew-500 mb-1.5">Notes</div>
                 <div className="flex gap-3">
                   <div className="flex-1 p-2 bg-brew-50 rounded-xl">
-                    <p className="text-xs text-brew-700 whitespace-pre-wrap">
+                    <p className="text-xs text-brew-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
                       {comparisonBrews[0].notes || '—'}
                     </p>
                   </div>
                   <div className="flex-1 p-2 bg-brew-50 rounded-xl">
-                    <p className="text-xs text-brew-700 whitespace-pre-wrap">
+                    <p className="text-xs text-brew-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
                       {comparisonBrews[1].notes || '—'}
                     </p>
                   </div>
@@ -609,7 +609,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                   {brew.notes && (
                     <div className="mt-2 p-3 bg-brew-50 rounded-xl">
                       <span className="text-xs font-medium text-brew-500">Notes:</span>
-                      <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap">{brew.notes}</p>
+                      <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto">{brew.notes}</p>
                     </div>
                   )}
                 </div>
