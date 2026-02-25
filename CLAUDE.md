@@ -15,10 +15,10 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
 ## Key Files
 - `src/App.jsx` — Root component. Manages 4 views (`brew`, `beans`, `history`, `trends`), top-level state, view transitions.
 - `src/data/defaults.js` — Static options: brew methods, grinders, flavor descriptors (7 categories, 56 flavors), body, ratings, issues, bean origins (15), bean processes (7).
-- `src/data/storage.js` — All localStorage logic. CRUD for brews, beans, equipment. Also: `deduplicateBeans()`, `renameBrewBean()`, `exportData()`, `importData()`, `mergeData()`, `getUIPref()`/`setUIPref()`. Sort by `brewedAt` in `getBrews()`.
-- `src/components/BrewForm.jsx` — Brew logging form structured into 3 phases: Recipe (plan), Brew (execution), Tasting (results). Pre-fills recipe from last brew of same bean ("dial-in" pattern). Collapsible sections within non-collapsible phase headers. Bean name autocomplete via datalist.
+- `src/data/storage.js` — All localStorage logic. CRUD for brews, beans, equipment. Also: `deduplicateBeans()`, `renameBrewBean()`, `migrateGrindSettings()`, `exportData()`, `importData()`, `mergeData()`, `getUIPref()`/`setUIPref()`. Sort by `brewedAt` in `getBrews()`.
+- `src/components/BrewForm.jsx` — Brew logging form structured into 3 phases: Recipe (plan), Brew (execution), Tasting (results). Supports dual mode: create (pre-fills from last brew of same bean) and edit (pre-fills from existing brew via `editBrew` prop). Collapsible sections within non-collapsible phase headers. Bean name autocomplete via datalist. Fellow Ode grind selector uses `<select>` with 31 X-1/X-2 positions.
 - `src/components/BeanLibrary.jsx` — Bean CRUD with expandable cards. Shows brew count per bean. Modal form with duplicate warning. Rename cascades to all brews.
-- `src/components/BrewHistory.jsx` — Timeline of past brews with auto-diff badges. Compare mode: select 2 brews for side-by-side view with highlighted differences.
+- `src/components/BrewHistory.jsx` — Timeline of past brews with auto-diff badges. Edit button in expanded card navigates to BrewForm in edit mode. Compare mode: select 2 brews for side-by-side view with highlighted differences.
 - `src/components/BrewTrends.jsx` — Three stacked Recharts line charts (rating, grind, time) for the last 20 brews. Custom tooltips.
 - `src/components/EquipmentSetup.jsx` — 3-step onboarding wizard for new users; single-page edit for returning users. Auto-dismiss confirmation.
 - `src/components/FlavorPicker.jsx` — Clickable flavor tags grouped by category. Custom flavor input.
@@ -37,10 +37,11 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
   "roastDate": "2026-02-10",
   "coffeeGrams": 20,
   "waterGrams": 320,
-  "grindSetting": 6,
+  "grindSetting": "6-1",
   "waterTemp": 205,
   "bloomTime": 45,
   "bloomWater": 60,
+  "targetTime": 210,
   "totalTime": 210,
   "actualBloomTime": 45,
   "actualBloomWater": 60,
