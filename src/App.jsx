@@ -35,6 +35,7 @@ function App() {
   const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal
   const [showSettings, setShowSettings] = useState(false) // Settings dropdown
+  const [editingBrew, setEditingBrew] = useState(null)    // Brew being edited (null = new brew mode)
   const viewRef = useRef(null)
   const prevViewRef = useRef(view)
 
@@ -46,6 +47,11 @@ function App() {
       viewRef.current.classList.add('animate-fade-in')
       prevViewRef.current = view
     }
+  }, [view])
+
+  // Clear edit state when navigating away from brew view
+  useEffect(() => {
+    if (view !== 'brew') setEditingBrew(null)
   }, [view])
 
   // If no equipment is set up yet, show the setup screen first
@@ -99,7 +105,12 @@ function App() {
               equipment={equipment}
               beans={beans}
               setBeans={setBeans}
+              editBrew={editingBrew}
               onBrewSaved={(updatedBrews) => setBrews(updatedBrews)}
+              onEditComplete={() => {
+                setEditingBrew(null)
+                setView('history')
+              }}
             />
           )}
 
@@ -117,6 +128,10 @@ function App() {
               brews={brews}
               onBrewsChange={setBrews}
               onNavigate={setView}
+              onEditBrew={(brew) => {
+                setEditingBrew(brew)
+                setView('brew')
+              }}
             />
           )}
 

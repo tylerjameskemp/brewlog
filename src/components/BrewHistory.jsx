@@ -159,7 +159,7 @@ function TagComparison({ label, shared, uniqueA, uniqueB, changed, sharedClass, 
 
 // --- Main component ---
 
-export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
+export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBrew }) {
   const [expandedId, setExpandedId] = useState(null)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
@@ -671,14 +671,25 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                   </div>
                 )}
 
-                {/* Delete */}
-                <button
-                  onClick={() => handleDelete(brew.id)}
-                  className="mt-3 text-sm px-3 py-2 min-h-[44px] rounded-lg text-red-400
-                             hover:text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  Delete this brew
-                </button>
+                {/* Edit & Delete */}
+                <div className="mt-3 flex items-center gap-2">
+                  {onEditBrew && (
+                    <button
+                      onClick={() => onEditBrew(brew)}
+                      className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-brew-500
+                                 hover:text-brew-700 hover:bg-brew-50 transition-colors"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(brew.id)}
+                    className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-red-400
+                               hover:text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>}
             </div>
           </div>
