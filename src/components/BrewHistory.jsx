@@ -39,9 +39,11 @@ function compareBrews(brewA, brewB) {
     { key: 'waterGrams', label: 'Water', unit: 'g', section: 'recipe' },
     { key: 'grindSetting', label: 'Grind', unit: '', section: 'recipe' },
     { key: 'waterTemp', label: 'Temp', unit: '°F', section: 'recipe' },
-    { key: 'bloomTime', label: 'Bloom', format: formatTime, section: 'timing' },
-    { key: 'bloomWater', label: 'Bloom Water', unit: 'g', section: 'timing' },
-    { key: 'totalTime', label: 'Total Time', format: formatTime, section: 'timing' },
+    { key: 'bloomTime', label: 'Bloom', format: formatTime, section: 'recipe' },
+    { key: 'bloomWater', label: 'Bloom Water', unit: 'g', section: 'recipe' },
+    { key: 'totalTime', label: 'Total Time', format: formatTime, section: 'brew' },
+    { key: 'actualBloomTime', label: 'Actual Bloom', format: formatTime, section: 'brew' },
+    { key: 'actualBloomWater', label: 'Actual Bloom Water', unit: 'g', section: 'brew' },
   ]
 
   const diffs = []
@@ -346,12 +348,12 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
             ))}
           </div>
 
-          {/* Timing section */}
+          {/* Brew section */}
           <div className="border-b border-brew-50">
             <div className="px-3 pt-3 pb-1">
-              <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Timing</span>
+              <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Brew</span>
             </div>
-            {comparison.params.filter(p => p.section === 'timing').map(p => (
+            {comparison.params.filter(p => p.section === 'brew').map(p => (
               <ComparisonRow
                 key={p.key}
                 label={p.label}
@@ -360,6 +362,38 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                 changed={p.changed}
               />
             ))}
+
+            {/* Issues */}
+            {(comparison.issues.shared.length > 0 || comparison.issues.uniqueA.length > 0 || comparison.issues.uniqueB.length > 0) && (
+              <TagComparison
+                label="Issues"
+                shared={comparison.issues.shared}
+                uniqueA={comparison.issues.uniqueA}
+                uniqueB={comparison.issues.uniqueB}
+                changed={comparison.issuesChanged}
+                sharedClass="bg-red-50 text-red-500"
+                uniqueClass="bg-amber-100 text-amber-700"
+              />
+            )}
+
+            {/* Notes */}
+            {(comparisonBrews[0].notes || comparisonBrews[1].notes) && (
+              <div className="px-3 py-2">
+                <div className="text-xs font-medium text-brew-500 mb-1.5">Notes</div>
+                <div className="flex gap-3">
+                  <div className="flex-1 p-2 bg-brew-50 rounded-xl">
+                    <p className="text-xs text-brew-700 whitespace-pre-wrap">
+                      {comparisonBrews[0].notes || '—'}
+                    </p>
+                  </div>
+                  <div className="flex-1 p-2 bg-brew-50 rounded-xl">
+                    <p className="text-xs text-brew-700 whitespace-pre-wrap">
+                      {comparisonBrews[1].notes || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tasting section */}
@@ -395,40 +429,6 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
               changed={comparison.rating.changed}
             />
           </div>
-
-          {/* Issues */}
-          {(comparison.issues.shared.length > 0 || comparison.issues.uniqueA.length > 0 || comparison.issues.uniqueB.length > 0) && (
-            <div className="border-b border-brew-50">
-              <TagComparison
-                label="Issues"
-                shared={comparison.issues.shared}
-                uniqueA={comparison.issues.uniqueA}
-                uniqueB={comparison.issues.uniqueB}
-                changed={comparison.issuesChanged}
-                sharedClass="bg-red-50 text-red-500"
-                uniqueClass="bg-amber-100 text-amber-700"
-              />
-            </div>
-          )}
-
-          {/* Notes */}
-          {(comparisonBrews[0].notes || comparisonBrews[1].notes) && (
-            <div className="px-3 py-3">
-              <div className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide mb-2">Notes</div>
-              <div className="flex gap-3">
-                <div className="flex-1 p-2 bg-brew-50 rounded-xl">
-                  <p className="text-xs text-brew-700 whitespace-pre-wrap">
-                    {comparisonBrews[0].notes || '—'}
-                  </p>
-                </div>
-                <div className="flex-1 p-2 bg-brew-50 rounded-xl">
-                  <p className="text-xs text-brew-700 whitespace-pre-wrap">
-                    {comparisonBrews[1].notes || '—'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -539,59 +539,115 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
               }`}
             >
               {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
-                {/* Flavors */}
-                {brew.flavors?.length > 0 && (
+                {/* --- RECIPE --- */}
+                <div className="mt-3">
+                  <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Recipe</span>
+                  <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div className="text-xs">
+                      <span className="text-brew-500">Dose:</span>{' '}
+                      <span className="font-mono text-brew-700">{brew.coffeeGrams}g</span>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-brew-500">Water:</span>{' '}
+                      <span className="font-mono text-brew-700">{brew.waterGrams}g</span>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-brew-500">Grind:</span>{' '}
+                      <span className="font-mono text-brew-700">{brew.grindSetting}</span>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-brew-500">Temp:</span>{' '}
+                      <span className="font-mono text-brew-700">{brew.waterTemp}{'\u00B0'}F</span>
+                    </div>
+                    {brew.bloomTime && (
+                      <div className="text-xs">
+                        <span className="text-brew-500">Bloom:</span>{' '}
+                        <span className="font-mono text-brew-700">{formatTime(brew.bloomTime)}</span>
+                      </div>
+                    )}
+                    {brew.bloomWater && (
+                      <div className="text-xs">
+                        <span className="text-brew-500">Bloom Water:</span>{' '}
+                        <span className="font-mono text-brew-700">{brew.bloomWater}g</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* --- BREW --- */}
+                <div className="mt-3">
+                  <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Brew</span>
+                  {brew.totalTime && (
+                    <div className="mt-1.5 text-xs">
+                      <span className="text-brew-500">Total Time:</span>{' '}
+                      <span className="font-mono text-brew-700">{formatTime(brew.totalTime)}</span>
+                    </div>
+                  )}
+                  {/* Bloom deviation — only shown if actual differs from planned */}
+                  {brew.actualBloomTime && brew.bloomTime && brew.actualBloomTime !== brew.bloomTime && (
+                    <div className="mt-1 text-xs">
+                      <span className="text-amber-600">Bloom: planned {formatTime(brew.bloomTime)}, actual {formatTime(brew.actualBloomTime)}</span>
+                    </div>
+                  )}
+                  {brew.actualBloomWater && brew.bloomWater && brew.actualBloomWater !== brew.bloomWater && (
+                    <div className="mt-1 text-xs">
+                      <span className="text-amber-600">Bloom water: planned {brew.bloomWater}g, actual {brew.actualBloomWater}g</span>
+                    </div>
+                  )}
+                  {brew.issues?.length > 0 && (
+                    <div className="mt-1.5">
+                      <span className="text-xs text-brew-500">Issues: </span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {brew.issues.map(i => (
+                          <span key={i} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-xs">
+                            {i}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {brew.notes && (
+                    <div className="mt-2 p-3 bg-brew-50 rounded-xl">
+                      <span className="text-xs font-medium text-brew-500">Notes:</span>
+                      <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap">{brew.notes}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* --- TASTING --- */}
+                {(brew.flavors?.length > 0 || brew.body || brew.rating) && (
                   <div className="mt-3">
-                    <span className="text-xs font-medium text-brew-500">Flavors: </span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {brew.flavors.map(f => (
-                        <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-600 rounded-full text-xs">
-                          {f}
-                        </span>
-                      ))}
-                    </div>
+                    <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Tasting</span>
+                    {brew.flavors?.length > 0 && (
+                      <div className="mt-1.5">
+                        <span className="text-xs text-brew-500">Flavors: </span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {brew.flavors.map(f => (
+                            <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-600 rounded-full text-xs">
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {brew.body && (
+                      <div className="mt-1.5 text-xs">
+                        <span className="text-brew-500">Body: </span>
+                        <span className="text-brew-700">{brew.body}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Body */}
-                {brew.body && (
-                  <div className="mt-2">
-                    <span className="text-xs font-medium text-brew-500">Body: </span>
-                    <span className="text-xs text-brew-700">{brew.body}</span>
-                  </div>
-                )}
-
-                {/* Issues */}
-                {brew.issues?.length > 0 && (
-                  <div className="mt-2">
-                    <span className="text-xs font-medium text-brew-500">Issues: </span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {brew.issues.map(i => (
-                        <span key={i} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-xs">
-                          {i}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Full diff */}
+                {/* Changes from previous brew */}
                 {diff && (
                   <div className="mt-3 p-3 bg-amber-50/50 rounded-xl">
                     <span className="text-xs font-medium text-amber-700">Changes from previous:</span>
                     <div className="mt-1 space-y-0.5">
                       {diff.map((d, i) => (
-                        <div key={i} className="text-xs text-amber-600">→ {d}</div>
+                        <div key={i} className="text-xs text-amber-600">{'\u2192'} {d}</div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Notes */}
-                {brew.notes && (
-                  <div className="mt-3 p-3 bg-brew-50 rounded-xl">
-                    <span className="text-xs font-medium text-brew-500">Notes:</span>
-                    <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap">{brew.notes}</p>
                   </div>
                 )}
 

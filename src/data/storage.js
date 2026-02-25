@@ -175,6 +175,15 @@ export function getLastBrew() {
   return brews.length > 0 ? brews[0] : null
 }
 
+export function getLastBrewOfBean(beanName) {
+  // Returns the most recent brew for a specific bean — used for "dial-in" pre-fill
+  if (!beanName) return null
+  const normalized = beanName.trim().toLowerCase()
+  if (!normalized) return null
+  const brews = getBrews() // already sorted by brewedAt descending
+  return brews.find(b => b.beanName?.trim().toLowerCase() === normalized) || null
+}
+
 export function exportData() {
   // Export everything as a single JSON object
   // Useful for backup or for feeding into BrewWeave later

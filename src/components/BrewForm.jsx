@@ -1,17 +1,19 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { saveBrew, getLastBrew, saveBean, getBeans } from '../data/storage'
+import { saveBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans } from '../data/storage'
 import { BREW_METHODS, GRINDERS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 
 // ============================================================
 // BREW FORM — The main brew logging interface
 // ============================================================
-// This is the heart of the app. It pre-fills from your last brew
-// (your Feb 9 idea) and lets you quickly log what changed.
+// Structured into three phases that mirror the actual brewing workflow:
+//   1. RECIPE — the plan (bean, dose, grind, water, bloom)
+//   2. BREW — what happened (timing, actual bloom, issues, notes)
+//   3. TASTING — the results (flavors, body, rating)
 //
 // DESIGN PRINCIPLE: Start with the defaults, change what's different.
-// Most brews are similar to the last one. Make the common case easy.
+// Pre-fills recipe from your last brew of the SAME BEAN ("dial-in" pattern).
 
 export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
   // Get the user's grinder config for setting display
@@ -27,16 +29,18 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     roaster: lastBrew?.roaster || '',
     roastDate: lastBrew?.roastDate || '',
 
-    // Brew params — pre-filled from last brew
+    // Recipe params — pre-filled from last brew
     coffeeGrams: lastBrew?.coffeeGrams || 20,
     waterGrams: lastBrew?.waterGrams || 320,
-    grindSetting: lastBrew?.grindSetting || 6,
+    grindSetting: lastBrew?.grindSetting ?? 6,
     waterTemp: lastBrew?.waterTemp || 205,
-
-    // Timing
     bloomTime: lastBrew?.bloomTime || method.defaultBloomTime,
     bloomWater: lastBrew?.bloomWater || 60,
-    totalTime: '', // Entered after brewing
+
+    // Brew execution — entered after brewing
+    totalTime: '',
+    actualBloomTime: '',
+    actualBloomWater: '',
 
     // Tasting
     flavors: [],
@@ -50,10 +54,46 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
 
   const [saved, setSaved] = useState(false)
   const savingRef = useRef(false)
+  const [beanRecipeSource, setBeanRecipeSource] = useState(null)
+  const [lastBeanBrew, setLastBeanBrew] = useState(null)
 
   // Helper to update form fields
   const update = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
+    setSaved(false)
+  }
+
+  // Bean name change handler — pre-fills recipe from last brew of same bean
+  // Only looks up localStorage when typed name exactly matches a known bean (not on every keystroke)
+  const handleBeanNameChange = (newName) => {
+    const trimmed = newName.trim()
+    const knownBean = trimmed && beans.some(b => b.name?.trim().toLowerCase() === trimmed.toLowerCase())
+
+    if (knownBean) {
+      const beanBrew = getLastBrewOfBean(trimmed)
+      if (beanBrew) {
+        // Pre-fill RECIPE fields only (not tasting, not brew execution) — single setForm call
+        setForm(prev => ({
+          ...prev,
+          beanName: newName,
+          coffeeGrams: beanBrew.coffeeGrams || prev.coffeeGrams,
+          waterGrams: beanBrew.waterGrams || prev.waterGrams,
+          grindSetting: beanBrew.grindSetting ?? prev.grindSetting,
+          waterTemp: beanBrew.waterTemp || prev.waterTemp,
+          bloomTime: beanBrew.bloomTime || prev.bloomTime,
+          bloomWater: beanBrew.bloomWater || prev.bloomWater,
+        }))
+        setBeanRecipeSource(beanBrew.beanName)
+        setLastBeanBrew(beanBrew)
+        setSaved(false)
+        return
+      }
+    }
+
+    // No match — just update the bean name
+    setForm(prev => ({ ...prev, beanName: newName }))
+    setBeanRecipeSource(null)
+    setLastBeanBrew(null)
     setSaved(false)
   }
 
@@ -81,6 +121,9 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
       id: uuidv4(),
       ...form,
       beanName: trimmedName,
+      // Default actual bloom to planned values if not specified
+      actualBloomTime: form.actualBloomTime || form.bloomTime,
+      actualBloomWater: form.actualBloomWater || form.bloomWater,
       method: equipment?.brewMethod,
       grinder: equipment?.grinder,
       dripper: equipment?.dripper,
@@ -106,21 +149,25 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     savingRef.current = false
   }
 
-  // --- SECTIONS ---
-  // The form is broken into collapsible sections.
-  // This keeps it from being overwhelming while still capturing detail.
+  // --- FORM LAYOUT ---
+  // Organized into three phases: Recipe → Brew → Tasting
+  // Each phase has a header and one or more collapsible sections.
 
   return (
     <div className="mt-6 space-y-4">
+
+      {/* ===== PHASE 1: RECIPE ===== */}
+      <PhaseHeader number={1} title="Recipe" subtitle="Your plan for this brew" phase="recipe" />
+
       {/* ---- BEAN INFO ---- */}
-      <Section title="☕ Coffee" defaultOpen>
+      <Section title="Coffee" defaultOpen>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className="text-xs font-medium text-brew-500 mb-1 block">Bean Name</label>
             <input
               type="text"
               value={form.beanName}
-              onChange={(e) => update('beanName', e.target.value)}
+              onChange={(e) => handleBeanNameChange(e.target.value)}
               placeholder="e.g., Heart Columbia Javier Omar"
               list="bean-suggestions"
               className="w-full p-3 rounded-xl border border-brew-200 text-base
@@ -130,6 +177,13 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
             <datalist id="bean-suggestions">
               {beans.map(b => <option key={b.id} value={b.name} />)}
             </datalist>
+            {/* Bean-specific pre-fill hint */}
+            {beanRecipeSource && (
+              <div className="mt-2 px-3 py-2 bg-brew-50 rounded-lg text-xs text-brew-500
+                              animate-fade-in motion-reduce:animate-none">
+                Recipe pre-filled from your last brew of <strong>{beanRecipeSource}</strong>
+              </div>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium text-brew-500 mb-1 block">Roaster</label>
@@ -155,8 +209,8 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
         </div>
       </Section>
 
-      {/* ---- BREW PARAMETERS ---- */}
-      <Section title="⚖️ Recipe" defaultOpen>
+      {/* ---- RECIPE PARAMETERS ---- */}
+      <Section title="Brew Parameters" defaultOpen>
         <div className="grid grid-cols-2 gap-3">
           {/* Coffee dose */}
           <div>
@@ -229,7 +283,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
           {/* Water temp */}
           <div>
             <label className="text-xs font-medium text-brew-500 mb-1 block">
-              Water Temp (°F)
+              Water Temp ({'\u00B0'}F)
             </label>
             <input
               type="number"
@@ -239,12 +293,8 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
-        </div>
-      </Section>
 
-      {/* ---- TIMING ---- */}
-      <Section title="⏱ Timing">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {/* Bloom time (planned) */}
           <div>
             <label className="text-xs font-medium text-brew-500 mb-1 block">Bloom (sec)</label>
             <input
@@ -255,6 +305,8 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
+
+          {/* Bloom water (planned) */}
           <div>
             <label className="text-xs font-medium text-brew-500 mb-1 block">Bloom Water (g)</label>
             <input
@@ -265,8 +317,17 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
-          <div className="col-span-2 md:col-span-1">
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Total (sec)</label>
+        </div>
+      </Section>
+
+      {/* ===== PHASE 2: BREW ===== */}
+      <PhaseHeader number={2} title="Brew" subtitle="What happened" phase="brew" />
+
+      {/* ---- TIMING & ACTUAL BLOOM ---- */}
+      <Section title="Timing & Bloom">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Total Time (sec)</label>
             <input
               type="number"
               value={form.totalTime}
@@ -281,11 +342,79 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               </div>
             )}
           </div>
+
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Actual Bloom (sec)</label>
+            <input
+              type="number"
+              value={form.actualBloomTime}
+              onChange={(e) => update('actualBloomTime', Number(e.target.value))}
+              placeholder={form.bloomTime || ''}
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                         placeholder:text-brew-300
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Actual Bloom Water (g)</label>
+            <input
+              type="number"
+              value={form.actualBloomWater}
+              onChange={(e) => update('actualBloomWater', Number(e.target.value))}
+              placeholder={form.bloomWater || ''}
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                         placeholder:text-brew-300
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+          </div>
+          <div className="col-span-2 text-[10px] text-brew-400 -mt-1">
+            Leave blank if bloom went as planned
+          </div>
         </div>
       </Section>
 
+      {/* ---- ISSUES ---- */}
+      <Section title="Issues">
+        <div className="flex flex-wrap gap-2">
+          {BREW_ISSUES.map(issue => (
+            <button
+              key={issue}
+              onClick={() => {
+                const issues = form.issues.includes(issue)
+                  ? form.issues.filter(i => i !== issue)
+                  : [...form.issues, issue]
+                update('issues', issues)
+              }}
+              className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
+                ${form.issues.includes(issue)
+                  ? 'border-red-300 bg-red-50 text-red-600'
+                  : 'border-brew-200 text-brew-500 hover:border-brew-300'
+                }`}
+            >
+              {issue}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {/* ---- NOTES ---- */}
+      <Section title="Notes">
+        <textarea
+          value={form.notes}
+          onChange={(e) => update('notes', e.target.value)}
+          placeholder="Any adjustments during the brew? How did the cup turn out?"
+          rows={4}
+          className="w-full p-3 rounded-xl border border-brew-200 text-base
+                     text-brew-800 placeholder:text-brew-300
+                     focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
+        />
+      </Section>
+
+      {/* ===== PHASE 3: TASTING ===== */}
+      <PhaseHeader number={3} title="Tasting" subtitle="How did it taste?" phase="tasting" />
+
       {/* ---- TASTING NOTES ---- */}
-      <Section title="👅 Tasting">
+      <Section title="Tasting">
         {/* Flavor picker */}
         <div className="mb-4">
           <label className="text-xs font-medium text-brew-500 mb-2 block">Flavors</label>
@@ -337,43 +466,6 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
         </div>
       </Section>
 
-      {/* ---- ISSUES ---- */}
-      <Section title="🔧 Issues">
-        <div className="flex flex-wrap gap-2">
-          {BREW_ISSUES.map(issue => (
-            <button
-              key={issue}
-              onClick={() => {
-                const issues = form.issues.includes(issue)
-                  ? form.issues.filter(i => i !== issue)
-                  : [...form.issues, issue]
-                update('issues', issues)
-              }}
-              className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
-                ${form.issues.includes(issue)
-                  ? 'border-red-300 bg-red-50 text-red-600'
-                  : 'border-brew-200 text-brew-500 hover:border-brew-300'
-                }`}
-            >
-              {issue}
-            </button>
-          ))}
-        </div>
-      </Section>
-
-      {/* ---- NOTES ---- */}
-      <Section title="📝 Notes">
-        <textarea
-          value={form.notes}
-          onChange={(e) => update('notes', e.target.value)}
-          placeholder="What happened? What would you change next time?"
-          rows={4}
-          className="w-full p-3 rounded-xl border border-brew-200 text-base
-                     text-brew-800 placeholder:text-brew-300
-                     focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
-        />
-      </Section>
-
       {/* ---- SAVE BUTTON ---- */}
       <button
         onClick={handleSave}
@@ -384,17 +476,31 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
             : 'bg-brew-600 text-white hover:bg-brew-700 active:scale-[0.98]'
           }`}
       >
-        {saved ? '✓ Brew Saved!' : 'Save Brew'}
+        {saved ? '\u2713 Brew Saved!' : 'Save Brew'}
       </button>
 
       {/* Quick diff from last brew */}
-      {lastBrew && !saved && (
+      {!saved && (beanRecipeSource || lastBrew) && (
         <div className="p-3 bg-brew-50 rounded-xl text-xs text-brew-500">
-          <strong>Last brew:</strong> {lastBrew.beanName || 'Unknown'} —{' '}
-          {lastBrew.coffeeGrams}g / {lastBrew.waterGrams}g —{' '}
-          grind {lastBrew.grindSetting} —{' '}
-          {lastBrew.rating ? RATING_SCALE.find(r => r.value === lastBrew.rating)?.emoji : ''}
-          {lastBrew.rating ? ` ${lastBrew.rating}/5` : 'no rating'}
+          {beanRecipeSource && lastBeanBrew ? (
+            <>
+              <strong>Last brew of {beanRecipeSource}:</strong>{' '}
+              {lastBeanBrew.coffeeGrams}g / {lastBeanBrew.waterGrams}g {'\u2014'}{' '}
+              grind {lastBeanBrew.grindSetting} {'\u2014'}{' '}
+              {(() => {
+                const ratingInfo = RATING_SCALE.find(r => r.value === lastBeanBrew.rating)
+                return ratingInfo ? `${ratingInfo.emoji} ${lastBeanBrew.rating}/5` : 'no rating'
+              })()}
+            </>
+          ) : lastBrew ? (
+            <>
+              <strong>Last brew:</strong> {lastBrew.beanName || 'Unknown'} {'\u2014'}{' '}
+              {lastBrew.coffeeGrams}g / {lastBrew.waterGrams}g {'\u2014'}{' '}
+              grind {lastBrew.grindSetting} {'\u2014'}{' '}
+              {lastBrew.rating ? RATING_SCALE.find(r => r.value === lastBrew.rating)?.emoji : ''}
+              {lastBrew.rating ? ` ${lastBrew.rating}/5` : 'no rating'}
+            </>
+          ) : null}
         </div>
       )}
     </div>
@@ -415,7 +521,7 @@ function Section({ title, defaultOpen = false, children }) {
       >
         <span className="text-sm font-semibold text-brew-800">{title}</span>
         <span className={`text-brew-400 transition-transform ${open ? 'rotate-180' : ''}`}>
-          ▾
+          {'\u25BE'}
         </span>
       </button>
       <div
@@ -428,6 +534,27 @@ function Section({ title, defaultOpen = false, children }) {
           {children}
         </div>}
       </div>
+    </div>
+  )
+}
+
+// --- PHASE HEADER COMPONENT ---
+// Non-collapsible visual group header for the three brew phases
+const PHASE_ACCENTS = {
+  recipe: 'border-brew-400',
+  brew: 'border-amber-400',
+  tasting: 'border-green-500',
+}
+
+function PhaseHeader({ number, title, subtitle, phase }) {
+  return (
+    <div className={`flex items-center gap-2 px-1 pt-6 pb-2 border-l-4 ${PHASE_ACCENTS[phase]} pl-3`}>
+      <span className="text-xs font-semibold text-brew-600 uppercase tracking-wide">
+        {number}. {title}
+      </span>
+      {subtitle && (
+        <span className="text-[10px] text-brew-400">{subtitle}</span>
+      )}
     </div>
   )
 }
