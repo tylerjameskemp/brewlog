@@ -36,6 +36,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     waterTemp: lastBrew?.waterTemp || 205,
     bloomTime: lastBrew?.bloomTime || method.defaultBloomTime,
     bloomWater: lastBrew?.bloomWater || 60,
+    targetTime: lastBrew?.targetTime || method.defaultTotalTime,
 
     // Brew execution — entered after brewing
     totalTime: '',
@@ -82,6 +83,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
           waterTemp: beanBrew.waterTemp || prev.waterTemp,
           bloomTime: beanBrew.bloomTime || prev.bloomTime,
           bloomWater: beanBrew.bloomWater || prev.bloomWater,
+          targetTime: beanBrew.targetTime || prev.targetTime,
         }))
         setBeanRecipeSource(beanBrew.beanName)
         setLastBeanBrew(beanBrew)
@@ -121,7 +123,9 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
       id: uuidv4(),
       ...form,
       beanName: trimmedName,
-      // Default actual bloom to planned values if not specified
+      // Default actual values to planned values if not specified
+      targetTime: form.targetTime || undefined,
+      totalTime: form.totalTime || form.targetTime || undefined,
       actualBloomTime: form.actualBloomTime || form.bloomTime,
       actualBloomWater: form.actualBloomWater || form.bloomWater,
       method: equipment?.brewMethod,
@@ -317,6 +321,24 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
+
+          {/* Target brew time */}
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Target Time (sec)</label>
+            <input
+              type="number"
+              value={form.targetTime}
+              onChange={(e) => update('targetTime', Number(e.target.value))}
+              placeholder={method.defaultTotalTime}
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+            {form.targetTime && (
+              <div className="text-xs text-brew-400 mt-1 text-center">
+                {formatTime(form.targetTime)}
+              </div>
+            )}
+          </div>
         </div>
       </Section>
 
@@ -332,13 +354,19 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               type="number"
               value={form.totalTime}
               onChange={(e) => update('totalTime', Number(e.target.value))}
-              placeholder={method.defaultTotalTime}
+              placeholder={form.targetTime || method.defaultTotalTime}
               className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                         placeholder:text-brew-300
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
             {form.totalTime && (
               <div className="text-xs text-brew-400 mt-1 text-center">
                 {formatTime(form.totalTime)}
+              </div>
+            )}
+            {form.targetTime && !form.totalTime && (
+              <div className="text-xs text-brew-400 mt-1 text-center">
+                Leave blank if brew time matched your target
               </div>
             )}
           </div>

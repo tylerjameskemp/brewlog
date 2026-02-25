@@ -41,6 +41,7 @@ function compareBrews(brewA, brewB) {
     { key: 'waterTemp', label: 'Temp', unit: '°F', section: 'recipe' },
     { key: 'bloomTime', label: 'Bloom', format: formatTime, section: 'recipe' },
     { key: 'bloomWater', label: 'Bloom Water', unit: 'g', section: 'recipe' },
+    { key: 'targetTime', label: 'Target Time', format: formatTime, section: 'recipe' },
     { key: 'totalTime', label: 'Total Time', format: formatTime, section: 'brew' },
     { key: 'actualBloomTime', label: 'Actual Bloom', format: formatTime, section: 'brew' },
     { key: 'actualBloomWater', label: 'Actual Bloom Water', unit: 'g', section: 'brew' },
@@ -206,6 +207,9 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
     }
     if (brew.bloomTime !== prev.bloomTime) {
       diffs.push(`Bloom: ${prev.bloomTime}s → ${brew.bloomTime}s`)
+    }
+    if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
+      diffs.push(`Target: ${formatTime(prev.targetTime) || '—'} → ${formatTime(brew.targetTime) || '—'}`)
     }
     if (brew.beanName !== prev.beanName) {
       diffs.push(`New beans: ${brew.beanName}`)
@@ -571,6 +575,12 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                         <span className="font-mono text-brew-700">{brew.bloomWater}g</span>
                       </div>
                     )}
+                    {brew.targetTime && (
+                      <div className="text-xs">
+                        <span className="text-brew-500">Target Time:</span>{' '}
+                        <span className="font-mono text-brew-700">{formatTime(brew.targetTime)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -581,6 +591,12 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                     <div className="mt-1.5 text-xs">
                       <span className="text-brew-500">Total Time:</span>{' '}
                       <span className="font-mono text-brew-700">{formatTime(brew.totalTime)}</span>
+                    </div>
+                  )}
+                  {/* Time deviation — only shown if actual differs from target */}
+                  {brew.targetTime && brew.totalTime && brew.totalTime !== brew.targetTime && (
+                    <div className="mt-1 text-xs">
+                      <span className="text-amber-600">Target {formatTime(brew.targetTime)}, actual {formatTime(brew.totalTime)}</span>
                     </div>
                   )}
                   {/* Bloom deviation — only shown if actual differs from planned */}
