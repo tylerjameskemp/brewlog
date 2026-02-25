@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getBrews, getEquipment, getBeans, deduplicateBeans } from './data/storage'
+import { getBrews, getEquipment, getBeans, deduplicateBeans, migrateGrindSettings } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
@@ -27,11 +27,12 @@ function App() {
   // Think of these as variables that React watches for changes.
 
   const [view, setView] = useState('brew')           // Which screen to show
-  const [brews, setBrews] = useState(() => getBrews())              // All logged brews
+  const [brews, setBrews] = useState(() => migrateGrindSettings())
   const [equipment, setEquipment] = useState(() => getEquipment())    // User's gear profile
   const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal
   const [showSettings, setShowSettings] = useState(false) // Settings dropdown
+  const [editingBrew, setEditingBrew] = useState(null)    // Brew being edited (null = new brew mode)
   const viewRef = useRef(null)
   const prevViewRef = useRef(view)
 
@@ -43,6 +44,11 @@ function App() {
       viewRef.current.classList.add('animate-fade-in')
       prevViewRef.current = view
     }
+  }, [view])
+
+  // Clear edit state when navigating away from brew view
+  useEffect(() => {
+    if (view !== 'brew') setEditingBrew(null)
   }, [view])
 
   // If no equipment is set up yet, show the setup screen first
@@ -96,7 +102,12 @@ function App() {
               equipment={equipment}
               beans={beans}
               setBeans={setBeans}
+              editBrew={editingBrew}
               onBrewSaved={(updatedBrews) => setBrews(updatedBrews)}
+              onEditComplete={() => {
+                setEditingBrew(null)
+                setView('history')
+              }}
             />
           )}
 
@@ -114,6 +125,10 @@ function App() {
               brews={brews}
               onBrewsChange={setBrews}
               onNavigate={setView}
+              onEditBrew={(brew) => {
+                setEditingBrew(brew)
+                setView('brew')
+              }}
             />
           )}
 

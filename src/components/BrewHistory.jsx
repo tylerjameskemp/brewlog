@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { deleteBrew, getUIPref, setUIPref } from '../data/storage'
-import { RATING_SCALE } from '../data/defaults'
+import { RATING_SCALE, grindToNumeric } from '../data/defaults'
 
 // ============================================================
 // BREW HISTORY — View and compare past brews
@@ -41,6 +41,7 @@ function compareBrews(brewA, brewB) {
     { key: 'waterTemp', label: 'Temp', unit: '°F', section: 'recipe' },
     { key: 'bloomTime', label: 'Bloom', format: formatTime, section: 'recipe' },
     { key: 'bloomWater', label: 'Bloom Water', unit: 'g', section: 'recipe' },
+    { key: 'targetTime', label: 'Target Time', format: formatTime, section: 'recipe' },
     { key: 'totalTime', label: 'Total Time', format: formatTime, section: 'brew' },
     { key: 'actualBloomTime', label: 'Actual Bloom', format: formatTime, section: 'brew' },
     { key: 'actualBloomWater', label: 'Actual Bloom Water', unit: 'g', section: 'brew' },
@@ -158,7 +159,7 @@ function TagComparison({ label, shared, uniqueA, uniqueB, changed, sharedClass, 
 
 // --- Main component ---
 
-export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
+export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBrew }) {
   const [expandedId, setExpandedId] = useState(null)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
@@ -191,9 +192,13 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
     if (!prev) return null
 
     const diffs = []
-    if (brew.grindSetting !== prev.grindSetting) {
-      const dir = brew.grindSetting > prev.grindSetting ? '↑' : '↓'
+    const currGrind = grindToNumeric(brew.grindSetting)
+    const prevGrind = grindToNumeric(prev.grindSetting)
+    if (currGrind != null && prevGrind != null && currGrind !== prevGrind) {
+      const dir = currGrind > prevGrind ? '↑' : '↓'
       diffs.push(`Grind ${dir} ${prev.grindSetting} → ${brew.grindSetting}`)
+    } else if (String(brew.grindSetting) !== String(prev.grindSetting)) {
+      diffs.push(`Grind: ${prev.grindSetting} → ${brew.grindSetting}`)
     }
     if (brew.coffeeGrams !== prev.coffeeGrams) {
       diffs.push(`Dose: ${prev.coffeeGrams}g → ${brew.coffeeGrams}g`)
@@ -206,6 +211,9 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
     }
     if (brew.bloomTime !== prev.bloomTime) {
       diffs.push(`Bloom: ${prev.bloomTime}s → ${brew.bloomTime}s`)
+    }
+    if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
+      diffs.push(`Target: ${formatTime(prev.targetTime) || '—'} → ${formatTime(brew.targetTime) || '—'}`)
     }
     if (brew.beanName !== prev.beanName) {
       diffs.push(`New beans: ${brew.beanName}`)
@@ -382,12 +390,12 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                 <div className="text-xs font-medium text-brew-500 mb-1.5">Notes</div>
                 <div className="flex gap-3">
                   <div className="flex-1 p-2 bg-brew-50 rounded-xl">
-                    <p className="text-xs text-brew-700 whitespace-pre-wrap">
+                    <p className="text-xs text-brew-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
                       {comparisonBrews[0].notes || '—'}
                     </p>
                   </div>
                   <div className="flex-1 p-2 bg-brew-50 rounded-xl">
-                    <p className="text-xs text-brew-700 whitespace-pre-wrap">
+                    <p className="text-xs text-brew-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
                       {comparisonBrews[1].notes || '—'}
                     </p>
                   </div>
@@ -571,6 +579,12 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                         <span className="font-mono text-brew-700">{brew.bloomWater}g</span>
                       </div>
                     )}
+                    {brew.targetTime && (
+                      <div className="text-xs">
+                        <span className="text-brew-500">Target Time:</span>{' '}
+                        <span className="font-mono text-brew-700">{formatTime(brew.targetTime)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -581,6 +595,12 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                     <div className="mt-1.5 text-xs">
                       <span className="text-brew-500">Total Time:</span>{' '}
                       <span className="font-mono text-brew-700">{formatTime(brew.totalTime)}</span>
+                    </div>
+                  )}
+                  {/* Time deviation — only shown if actual differs from target */}
+                  {brew.targetTime && brew.totalTime && brew.totalTime !== brew.targetTime && (
+                    <div className="mt-1 text-xs">
+                      <span className="text-amber-600">Target {formatTime(brew.targetTime)}, actual {formatTime(brew.totalTime)}</span>
                     </div>
                   )}
                   {/* Bloom deviation — only shown if actual differs from planned */}
@@ -609,7 +629,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                   {brew.notes && (
                     <div className="mt-2 p-3 bg-brew-50 rounded-xl">
                       <span className="text-xs font-medium text-brew-500">Notes:</span>
-                      <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap">{brew.notes}</p>
+                      <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto">{brew.notes}</p>
                     </div>
                   )}
                 </div>
@@ -651,14 +671,25 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
                   </div>
                 )}
 
-                {/* Delete */}
-                <button
-                  onClick={() => handleDelete(brew.id)}
-                  className="mt-3 text-sm px-3 py-2 min-h-[44px] rounded-lg text-red-400
-                             hover:text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  Delete this brew
-                </button>
+                {/* Edit & Delete */}
+                <div className="mt-3 flex items-center gap-2">
+                  {onEditBrew && (
+                    <button
+                      onClick={() => onEditBrew(brew)}
+                      className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-brew-500
+                                 hover:text-brew-700 hover:bg-brew-50 transition-colors"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(brew.id)}
+                    className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-red-400
+                               hover:text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>}
             </div>
           </div>

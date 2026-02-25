@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { saveBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans } from '../data/storage'
-import { BREW_METHODS, GRINDERS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
+import { saveBrew, updateBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans } from '../data/storage'
+import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 
 // ============================================================
@@ -15,41 +15,47 @@ import FlavorPicker from './FlavorPicker'
 // DESIGN PRINCIPLE: Start with the defaults, change what's different.
 // Pre-fills recipe from your last brew of the SAME BEAN ("dial-in" pattern).
 
-export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
+export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete }) {
   // Get the user's grinder config for setting display
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
 
+  const isEditing = !!editBrew
+
   // Pre-fill from last brew or use sensible defaults (lazy — parse once, not every render)
-  const [lastBrew] = useState(() => getLastBrew())
+  const [lastBrew] = useState(() => isEditing ? null : getLastBrew())
 
-  const [form, setForm] = useState({
-    // Bean info
-    beanName: lastBrew?.beanName || '',
-    roaster: lastBrew?.roaster || '',
-    roastDate: lastBrew?.roastDate || '',
+  const [form, setForm] = useState(() => {
+    const source = editBrew || lastBrew
+    return {
+      // Bean info
+      beanName: source?.beanName || '',
+      roaster: source?.roaster || '',
+      roastDate: source?.roastDate || '',
 
-    // Recipe params — pre-filled from last brew
-    coffeeGrams: lastBrew?.coffeeGrams || 20,
-    waterGrams: lastBrew?.waterGrams || 320,
-    grindSetting: lastBrew?.grindSetting ?? 6,
-    waterTemp: lastBrew?.waterTemp || 205,
-    bloomTime: lastBrew?.bloomTime || method.defaultBloomTime,
-    bloomWater: lastBrew?.bloomWater || 60,
+      // Recipe params
+      coffeeGrams: source?.coffeeGrams || 20,
+      waterGrams: source?.waterGrams || 320,
+      grindSetting: source?.grindSetting ?? (grinder.settingType === 'ode' ? '6' : 6),
+      waterTemp: source?.waterTemp || 205,
+      bloomTime: source?.bloomTime || method.defaultBloomTime,
+      bloomWater: source?.bloomWater || 60,
+      targetTime: source?.targetTime || method.defaultTotalTime,
 
-    // Brew execution — entered after brewing
-    totalTime: '',
-    actualBloomTime: '',
-    actualBloomWater: '',
+      // Brew execution — edit mode populates from saved data, new mode starts empty
+      totalTime: editBrew?.totalTime || '',
+      actualBloomTime: editBrew?.actualBloomTime || '',
+      actualBloomWater: editBrew?.actualBloomWater || '',
 
-    // Tasting
-    flavors: [],
-    body: '',
-    rating: 0,
-    issues: [],
+      // Tasting — edit mode populates from saved data, new mode starts empty
+      flavors: editBrew?.flavors || [],
+      body: editBrew?.body || '',
+      rating: editBrew?.rating || 0,
+      issues: editBrew?.issues || [],
 
-    // Notes
-    notes: '',
+      // Notes
+      notes: editBrew?.notes || '',
+    }
   })
 
   const [saved, setSaved] = useState(false)
@@ -64,30 +70,51 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
   }
 
   // Bean name change handler — pre-fills recipe from last brew of same bean
+  // Also fills roaster from bean library and roastDate from last brew (fallback to library)
   // Only looks up localStorage when typed name exactly matches a known bean (not on every keystroke)
   const handleBeanNameChange = (newName) => {
-    const trimmed = newName.trim()
-    const knownBean = trimmed && beans.some(b => b.name?.trim().toLowerCase() === trimmed.toLowerCase())
+    // In edit mode, just update the name — don't trigger recipe pre-fill
+    if (isEditing) {
+      setForm(prev => ({ ...prev, beanName: newName }))
+      setSaved(false)
+      return
+    }
 
-    if (knownBean) {
+    const trimmed = newName.trim()
+    const matchedBean = trimmed && beans.find(b => b.name?.trim().toLowerCase() === trimmed.toLowerCase())
+
+    if (matchedBean) {
       const beanBrew = getLastBrewOfBean(trimmed)
       if (beanBrew) {
-        // Pre-fill RECIPE fields only (not tasting, not brew execution) — single setForm call
+        // Pre-fill recipe + bean info from last brew and library
         setForm(prev => ({
           ...prev,
           beanName: newName,
+          roaster: matchedBean.roaster || prev.roaster,
+          roastDate: beanBrew.roastDate || matchedBean.roastDate || prev.roastDate,
           coffeeGrams: beanBrew.coffeeGrams || prev.coffeeGrams,
           waterGrams: beanBrew.waterGrams || prev.waterGrams,
           grindSetting: beanBrew.grindSetting ?? prev.grindSetting,
           waterTemp: beanBrew.waterTemp || prev.waterTemp,
           bloomTime: beanBrew.bloomTime || prev.bloomTime,
           bloomWater: beanBrew.bloomWater || prev.bloomWater,
+          targetTime: beanBrew.targetTime || prev.targetTime,
         }))
         setBeanRecipeSource(beanBrew.beanName)
         setLastBeanBrew(beanBrew)
         setSaved(false)
         return
       }
+
+      // Known bean but never brewed — fill roaster and roastDate from library only
+      setForm(prev => ({
+        ...prev,
+        beanName: newName,
+        roaster: matchedBean.roaster || prev.roaster,
+        roastDate: matchedBean.roastDate || prev.roastDate,
+      }))
+      setSaved(false)
+      return
     }
 
     // No match — just update the bean name
@@ -117,11 +144,33 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
 
     const trimmedName = form.beanName.trim()
 
+    // Edit mode — update existing brew and navigate back
+    if (isEditing) {
+      const updatedBrews = updateBrew(editBrew.id, {
+        ...form,
+        beanName: trimmedName,
+        targetTime: form.targetTime || undefined,
+        totalTime: form.totalTime || form.targetTime || undefined,
+        actualBloomTime: form.actualBloomTime || form.bloomTime,
+        actualBloomWater: form.actualBloomWater || form.bloomWater,
+      })
+      if (trimmedName) {
+        saveBean({ name: trimmedName, roaster: form.roaster, roastDate: form.roastDate })
+        setBeans(getBeans())
+      }
+      onBrewSaved(updatedBrews)
+      savingRef.current = false
+      onEditComplete()
+      return
+    }
+
     const brew = {
       id: uuidv4(),
       ...form,
       beanName: trimmedName,
-      // Default actual bloom to planned values if not specified
+      // Default actual values to planned values if not specified
+      targetTime: form.targetTime || undefined,
+      totalTime: form.totalTime || form.targetTime || undefined,
       actualBloomTime: form.actualBloomTime || form.bloomTime,
       actualBloomWater: form.actualBloomWater || form.bloomWater,
       method: equipment?.brewMethod,
@@ -155,6 +204,14 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
 
   return (
     <div className="mt-6 space-y-4">
+
+      {/* Editing banner */}
+      {isEditing && (
+        <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 text-center
+                        animate-fade-in-up motion-reduce:animate-none">
+          Editing brew — {editBrew.beanName || 'Unknown'}
+        </div>
+      )}
 
       {/* ===== PHASE 1: RECIPE ===== */}
       <PhaseHeader number={1} title="Recipe" subtitle="Your plan for this brew" phase="recipe" />
@@ -253,7 +310,18 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
             <label className="text-xs font-medium text-brew-500 mb-1 block">
               Grind ({grinder.name})
             </label>
-            {grinder.settingType === 'numeric' || grinder.settingType === 'clicks' ? (
+            {grinder.settingType === 'ode' ? (
+              <select
+                value={form.grindSetting}
+                onChange={(e) => update('grindSetting', e.target.value)}
+                className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                           focus:outline-none focus:ring-2 focus:ring-brew-400"
+              >
+                {FELLOW_ODE_POSITIONS.map(pos => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </select>
+            ) : grinder.settingType === 'numeric' || grinder.settingType === 'clicks' ? (
               <div className="flex items-center gap-3">
                 <input
                   type="range"
@@ -317,6 +385,24 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
+
+          {/* Target brew time */}
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Target Time (sec)</label>
+            <input
+              type="number"
+              value={form.targetTime}
+              onChange={(e) => update('targetTime', Number(e.target.value))}
+              placeholder={method.defaultTotalTime}
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
+            />
+            {form.targetTime && (
+              <div className="text-xs text-brew-400 mt-1 text-center">
+                {formatTime(form.targetTime)}
+              </div>
+            )}
+          </div>
         </div>
       </Section>
 
@@ -332,13 +418,19 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
               type="number"
               value={form.totalTime}
               onChange={(e) => update('totalTime', Number(e.target.value))}
-              placeholder={method.defaultTotalTime}
+              placeholder={form.targetTime || method.defaultTotalTime}
               className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                         placeholder:text-brew-300
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
             {form.totalTime && (
               <div className="text-xs text-brew-400 mt-1 text-center">
                 {formatTime(form.totalTime)}
+              </div>
+            )}
+            {form.targetTime && !form.totalTime && (
+              <div className="text-xs text-brew-400 mt-1 text-center">
+                Leave blank if brew time matched your target
               </div>
             )}
           </div>
@@ -406,7 +498,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
           rows={4}
           className="w-full p-3 rounded-xl border border-brew-200 text-base
                      text-brew-800 placeholder:text-brew-300
-                     focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
+                     focus:outline-none focus:ring-2 focus:ring-brew-400 resize-y"
         />
       </Section>
 
@@ -466,7 +558,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
         </div>
       </Section>
 
-      {/* ---- SAVE BUTTON ---- */}
+      {/* ---- SAVE / CANCEL BUTTONS ---- */}
       <button
         onClick={handleSave}
         disabled={saved}
@@ -476,11 +568,20 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
             : 'bg-brew-600 text-white hover:bg-brew-700 active:scale-[0.98]'
           }`}
       >
-        {saved ? '\u2713 Brew Saved!' : 'Save Brew'}
+        {saved ? '\u2713 Brew Saved!' : isEditing ? 'Update Brew' : 'Save Brew'}
       </button>
+      {isEditing && (
+        <button
+          onClick={onEditComplete}
+          className="w-full py-3 rounded-2xl font-medium text-brew-500
+                     hover:bg-brew-50 transition-colors"
+        >
+          Cancel
+        </button>
+      )}
 
       {/* Quick diff from last brew */}
-      {!saved && (beanRecipeSource || lastBrew) && (
+      {!saved && !isEditing && (beanRecipeSource || lastBrew) && (
         <div className="p-3 bg-brew-50 rounded-xl text-xs text-brew-500">
           {beanRecipeSource && lastBeanBrew ? (
             <>

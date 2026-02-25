@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { grindToNumeric } from '../data/defaults'
 
 // ============================================================
 // BREW TRENDS -- Visual charts showing brewing patterns over time
@@ -36,7 +37,7 @@ export default function BrewTrends({ brews, beans }) {
     if (!selectedBean || filteredBrews.length === 0) return null
 
     const ratings = filteredBrews.map(b => b.rating).filter(r => r != null)
-    const grinds = filteredBrews.map(b => b.grindSetting).filter(g => typeof g === 'number')
+    const grinds = filteredBrews.map(b => grindToNumeric(b.grindSetting)).filter(g => g != null)
 
     const flavorCounts = {}
     filteredBrews.forEach(b => {
@@ -120,7 +121,7 @@ export default function BrewTrends({ brews, beans }) {
     date: formatDate(brew.brewedAt),
     beanName: brew.beanName || 'Unknown',
     rating: brew.rating || null,
-    grindSetting: typeof brew.grindSetting === 'number' ? brew.grindSetting : null,
+    grindSetting: grindToNumeric(brew.grindSetting),
     totalTime: brew.totalTime ? Number(brew.totalTime) : null,
   }))
 

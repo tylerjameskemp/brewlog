@@ -50,14 +50,54 @@ export const BREW_METHODS = [
 
 // --- GRINDERS ---
 // Your Fellow Ode is first. Settings are specific to each grinder.
+// Fellow Ode uses 'ode' settingType with X-1/X-2 micro-adjustment notation.
 export const GRINDERS = [
-  { id: 'fellow-ode', name: 'Fellow Ode', settingType: 'numeric', min: 1, max: 11, step: 0.5 },
-  { id: 'fellow-ode-2', name: 'Fellow Ode Gen 2', settingType: 'numeric', min: 1, max: 11, step: 0.5 },
+  { id: 'fellow-ode', name: 'Fellow Ode', settingType: 'ode' },
+  { id: 'fellow-ode-2', name: 'Fellow Ode Gen 2', settingType: 'ode' },
   { id: 'baratza-encore', name: 'Baratza Encore', settingType: 'numeric', min: 1, max: 40 },
   { id: 'comandante', name: 'Comandante C40', settingType: 'clicks', min: 0, max: 40 },
   { id: 'timemore-c2', name: 'Timemore C2', settingType: 'clicks', min: 0, max: 36 },
   { id: 'custom', name: 'Other', settingType: 'text', min: null, max: null },
 ]
+
+// --- FELLOW ODE GRIND POSITIONS ---
+// 31 positions: 1, 1-1, 1-2, 2, 2-1, 2-2, ..., 10, 10-1, 10-2, 11
+// Two micro-clicks between each main number.
+export const FELLOW_ODE_POSITIONS = []
+for (let i = 1; i <= 10; i++) {
+  FELLOW_ODE_POSITIONS.push(String(i))
+  FELLOW_ODE_POSITIONS.push(`${i}-1`)
+  FELLOW_ODE_POSITIONS.push(`${i}-2`)
+}
+FELLOW_ODE_POSITIONS.push('11')
+
+// Convert grind notation to numeric value for charting
+// "6" → 6.0, "6-1" → 6.33, "6-2" → 6.67
+// Also handles plain numbers (pass through)
+export function grindToNumeric(value) {
+  if (value == null) return null
+  if (typeof value === 'number') return value
+  const str = String(value).trim()
+  const match = str.match(/^(\d+)(?:-([12]))?$/)
+  if (!match) return null
+  const base = parseInt(match[1], 10)
+  const micro = match[2] ? parseInt(match[2], 10) : 0
+  return base + (micro / 3)
+}
+
+// Convert numeric grind to Fellow Ode notation (for migration)
+// Whole numbers stay as-is, half-steps map to nearest sub-position
+export function numericToGrindNotation(value) {
+  if (value == null) return null
+  const num = Number(value)
+  if (isNaN(num)) return String(value)
+  const base = Math.floor(num)
+  const frac = num - base
+  if (frac < 0.17) return String(base)
+  if (frac < 0.5) return `${base}-1`
+  if (frac < 0.83) return `${base}-2`
+  return String(base + 1)
+}
 
 // --- FLAVOR DESCRIPTORS ---
 // Organized by category so the UI can show them in groups.
