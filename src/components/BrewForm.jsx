@@ -102,6 +102,8 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
       })
       setBeans(updatedBeans)
     }
+
+    savingRef.current = false
   }
 
   // --- SECTIONS ---

@@ -61,7 +61,7 @@ function App() {
             onImportComplete={() => {
               setBrews(getBrews())
               setEquipment(getEquipment())
-              setBeans(getBeans())
+              setBeans(deduplicateBeans())
             }}
             onClose={() => setShowSettings(false)}
           />
