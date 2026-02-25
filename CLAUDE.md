@@ -16,7 +16,7 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
 - `src/App.jsx` — Root component. Manages 4 views (`brew`, `beans`, `history`, `trends`), top-level state, view transitions.
 - `src/data/defaults.js` — Static options: brew methods, grinders, flavor descriptors (7 categories, 56 flavors), body, ratings, issues, bean origins (15), bean processes (7).
 - `src/data/storage.js` — All localStorage logic. CRUD for brews, beans, equipment. Also: `deduplicateBeans()`, `renameBrewBean()`, `exportData()`, `importData()`, `mergeData()`, `getUIPref()`/`setUIPref()`. Sort by `brewedAt` in `getBrews()`.
-- `src/components/BrewForm.jsx` — Brew logging form. Pre-fills from last brew. Collapsible sections. Bean name autocomplete via datalist.
+- `src/components/BrewForm.jsx` — Brew logging form structured into 3 phases: Recipe (plan), Brew (execution), Tasting (results). Pre-fills recipe from last brew of same bean ("dial-in" pattern). Collapsible sections within non-collapsible phase headers. Bean name autocomplete via datalist.
 - `src/components/BeanLibrary.jsx` — Bean CRUD with expandable cards. Shows brew count per bean. Modal form with duplicate warning. Rename cascades to all brews.
 - `src/components/BrewHistory.jsx` — Timeline of past brews with auto-diff badges. Compare mode: select 2 brews for side-by-side view with highlighted differences.
 - `src/components/BrewTrends.jsx` — Three stacked Recharts line charts (rating, grind, time) for the last 20 brews. Custom tooltips.
@@ -42,6 +42,8 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
   "bloomTime": 45,
   "bloomWater": 60,
   "totalTime": 210,
+  "actualBloomTime": 45,
+  "actualBloomWater": 60,
   "flavors": ["Chocolate", "Citrus"],
   "body": "Medium",
   "rating": 4,
@@ -81,7 +83,7 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
 ```
 
 ## Design Principles
-1. **Pre-fill from last brew** — Most brews are similar. Show what changed.
+1. **Pre-fill from last brew of same bean** — Recipe fields pre-fill from the most recent brew of the same bean ("dial-in" pattern). Falls back to global last brew for new beans.
 2. **Click-to-select** — Flavors, body, issues are all clickable tags, not text fields.
 3. **Collapsible sections** — Don't overwhelm. Show detail on demand.
 4. **Warm coffee palette** — Custom `brew-*` colors from amber/brown range.
