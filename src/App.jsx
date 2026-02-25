@@ -27,10 +27,7 @@ function App() {
   // Think of these as variables that React watches for changes.
 
   const [view, setView] = useState('brew')           // Which screen to show
-  const [brews, setBrews] = useState(() => {
-    migrateGrindSettings() // Convert Fellow Ode numeric grind settings to X-1/X-2 notation
-    return getBrews()
-  })
+  const [brews, setBrews] = useState(() => migrateGrindSettings())
   const [equipment, setEquipment] = useState(() => getEquipment())    // User's gear profile
   const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal

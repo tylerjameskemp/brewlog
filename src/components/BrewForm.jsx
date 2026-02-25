@@ -154,6 +154,10 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         actualBloomTime: form.actualBloomTime || form.bloomTime,
         actualBloomWater: form.actualBloomWater || form.bloomWater,
       })
+      if (trimmedName) {
+        saveBean({ name: trimmedName, roaster: form.roaster, roastDate: form.roastDate })
+        setBeans(getBeans())
+      }
       onBrewSaved(updatedBrews)
       savingRef.current = false
       onEditComplete()
