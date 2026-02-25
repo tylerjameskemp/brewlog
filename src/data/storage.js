@@ -170,6 +170,42 @@ export function setUIPref(key, value) {
 
 // --- MIGRATIONS ---
 
+export function migrateBloomToSteps() {
+  // Convert legacy bloom fields to step 0 in the steps array.
+  // Idempotent — skips brews that already have recipeSteps.
+  const brews = getBrews()
+  let changed = false
+  brews.forEach(b => {
+    if (b.recipeSteps) return // already migrated
+
+    // Only migrate if there's bloom data to convert
+    const hasBloom = b.bloomTime || b.bloomWater
+    if (!hasBloom) return
+
+    const recipeBloomStep = {
+      label: 'Bloom',
+      startTime: 0,
+      targetWater: b.bloomWater || null,
+      note: '',
+    }
+
+    const actualBloomStep = {
+      label: 'Bloom',
+      startTime: 0,
+      targetWater: b.actualBloomWater || b.bloomWater || null,
+      note: '',
+    }
+
+    b.recipeSteps = [recipeBloomStep]
+    b.steps = [actualBloomStep]
+    changed = true
+  })
+  if (changed) {
+    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+  }
+  return brews
+}
+
 export function migrateGrindSettings() {
   // Convert Fellow Ode numeric grind settings to X-1/X-2 notation.
   // Idempotent — skips brews that already have string grindSettings.

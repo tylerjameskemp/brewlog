@@ -33,18 +33,22 @@ function formatDate(isoString) {
   })
 }
 
+function normalizeSteps(steps) {
+  return Array.isArray(steps) ? steps : []
+}
+
+function stepsChanged(a, b) {
+  return JSON.stringify(normalizeSteps(a)) !== JSON.stringify(normalizeSteps(b))
+}
+
 function compareBrews(brewA, brewB) {
   const fields = [
     { key: 'coffeeGrams', label: 'Dose', unit: 'g', section: 'recipe' },
     { key: 'waterGrams', label: 'Water', unit: 'g', section: 'recipe' },
     { key: 'grindSetting', label: 'Grind', unit: '', section: 'recipe' },
     { key: 'waterTemp', label: 'Temp', unit: '°F', section: 'recipe' },
-    { key: 'bloomTime', label: 'Bloom', format: formatTime, section: 'recipe' },
-    { key: 'bloomWater', label: 'Bloom Water', unit: 'g', section: 'recipe' },
     { key: 'targetTime', label: 'Target Time', format: formatTime, section: 'recipe' },
     { key: 'totalTime', label: 'Total Time', format: formatTime, section: 'brew' },
-    { key: 'actualBloomTime', label: 'Actual Bloom', format: formatTime, section: 'brew' },
-    { key: 'actualBloomWater', label: 'Actual Bloom Water', unit: 'g', section: 'brew' },
   ]
 
   const diffs = []
@@ -70,6 +74,9 @@ function compareBrews(brewA, brewB) {
     bFormatted: ratioB ? `1:${ratioB.toFixed(1)}` : '—',
   })
   if (ratioChanged) diffs.push('Ratio')
+  if (stepsChanged(brewA.recipeSteps, brewB.recipeSteps) || stepsChanged(brewA.steps, brewB.steps)) {
+    diffs.push('Pour steps')
+  }
 
   // Array fields — flavors
   const flavorsA = brewA.flavors || []
@@ -209,8 +216,8 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
     if (brew.waterTemp !== prev.waterTemp) {
       diffs.push(`Temp: ${prev.waterTemp}° → ${brew.waterTemp}°`)
     }
-    if (brew.bloomTime !== prev.bloomTime) {
-      diffs.push(`Bloom: ${prev.bloomTime}s → ${brew.bloomTime}s`)
+    if (stepsChanged(brew.recipeSteps, prev.recipeSteps) || stepsChanged(brew.steps, prev.steps)) {
+      diffs.push('Pour plan changed')
     }
     if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
       diffs.push(`Target: ${formatTime(prev.targetTime) || '—'} → ${formatTime(brew.targetTime) || '—'}`)
@@ -567,18 +574,6 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                       <span className="text-brew-500">Temp:</span>{' '}
                       <span className="font-mono text-brew-700">{brew.waterTemp}{'\u00B0'}F</span>
                     </div>
-                    {brew.bloomTime && (
-                      <div className="text-xs">
-                        <span className="text-brew-500">Bloom:</span>{' '}
-                        <span className="font-mono text-brew-700">{formatTime(brew.bloomTime)}</span>
-                      </div>
-                    )}
-                    {brew.bloomWater && (
-                      <div className="text-xs">
-                        <span className="text-brew-500">Bloom Water:</span>{' '}
-                        <span className="font-mono text-brew-700">{brew.bloomWater}g</span>
-                      </div>
-                    )}
                     {brew.targetTime && (
                       <div className="text-xs">
                         <span className="text-brew-500">Target Time:</span>{' '}
@@ -603,15 +598,22 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                       <span className="text-amber-600">Target {formatTime(brew.targetTime)}, actual {formatTime(brew.totalTime)}</span>
                     </div>
                   )}
-                  {/* Bloom deviation — only shown if actual differs from planned */}
-                  {brew.actualBloomTime && brew.bloomTime && brew.actualBloomTime !== brew.bloomTime && (
-                    <div className="mt-1 text-xs">
-                      <span className="text-amber-600">Bloom: planned {formatTime(brew.bloomTime)}, actual {formatTime(brew.actualBloomTime)}</span>
+                  {normalizeSteps(brew.steps).length > 0 && (
+                    <div className="mt-1.5">
+                      <span className="text-xs text-brew-500">Actual Pour Steps:</span>
+                      <div className="mt-1 space-y-1">
+                        {normalizeSteps(brew.steps).map((step, idx) => (
+                          <div key={`${brew.id}-actual-${idx}`} className="text-xs text-brew-700 font-mono">
+                            {step.startTime != null ? formatTime(step.startTime) : '—'} · {step.label || `Step ${idx + 1}`}
+                            {step.targetWater != null ? ` · ${step.targetWater}g` : ''}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {brew.actualBloomWater && brew.bloomWater && brew.actualBloomWater !== brew.bloomWater && (
+                  {normalizeSteps(brew.recipeSteps).length > 0 && stepsChanged(brew.recipeSteps, brew.steps) && (
                     <div className="mt-1 text-xs">
-                      <span className="text-amber-600">Bloom water: planned {brew.bloomWater}g, actual {brew.actualBloomWater}g</span>
+                      <span className="text-amber-600">Actual pour steps differed from recipe plan</span>
                     </div>
                   )}
                   {brew.issues?.length > 0 && (

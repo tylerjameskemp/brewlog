@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { saveBrew, updateBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans } from '../data/storage'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
+import StepEditor from './StepEditor'
 
 // ============================================================
 // BREW FORM — The main brew logging interface
@@ -16,6 +17,22 @@ import FlavorPicker from './FlavorPicker'
 // Pre-fills recipe from your last brew of the SAME BEAN ("dial-in" pattern).
 
 export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete }) {
+  const getRecipeSteps = (brew) => {
+    if (Array.isArray(brew?.recipeSteps) && brew.recipeSteps.length > 0) return brew.recipeSteps
+    if (brew?.bloomTime || brew?.bloomWater) {
+      return [{ label: 'Bloom', startTime: 0, targetWater: brew.bloomWater || null, note: '' }]
+    }
+    return []
+  }
+
+  const getActualSteps = (brew) => {
+    if (Array.isArray(brew?.steps) && brew.steps.length > 0) return brew.steps
+    if (brew?.actualBloomTime || brew?.actualBloomWater || brew?.bloomWater) {
+      return [{ label: 'Bloom', startTime: 0, targetWater: brew.actualBloomWater || brew.bloomWater || null, note: '' }]
+    }
+    return []
+  }
+
   // Get the user's grinder config for setting display
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
@@ -38,14 +55,10 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       waterGrams: source?.waterGrams || 320,
       grindSetting: source?.grindSetting ?? (grinder.settingType === 'ode' ? '6' : 6),
       waterTemp: source?.waterTemp || 205,
-      bloomTime: source?.bloomTime || method.defaultBloomTime,
-      bloomWater: source?.bloomWater || 60,
       targetTime: source?.targetTime || method.defaultTotalTime,
 
       // Brew execution — edit mode populates from saved data, new mode starts empty
       totalTime: editBrew?.totalTime || '',
-      actualBloomTime: editBrew?.actualBloomTime || '',
-      actualBloomWater: editBrew?.actualBloomWater || '',
 
       // Tasting — edit mode populates from saved data, new mode starts empty
       flavors: editBrew?.flavors || [],
@@ -55,6 +68,10 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
       // Notes
       notes: editBrew?.notes || '',
+
+      // Pour steps (copy-on-write: recipe = plan, steps = actual)
+      recipeSteps: getRecipeSteps(source),
+      steps: editBrew ? getActualSteps(editBrew) : [],
     }
   })
 
@@ -62,6 +79,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
   const savingRef = useRef(false)
   const [beanRecipeSource, setBeanRecipeSource] = useState(null)
   const [lastBeanBrew, setLastBeanBrew] = useState(null)
+  const [pendingStepChoice, setPendingStepChoice] = useState(false)
 
   // Helper to update form fields
   const update = (field, value) => {
@@ -86,6 +104,12 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     if (matchedBean) {
       const beanBrew = getLastBrewOfBean(trimmed)
       if (beanBrew) {
+        const recipeSteps = getRecipeSteps(beanBrew)
+        const actualSteps = getActualSteps(beanBrew)
+        const hasRecipe = recipeSteps.length > 0
+        const hasActual = actualSteps.length > 0
+        const canChooseSource = hasRecipe && hasActual && JSON.stringify(recipeSteps) !== JSON.stringify(actualSteps)
+
         // Pre-fill recipe + bean info from last brew and library
         setForm(prev => ({
           ...prev,
@@ -96,12 +120,15 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
           waterGrams: beanBrew.waterGrams || prev.waterGrams,
           grindSetting: beanBrew.grindSetting ?? prev.grindSetting,
           waterTemp: beanBrew.waterTemp || prev.waterTemp,
-          bloomTime: beanBrew.bloomTime || prev.bloomTime,
-          bloomWater: beanBrew.bloomWater || prev.bloomWater,
           targetTime: beanBrew.targetTime || prev.targetTime,
+          recipeSteps: canChooseSource
+            ? recipeSteps
+            : (hasRecipe ? recipeSteps : actualSteps),
+          steps: [],
         }))
         setBeanRecipeSource(beanBrew.beanName)
         setLastBeanBrew(beanBrew)
+        setPendingStepChoice(canChooseSource)
         setSaved(false)
         return
       }
@@ -113,6 +140,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         roaster: matchedBean.roaster || prev.roaster,
         roastDate: matchedBean.roastDate || prev.roastDate,
       }))
+      setPendingStepChoice(false)
       setSaved(false)
       return
     }
@@ -121,6 +149,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     setForm(prev => ({ ...prev, beanName: newName }))
     setBeanRecipeSource(null)
     setLastBeanBrew(null)
+    setPendingStepChoice(false)
     setSaved(false)
   }
 
@@ -128,6 +157,18 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
   const ratio = form.coffeeGrams > 0
     ? (form.waterGrams / form.coffeeGrams).toFixed(1)
     : '—'
+
+  const applyBeanStepSource = (source) => {
+    if (!lastBeanBrew) return
+    const nextRecipeSteps = source === 'actual' ? getActualSteps(lastBeanBrew) : getRecipeSteps(lastBeanBrew)
+    setForm(prev => ({
+      ...prev,
+      recipeSteps: nextRecipeSteps,
+      steps: [],
+    }))
+    setPendingStepChoice(false)
+    setSaved(false)
+  }
 
   // Format time display (e.g., "3:30")
   const formatTime = (seconds) => {
@@ -144,6 +185,9 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
     const trimmedName = form.beanName.trim()
 
+    // Resolve steps: if user didn't modify brew steps, actual = recipe
+    const resolvedSteps = form.steps.length > 0 ? form.steps : form.recipeSteps
+
     // Edit mode — update existing brew and navigate back
     if (isEditing) {
       const updatedBrews = updateBrew(editBrew.id, {
@@ -151,8 +195,8 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         beanName: trimmedName,
         targetTime: form.targetTime || undefined,
         totalTime: form.totalTime || form.targetTime || undefined,
-        actualBloomTime: form.actualBloomTime || form.bloomTime,
-        actualBloomWater: form.actualBloomWater || form.bloomWater,
+        recipeSteps: form.recipeSteps,
+        steps: resolvedSteps,
       })
       if (trimmedName) {
         saveBean({ name: trimmedName, roaster: form.roaster, roastDate: form.roastDate })
@@ -168,11 +212,10 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       id: uuidv4(),
       ...form,
       beanName: trimmedName,
-      // Default actual values to planned values if not specified
       targetTime: form.targetTime || undefined,
       totalTime: form.totalTime || form.targetTime || undefined,
-      actualBloomTime: form.actualBloomTime || form.bloomTime,
-      actualBloomWater: form.actualBloomWater || form.bloomWater,
+      recipeSteps: form.recipeSteps,
+      steps: resolvedSteps,
       method: equipment?.brewMethod,
       grinder: equipment?.grinder,
       dripper: equipment?.dripper,
@@ -239,6 +282,29 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
               <div className="mt-2 px-3 py-2 bg-brew-50 rounded-lg text-xs text-brew-500
                               animate-fade-in motion-reduce:animate-none">
                 Recipe pre-filled from your last brew of <strong>{beanRecipeSource}</strong>
+              </div>
+            )}
+            {pendingStepChoice && lastBeanBrew && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-[11px] text-amber-700 mb-2">
+                  Use step plan or what actually happened last time?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyBeanStepSource('recipe')}
+                    className="px-2.5 py-1.5 rounded-md bg-white border border-amber-200 text-[11px] font-medium text-amber-700 hover:bg-amber-100"
+                  >
+                    Use Planned Steps
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyBeanStepSource('actual')}
+                    className="px-2.5 py-1.5 rounded-md bg-white border border-amber-200 text-[11px] font-medium text-amber-700 hover:bg-amber-100"
+                  >
+                    Use Actual Steps
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -362,30 +428,6 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
             />
           </div>
 
-          {/* Bloom time (planned) */}
-          <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Bloom (sec)</label>
-            <input
-              type="number"
-              value={form.bloomTime}
-              onChange={(e) => update('bloomTime', Number(e.target.value))}
-              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
-                         focus:outline-none focus:ring-2 focus:ring-brew-400"
-            />
-          </div>
-
-          {/* Bloom water (planned) */}
-          <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Bloom Water (g)</label>
-            <input
-              type="number"
-              value={form.bloomWater}
-              onChange={(e) => update('bloomWater', Number(e.target.value))}
-              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
-                         focus:outline-none focus:ring-2 focus:ring-brew-400"
-            />
-          </div>
-
           {/* Target brew time */}
           <div className="col-span-2">
             <label className="text-xs font-medium text-brew-500 mb-1 block">Target Time (sec)</label>
@@ -406,64 +448,54 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         </div>
       </Section>
 
+      {/* ---- POUR STEPS (Recipe) ---- */}
+      <Section title="Pour Steps" defaultOpen={form.recipeSteps.length > 0}>
+        <StepEditor
+          steps={form.recipeSteps}
+          onChange={(steps) => update('recipeSteps', steps)}
+          hint="Plan each pour stage — bloom, main pours, drawdown."
+        />
+      </Section>
+
       {/* ===== PHASE 2: BREW ===== */}
       <PhaseHeader number={2} title="Brew" subtitle="What happened" phase="brew" />
 
-      {/* ---- TIMING & ACTUAL BLOOM ---- */}
-      <Section title="Timing & Bloom">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Total Time (sec)</label>
-            <input
-              type="number"
-              value={form.totalTime}
-              onChange={(e) => update('totalTime', Number(e.target.value))}
-              placeholder={form.targetTime || method.defaultTotalTime}
-              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
-                         placeholder:text-brew-300
-                         focus:outline-none focus:ring-2 focus:ring-brew-400"
-            />
-            {form.totalTime && (
-              <div className="text-xs text-brew-400 mt-1 text-center">
-                {formatTime(form.totalTime)}
-              </div>
-            )}
-            {form.targetTime && !form.totalTime && (
-              <div className="text-xs text-brew-400 mt-1 text-center">
-                Leave blank if brew time matched your target
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Actual Bloom (sec)</label>
-            <input
-              type="number"
-              value={form.actualBloomTime}
-              onChange={(e) => update('actualBloomTime', Number(e.target.value))}
-              placeholder={form.bloomTime || ''}
-              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
-                         placeholder:text-brew-300
-                         focus:outline-none focus:ring-2 focus:ring-brew-400"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Actual Bloom Water (g)</label>
-            <input
-              type="number"
-              value={form.actualBloomWater}
-              onChange={(e) => update('actualBloomWater', Number(e.target.value))}
-              placeholder={form.bloomWater || ''}
-              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
-                         placeholder:text-brew-300
-                         focus:outline-none focus:ring-2 focus:ring-brew-400"
-            />
-          </div>
-          <div className="col-span-2 text-[10px] text-brew-400 -mt-1">
-            Leave blank if bloom went as planned
-          </div>
+      {/* ---- TIMING ---- */}
+      <Section title="Timing">
+        <div>
+          <label className="text-xs font-medium text-brew-500 mb-1 block">Total Time (sec)</label>
+          <input
+            type="number"
+            value={form.totalTime}
+            onChange={(e) => update('totalTime', Number(e.target.value))}
+            placeholder={form.targetTime || method.defaultTotalTime}
+            className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                       placeholder:text-brew-300
+                       focus:outline-none focus:ring-2 focus:ring-brew-400"
+          />
+          {form.totalTime && (
+            <div className="text-xs text-brew-400 mt-1 text-center">
+              {formatTime(form.totalTime)}
+            </div>
+          )}
+          {form.targetTime && !form.totalTime && (
+            <div className="text-xs text-brew-400 mt-1 text-center">
+              Leave blank if brew time matched your target
+            </div>
+          )}
         </div>
       </Section>
+
+      {/* ---- POUR STEPS (Brew — copy-on-write from recipe) ---- */}
+      {form.recipeSteps.length > 0 && (
+        <Section title="Pour Steps" defaultOpen>
+          <StepEditor
+            steps={form.steps.length > 0 ? form.steps : form.recipeSteps}
+            onChange={(steps) => update('steps', steps)}
+            hint="Your planned steps are shown below. Modify anything that went differently, or delete steps you skipped."
+          />
+        </Section>
+      )}
 
       {/* ---- ISSUES ---- */}
       <Section title="Issues">
