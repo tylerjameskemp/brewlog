@@ -9,6 +9,8 @@
 // but for the MVP, localStorage is perfect. Zero setup, works offline.
 // ============================================================
 
+import { numericToGrindNotation } from './defaults'
+
 const STORAGE_KEYS = {
   BREWS: 'brewlog_brews',
   EQUIPMENT: 'brewlog_equipment',
@@ -164,6 +166,26 @@ export function setUIPref(key, value) {
   } catch {
     localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify({ [key]: value }))
   }
+}
+
+// --- MIGRATIONS ---
+
+export function migrateGrindSettings() {
+  // Convert Fellow Ode numeric grind settings to X-1/X-2 notation.
+  // Idempotent — skips brews that already have string grindSettings.
+  const brews = getBrews()
+  let changed = false
+  brews.forEach(b => {
+    if ((b.grinder === 'fellow-ode' || b.grinder === 'fellow-ode-2')
+        && typeof b.grindSetting === 'number') {
+      b.grindSetting = numericToGrindNotation(b.grindSetting)
+      changed = true
+    }
+  })
+  if (changed) {
+    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+  }
+  return brews
 }
 
 // --- UTILITY ---

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { deleteBrew, getUIPref, setUIPref } from '../data/storage'
-import { RATING_SCALE } from '../data/defaults'
+import { RATING_SCALE, grindToNumeric } from '../data/defaults'
 
 // ============================================================
 // BREW HISTORY — View and compare past brews
@@ -192,9 +192,13 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate }) {
     if (!prev) return null
 
     const diffs = []
-    if (brew.grindSetting !== prev.grindSetting) {
-      const dir = brew.grindSetting > prev.grindSetting ? '↑' : '↓'
+    const currGrind = grindToNumeric(brew.grindSetting)
+    const prevGrind = grindToNumeric(prev.grindSetting)
+    if (currGrind != null && prevGrind != null && currGrind !== prevGrind) {
+      const dir = currGrind > prevGrind ? '↑' : '↓'
       diffs.push(`Grind ${dir} ${prev.grindSetting} → ${brew.grindSetting}`)
+    } else if (String(brew.grindSetting) !== String(prev.grindSetting)) {
+      diffs.push(`Grind: ${prev.grindSetting} → ${brew.grindSetting}`)
     }
     if (brew.coffeeGrams !== prev.coffeeGrams) {
       diffs.push(`Dose: ${prev.coffeeGrams}g → ${brew.coffeeGrams}g`)

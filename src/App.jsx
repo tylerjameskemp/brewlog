@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getBrews, getEquipment, getBeans, deduplicateBeans } from './data/storage'
+import { getBrews, getEquipment, getBeans, deduplicateBeans, migrateGrindSettings } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
@@ -27,7 +27,10 @@ function App() {
   // Think of these as variables that React watches for changes.
 
   const [view, setView] = useState('brew')           // Which screen to show
-  const [brews, setBrews] = useState(() => getBrews())              // All logged brews
+  const [brews, setBrews] = useState(() => {
+    migrateGrindSettings() // Convert Fellow Ode numeric grind settings to X-1/X-2 notation
+    return getBrews()
+  })
   const [equipment, setEquipment] = useState(() => getEquipment())    // User's gear profile
   const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal

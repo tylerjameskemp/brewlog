@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { saveBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans } from '../data/storage'
-import { BREW_METHODS, GRINDERS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
+import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 
 // ============================================================
@@ -32,7 +32,7 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
     // Recipe params — pre-filled from last brew
     coffeeGrams: lastBrew?.coffeeGrams || 20,
     waterGrams: lastBrew?.waterGrams || 320,
-    grindSetting: lastBrew?.grindSetting ?? 6,
+    grindSetting: lastBrew?.grindSetting ?? (grinder.settingType === 'ode' ? '6' : 6),
     waterTemp: lastBrew?.waterTemp || 205,
     bloomTime: lastBrew?.bloomTime || method.defaultBloomTime,
     bloomWater: lastBrew?.bloomWater || 60,
@@ -270,7 +270,18 @@ export default function BrewForm({ equipment, beans, setBeans, onBrewSaved }) {
             <label className="text-xs font-medium text-brew-500 mb-1 block">
               Grind ({grinder.name})
             </label>
-            {grinder.settingType === 'numeric' || grinder.settingType === 'clicks' ? (
+            {grinder.settingType === 'ode' ? (
+              <select
+                value={form.grindSetting}
+                onChange={(e) => update('grindSetting', e.target.value)}
+                className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+                           focus:outline-none focus:ring-2 focus:ring-brew-400"
+              >
+                {FELLOW_ODE_POSITIONS.map(pos => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </select>
+            ) : grinder.settingType === 'numeric' || grinder.settingType === 'clicks' ? (
               <div className="flex items-center gap-3">
                 <input
                   type="range"
