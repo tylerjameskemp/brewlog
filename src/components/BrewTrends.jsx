@@ -1,23 +1,103 @@
+import { useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 // ============================================================
 // BREW TRENDS -- Visual charts showing brewing patterns over time
 // ============================================================
 // Displays three stacked line charts (Rating, Grind Setting, Brew
-// Time) for the last 20 brews. Uses Recharts for rendering.
-// Read-only — no mutations, just visual feedback.
+// Time) for recent brews. Optional per-bean filtering with stats
+// summary for dial-in workflows. Uses Recharts for rendering.
 
-export default function BrewTrends({ brews }) {
-  if (brews.length < 3) {
-    const remaining = 3 - brews.length
+export default function BrewTrends({ brews, beans }) {
+  const [selectedBean, setSelectedBean] = useState('')
+
+  // Build dropdown options: bean library + unique brew beanNames, deduplicated
+  const beanOptions = useMemo(() => {
+    const nameSet = new Map()
+    beans.forEach(b => {
+      if (b.name?.trim()) nameSet.set(b.name.trim().toLowerCase(), b.name.trim())
+    })
+    brews.forEach(b => {
+      if (b.beanName?.trim()) {
+        const key = b.beanName.trim().toLowerCase()
+        if (!nameSet.has(key)) nameSet.set(key, b.beanName.trim())
+      }
+    })
+    return [...nameSet.values()].sort((a, b) => a.localeCompare(b))
+  }, [beans, brews])
+
+  // Filter brews by selected bean
+  const filteredBrews = selectedBean
+    ? brews.filter(b => b.beanName?.trim().toLowerCase() === selectedBean.trim().toLowerCase())
+    : brews
+
+  // Compute stats for the filtered bean
+  const stats = useMemo(() => {
+    if (!selectedBean || filteredBrews.length === 0) return null
+
+    const ratings = filteredBrews.map(b => b.rating).filter(r => r != null)
+    const grinds = filteredBrews.map(b => b.grindSetting).filter(g => typeof g === 'number')
+
+    const flavorCounts = {}
+    filteredBrews.forEach(b => {
+      if (Array.isArray(b.flavors)) {
+        b.flavors.forEach(f => { flavorCounts[f] = (flavorCounts[f] || 0) + 1 })
+      }
+    })
+    const topFlavors = Object.entries(flavorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name]) => name)
+
+    return {
+      brewCount: filteredBrews.length,
+      avgRating: ratings.length > 0
+        ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1)
+        : '—',
+      grindRange: grinds.length > 0
+        ? grinds.length === 1
+          ? String(grinds[0])
+          : `${Math.min(...grinds)} – ${Math.max(...grinds)}`
+        : '—',
+      topFlavors: topFlavors.length > 0 ? topFlavors.join(', ') : '—',
+    }
+  }, [selectedBean, filteredBrews])
+
+  // Empty state: fewer than 3 brews (filtered or total)
+  if (filteredBrews.length < 3) {
+    const remaining = 3 - filteredBrews.length
     return (
-      <div className="mt-12 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
-        <div className="text-4xl mb-3">📈</div>
-        <p className="text-lg font-medium text-brew-700">Brew Trends</p>
-        <p className="text-sm mt-2 max-w-xs mx-auto">
-          Log {remaining} more brew{remaining !== 1 ? 's' : ''} to unlock trend charts
-          for your rating, grind setting, and brew time.
-        </p>
+      <div className="mt-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-brew-800">Trends</h2>
+          {beanOptions.length > 0 && (
+            <select
+              value={selectedBean}
+              onChange={e => setSelectedBean(e.target.value)}
+              className="border border-brew-200 rounded-lg px-3 py-1.5 bg-white
+                         text-brew-700 focus:outline-none focus:ring-2 focus:ring-brew-300
+                         text-base"
+            >
+              <option value="">All Beans</option>
+              {beanOptions.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <div className="mt-8 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
+          <div className="text-4xl mb-3">📈</div>
+          <p className="text-lg font-medium text-brew-700">
+            {selectedBean ? `Trends for ${selectedBean}` : 'Brew Trends'}
+          </p>
+          <p className="text-sm mt-2 max-w-xs mx-auto">
+            {selectedBean
+              ? `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} with ${selectedBean} to see trend charts.`
+              : `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} to unlock trend charts for your rating, grind setting, and brew time.`
+            }
+          </p>
+        </div>
       </div>
     )
   }
@@ -34,7 +114,7 @@ export default function BrewTrends({ brews }) {
   }
 
   // Take last 20 (stored newest-first), reverse for chronological order
-  const recent = brews.slice(0, 20).reverse()
+  const recent = filteredBrews.slice(0, 20).reverse()
 
   const chartData = recent.map(brew => ({
     date: formatDate(brew.brewedAt),
@@ -52,7 +132,34 @@ export default function BrewTrends({ brews }) {
 
   return (
     <div className="mt-6 space-y-4">
-      <h2 className="text-lg font-semibold text-brew-800">Trends</h2>
+      <div className="flex items-center gap-3">
+        <h2 className="text-lg font-semibold text-brew-800">Trends</h2>
+        {beanOptions.length > 0 && (
+          <select
+            value={selectedBean}
+            onChange={e => setSelectedBean(e.target.value)}
+            className="border border-brew-200 rounded-lg px-3 py-1.5 bg-white
+                       text-brew-700 focus:outline-none focus:ring-2 focus:ring-brew-300
+                       text-base"
+          >
+            <option value="">All Beans</option>
+            {beanOptions.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {stats && (
+        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-4
+                        grid grid-cols-2 gap-3 sm:grid-cols-4
+                        animate-fade-in-up motion-reduce:animate-none">
+          <StatItem label="Brews" value={stats.brewCount} />
+          <StatItem label="Avg Rating" value={stats.avgRating} />
+          <StatItem label="Grind Range" value={stats.grindRange} />
+          <StatItem label="Top Flavors" value={stats.topFlavors} />
+        </div>
+      )}
 
       {charts.map(chart => (
         <div
@@ -91,6 +198,15 @@ export default function BrewTrends({ brews }) {
           </ResponsiveContainer>
         </div>
       ))}
+    </div>
+  )
+}
+
+function StatItem({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs text-brew-500">{label}</p>
+      <p className="text-sm font-medium text-brew-800">{value}</p>
     </div>
   )
 }

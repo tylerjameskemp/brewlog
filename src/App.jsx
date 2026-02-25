@@ -118,7 +118,7 @@ function App() {
           )}
 
           {view === 'trends' && (
-            <BrewTrends brews={brews} />
+            <BrewTrends brews={brews} beans={beans} />
           )}
         </div>
       </main>
