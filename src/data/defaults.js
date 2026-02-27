@@ -177,3 +177,39 @@ export const BEAN_PROCESSES = [
   'Washed', 'Natural', 'Honey', 'Anaerobic', 'Wet-hulled',
   'Carbonic maceration', 'Swiss Water (decaf)',
 ]
+
+// --- DEFAULT POUR TEMPLATES ---
+// Seeded into localStorage on first app load.
+// Users can select these to populate brew steps in the Brew Screen.
+export const DEFAULT_POUR_TEMPLATES = [
+  {
+    id: 'standard-3pour-v60',
+    name: 'Standard 3-Pour V60',
+    steps: [
+      { id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40, note: 'Gentle spiral pour, let degas' },
+      { id: 2, name: 'First Pour', waterTo: 160, time: 40, duration: 50, note: 'Steady spiral to edges' },
+      { id: 3, name: 'Final Pour', waterTo: 240, time: 90, duration: 30, note: 'Center pour, gentle' },
+      { id: 4, name: 'Drawdown', waterTo: null, time: 120, duration: 90, note: 'Wait for complete drain' },
+    ],
+  },
+  {
+    id: 'tetsu-46',
+    name: 'Tetsu 4:6 Method',
+    steps: [
+      { id: 1, name: 'Pour 1 (Sweet)', waterTo: 50, time: 0, duration: 45, note: 'First 40% — sweetness' },
+      { id: 2, name: 'Pour 2 (Acidity)', waterTo: 100, time: 45, duration: 45, note: 'Second 40% — acidity' },
+      { id: 3, name: 'Pour 3', waterTo: 150, time: 90, duration: 45, note: 'First 60% pour' },
+      { id: 4, name: 'Pour 4', waterTo: 200, time: 135, duration: 45, note: 'Second 60% pour' },
+      { id: 5, name: 'Pour 5', waterTo: 250, time: 180, duration: 45, note: 'Final 60% pour' },
+    ],
+  },
+  {
+    id: 'single-pour',
+    name: 'Single Pour Bloom-and-Go',
+    steps: [
+      { id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40, note: 'Wet all grounds, let degas' },
+      { id: 2, name: 'Main Pour', waterTo: 240, time: 40, duration: 80, note: 'Continuous slow spiral pour' },
+      { id: 3, name: 'Drawdown', waterTo: null, time: 120, duration: 90, note: 'Wait for complete drain' },
+    ],
+  },
+]

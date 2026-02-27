@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
-import { getBrews, getEquipment, getBeans, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps } from './data/storage'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { getBrews, getEquipment, getBeans, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, seedDefaultPourTemplates } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
+import BrewScreen from './components/BrewScreen'
 import BrewHistory from './components/BrewHistory'
 import BeanLibrary from './components/BeanLibrary'
 import BrewTrends from './components/BrewTrends'
@@ -26,15 +27,26 @@ function App() {
   // useState returns [currentValue, setterFunction]
   // Think of these as variables that React watches for changes.
 
-  const [view, setView] = useState('brew')           // Which screen to show
-  const [brews, setBrews] = useState(() => { migrateGrindSettings(); return migrateBloomToSteps() })
+  const [view, setViewRaw] = useState('brew')           // Which screen to show
+  const [brews, setBrews] = useState(() => { migrateGrindSettings(); seedDefaultPourTemplates(); return migrateBloomToSteps() })
   const [equipment, setEquipment] = useState(() => getEquipment())    // User's gear profile
   const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal
   const [showSettings, setShowSettings] = useState(false) // Settings dropdown
   const [editingBrew, setEditingBrew] = useState(null)    // Brew being edited (null = new brew mode)
+  const [brewingBean, setBrewingBean] = useState(null)    // Bean selected for BrewScreen
+  const [isBrewActive, setIsBrewActive] = useState(false) // Active brew timer running
   const viewRef = useRef(null)
   const prevViewRef = useRef(view)
+
+  // Navigation guard — confirm before leaving during active brew
+  const setView = useCallback((newView) => {
+    if (isBrewActive && newView !== 'brew') {
+      if (!window.confirm('Brew in progress. Leave and lose timer data?')) return
+      setIsBrewActive(false)
+    }
+    setViewRaw(newView)
+  }, [isBrewActive])
 
   // Replay fade-in animation on view change (without destroying component state)
   useEffect(() => {
@@ -46,9 +58,12 @@ function App() {
     }
   }, [view])
 
-  // Clear edit state when navigating away from brew view
+  // Clear edit/brew state when navigating away from brew view
   useEffect(() => {
-    if (view !== 'brew') setEditingBrew(null)
+    if (view !== 'brew') {
+      setEditingBrew(null)
+      setBrewingBean(null)
+    }
   }, [view])
 
   // If no equipment is set up yet, show the setup screen first
@@ -97,7 +112,21 @@ function App() {
 
         {/* Main views — controlled by the nav tabs */}
         <div ref={viewRef} className="animate-fade-in motion-reduce:animate-none">
-          {view === 'brew' && !needsSetup && (
+          {view === 'brew' && !needsSetup && !editingBrew && (
+            <BrewScreen
+              equipment={equipment}
+              beans={beans}
+              setBeans={setBeans}
+              initialBean={brewingBean}
+              onBrewSaved={(updatedBrews) => {
+                setBrews(updatedBrews)
+                setBrewingBean(null)
+              }}
+              onBrewActiveChange={setIsBrewActive}
+              onNavigate={setView}
+            />
+          )}
+          {view === 'brew' && !needsSetup && editingBrew && (
             <BrewForm
               equipment={equipment}
               beans={beans}
@@ -117,6 +146,10 @@ function App() {
               setBeans={setBeans}
               brews={brews}
               onBrewsChange={setBrews}
+              onBrewBean={(bean) => {
+                setBrewingBean(bean)
+                setViewRaw('brew')
+              }}
             />
           )}
 
