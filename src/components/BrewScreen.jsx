@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
   getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
@@ -54,7 +54,7 @@ function SwipeCards({ cards, currentIndex, onSwipe }) {
       onMouseUp={handleEnd}
     >
       <div
-        className={dragging ? '' : 'transition-transform duration-300 ease-out'}
+        className={dragging ? '' : 'transition-transform duration-300 ease-out motion-reduce:transition-none'}
         style={{ display: 'flex', transform: `translateX(calc(${-currentIndex * 100}% + ${offset}px))` }}
       >
         {cards.map((card, i) => (
@@ -68,7 +68,7 @@ function SwipeCards({ cards, currentIndex, onSwipe }) {
         {cards.map((_, i) => (
           <div
             key={i}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
+            className={`h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${
               i === currentIndex ? 'w-5 bg-brew-500' : 'w-1.5 bg-brew-200'
             }`}
           />
@@ -86,7 +86,7 @@ function PhaseIndicator({ phase }) {
       {phases.map((p, i) => (
         <div
           key={p}
-          className={`flex-1 h-0.5 rounded-full transition-colors duration-500 ${
+          className={`flex-1 h-0.5 rounded-full transition-colors duration-500 motion-reduce:transition-none ${
             i <= phases.indexOf(phase) ? 'bg-brew-500' : 'bg-brew-200'
           }`}
         />
@@ -147,13 +147,6 @@ function BeanPicker({ beans, onSelect }) {
                 {bean.origin || '—'}
               </div>
             </div>
-            {bean.tastingNotes?.length > 0 && (
-              <div className="flex gap-1 mt-2 flex-wrap">
-                {bean.tastingNotes.map(n => (
-                  <span key={n} className="text-xs bg-brew-50 text-brew-400 px-2 py-0.5 rounded-full">{n}</span>
-                ))}
-              </div>
-            )}
           </button>
         ))}
       </div>
@@ -184,6 +177,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   }
 
   const updateField = (field, value) => {
+    if (typeof value === 'number' && isNaN(value)) return // NaN guard for numeric inputs
     setRecipe(prev => ({ ...prev, [field]: value }))
   }
 
@@ -200,14 +194,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
           </div>
         )}
       </div>
-
-      {bean.tastingNotes?.length > 0 && (
-        <div className="flex gap-1 mt-3 flex-wrap">
-          {bean.tastingNotes.map(n => (
-            <span key={n} className="text-xs bg-brew-50 text-brew-400 px-3 py-1 rounded-full">{n}</span>
-          ))}
-        </div>
-      )}
 
       {/* Coffee / Water / Ratio */}
       <div className="grid grid-cols-3 gap-2 mt-5">
@@ -319,10 +305,8 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
       <h3 className="text-lg font-semibold text-brew-800 mb-4">Origin Details</h3>
       {[
         { label: 'Origin', value: bean.origin },
-        { label: 'Grower', value: bean.grower },
         { label: 'Process', value: bean.process },
-        { label: 'Variety', value: bean.variety },
-        { label: 'Elevation', value: bean.elevation },
+        { label: 'Roaster', value: bean.roaster },
       ].map(item => (
         <div key={item.label} className="flex justify-between py-2.5 border-b border-brew-50 text-sm last:border-0">
           <span className="text-brew-400">{item.label}</span>
@@ -359,7 +343,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             {changes.map((c, i) => (
               <div
                 key={i}
-                className={`flex gap-2.5 items-start ${i < changes.length - 1 ? 'mb-2' : ''} transition-opacity duration-300`}
+                className={`flex gap-2.5 items-start ${i < changes.length - 1 ? 'mb-2' : ''} transition-opacity duration-300 motion-reduce:transition-none`}
                 style={{ opacity: changesAccepted[i] === false ? 0.4 : 1 }}
               >
                 <div className="flex-1 text-sm text-brew-800 leading-relaxed">
@@ -435,15 +419,23 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
 }
 
 // ─── Phase 2: Active Brew ───────────────────────────────────
-function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistState }) {
+function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistState, savedBrewState }) {
   const timer = useTimer()
-  const [tappedSteps, setTappedSteps] = useState({})
-  const [skippedSteps, setSkippedSteps] = useState({})
+  const [tappedSteps, setTappedSteps] = useState(() => savedBrewState?.tappedSteps || {})
+  const [skippedSteps, setSkippedSteps] = useState(() => savedBrewState?.skippedSteps || {})
   const stepsContainerRef = useRef(null)
   const stepRefs = useRef({})
+  const lastPersistRef = useRef(0)
   const hasStarted = timer.elapsed > 0 || timer.running
 
   useWakeLock(timer.running)
+
+  // Restore timer from saved state on mount
+  useEffect(() => {
+    if (savedBrewState?.timerState) {
+      timer.restore(savedBrewState.timerState)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const steps = recipe.steps
   const totalDuration = steps.length > 0
@@ -475,31 +467,41 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
     return () => onBrewActiveChange(false)
   }, [timer.running, onBrewActiveChange])
 
-  // Persist state on significant actions
-  useEffect(() => {
-    if (!hasStarted) return
+  // Persist state — throttled to every 5 seconds, plus immediate on user actions
+  const doPersist = useCallback((ts, ss) => {
+    lastPersistRef.current = Date.now()
     persistState({
       timerState: timer.getTimerState(),
-      tappedSteps,
-      skippedSteps,
+      tappedSteps: ts,
+      skippedSteps: ss,
       elapsed: timer.elapsed,
     })
-  }, [timer.elapsed, tappedSteps, skippedSteps, hasStarted, persistState, timer])
+  }, [persistState, timer])
+
+  useEffect(() => {
+    if (!hasStarted) return
+    if (Date.now() - lastPersistRef.current < 5000) return
+    doPersist(tappedSteps, skippedSteps)
+  }, [timer.elapsed, tappedSteps, skippedSteps, hasStarted, doPersist])
 
   const handleTapStep = (step) => {
     if (tappedSteps[step.id] !== undefined) return // double-tap guard
-    setTappedSteps(p => ({ ...p, [step.id]: timer.elapsed }))
+    const updated = { ...tappedSteps, [step.id]: timer.elapsed }
+    setTappedSteps(updated)
+    doPersist(updated, skippedSteps) // immediate persist on user action
   }
 
   const handleSkipStep = (step) => {
-    setSkippedSteps(p => ({ ...p, [step.id]: true }))
+    const updated = { ...skippedSteps, [step.id]: true }
+    setSkippedSteps(updated)
+    doPersist(tappedSteps, updated) // immediate persist on user action
   }
 
   const progress = Math.min(timer.elapsed / totalDuration, 1)
   const overTime = timer.elapsed > totalDuration
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-700 ${
+    <div className={`min-h-screen flex flex-col transition-colors duration-700 motion-reduce:transition-none ${
       timer.running ? 'bg-white' : 'bg-brew-50'
     }`}>
       {/* Timer Display */}
@@ -577,7 +579,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
               key={step.id}
               ref={el => (stepRefs.current[step.id] = el)}
               onClick={() => timer.running && !isPast && !skipped && handleTapStep(step)}
-              className={`p-4 mb-2 rounded-xl relative transition-all duration-400 ${
+              className={`p-4 mb-2 rounded-xl relative transition-all duration-400 motion-reduce:transition-none ${
                 skipped
                   ? 'bg-brew-50 text-brew-200 line-through opacity-40'
                   : isCurrent
@@ -665,7 +667,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
 }
 
 // ─── Phase 3: Post-Brew Commit ──────────────────────────────
-function PostBrewCommit({ recipe, bean, brewData, equipment, onCommit, onBrewSaved, setBeans, onNavigate }) {
+function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBeans, onNavigate }) {
   const [brewNotes, setBrewNotes] = useState('')
   const [nextBrewChanges, setNextBrewChanges] = useState('')
   const [flavors, setFlavors] = useState([])
@@ -710,14 +712,12 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onCommit, onBrewSav
         targetTimeRange: recipe.targetTimeRange || formatTime(totalDuration),
         totalTime: brewData.elapsed,
         recipeSteps: recipe.steps,
-        steps: recipe.steps,
         stepResults,
         flavors,
         body,
         rating,
         issues,
-        notes: '',
-        brewNotes,
+        notes: brewNotes,
         nextBrewChanges,
         pourTemplateId: recipe.pourTemplateId || null,
         method: equipment?.brewMethod,
@@ -739,12 +739,11 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onCommit, onBrewSav
         process: bean.process || '',
         addedAt: bean.addedAt || new Date().toISOString(),
       })
-      setBeans(getBeans())
 
       if (nextBrewChanges.trim() && bean.id) {
         updateBean(bean.id, { lastBrewChanges: nextBrewChanges.trim() })
-        setBeans(getBeans())
       }
+      setBeans(getBeans())
 
       clearActiveBrew()
       setCommitted(true)
@@ -956,13 +955,16 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   const [phase, setPhase] = useState(() => initialBean ? 'recipe' : 'pick')
   const [selectedBean, setSelectedBean] = useState(initialBean || null)
   const [brewData, setBrewData] = useState(null)
+  const [savedBrewState, setSavedBrewState] = useState(null)
 
-  const templates = useState(() => getPourTemplates())[0]
+  const templates = useMemo(() => getPourTemplates(), [])
 
-  // Recipe state — initialized lazily from last brew of selected bean
-  const [recipe, setRecipe] = useState(() => {
-    if (!selectedBean) return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', steps: templates[0]?.steps || [], pourTemplateId: templates[0]?.id || null }
-    const lastBrew = getLastBrewOfBean(selectedBean.name)
+  // Build recipe from a bean's last brew, or return defaults
+  const buildRecipeFromBean = useCallback((beanName) => {
+    if (!beanName) {
+      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', steps: templates[0]?.steps || [], pourTemplateId: templates[0]?.id || null }
+    }
+    const lastBrew = getLastBrewOfBean(beanName)
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
     const steps = lastBrew?.recipeSteps
       ? normalizeSteps(lastBrew.recipeSteps)
@@ -977,36 +979,25 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       steps,
       pourTemplateId: lastBrew?.pourTemplateId || templates[0]?.id || null,
     }
-  })
+  }, [equipment, templates])
 
-  // Changes from last brew
-  const [changes] = useState(() => {
+  // Recipe state — initialized lazily from last brew of selected bean
+  const [recipe, setRecipe] = useState(() => buildRecipeFromBean(selectedBean?.name))
+
+  // Changes from last brew — reactive to bean selection
+  const changes = useMemo(() => {
     if (!selectedBean) return []
     const changesStr = getChangesForBean(selectedBean.name)
     if (!changesStr) return []
     return changesStr.split('\n').filter(s => s.trim())
-  })
+  }, [selectedBean])
 
   // When bean is selected from picker, reinitialize recipe
   const handleBeanSelect = useCallback((bean) => {
     setSelectedBean(bean)
-    const lastBrew = getLastBrewOfBean(bean.name)
-    const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
-    const steps = lastBrew?.recipeSteps
-      ? normalizeSteps(lastBrew.recipeSteps)
-      : templates[0]?.steps || []
-    setRecipe({
-      coffeeGrams: lastBrew?.coffeeGrams || 15,
-      waterGrams: lastBrew?.waterGrams || 240,
-      grindSetting: lastBrew?.grindSetting || '',
-      waterTemp: lastBrew?.waterTemp || 200,
-      targetTime: lastBrew?.targetTime || method.defaultTotalTime,
-      targetTimeRange: lastBrew?.targetTimeRange || '',
-      steps,
-      pourTemplateId: lastBrew?.pourTemplateId || templates[0]?.id || null,
-    })
+    setRecipe(buildRecipeFromBean(bean.name))
     setPhase('recipe')
-  }, [equipment, templates])
+  }, [buildRecipeFromBean])
 
   // Persist active brew state to localStorage
   const persistState = useCallback((brewState) => {
@@ -1024,13 +1015,12 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     if (active && active.beanName) {
       const resume = window.confirm(`Resume brew in progress for ${active.beanName}?`)
       if (resume) {
-        // Restore state
         const bean = beans.find(b => b.name?.trim().toLowerCase() === active.beanName?.trim().toLowerCase())
         if (bean) {
           setSelectedBean(bean)
           setRecipe(active.recipe)
+          setSavedBrewState(active) // Pass to ActiveBrew for timer + step restore
           setPhase('brew')
-          // Timer restore happens inside ActiveBrew via the saved timerState
         }
       } else {
         clearActiveBrew()
@@ -1073,9 +1063,10 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
         <ActiveBrew
           recipe={recipe}
           equipment={equipment}
-          onFinish={(data) => { setBrewData(data); setPhase('commit') }}
+          onFinish={(data) => { setBrewData(data); setSavedBrewState(null); setPhase('commit') }}
           onBrewActiveChange={onBrewActiveChange}
           persistState={persistState}
+          savedBrewState={savedBrewState}
         />
       )}
 
@@ -1085,7 +1076,6 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
           bean={selectedBean}
           brewData={brewData}
           equipment={equipment}
-          onCommit={() => { setPhase('pick'); setBrewData(null); setSelectedBean(null) }}
           onBrewSaved={onBrewSaved}
           setBeans={setBeans}
           onNavigate={onNavigate}

@@ -229,8 +229,12 @@ export function migrateGrindSettings() {
 // --- POUR TEMPLATES ---
 
 export function getPourTemplates() {
-  const data = localStorage.getItem(STORAGE_KEYS.POUR_TEMPLATES)
-  return data ? JSON.parse(data) : []
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.POUR_TEMPLATES)
+    return data ? JSON.parse(data) : []
+  } catch {
+    return []
+  }
 }
 
 export function seedDefaultPourTemplates() {
@@ -253,7 +257,11 @@ export function getActiveBrew() {
 }
 
 export function saveActiveBrew(state) {
-  localStorage.setItem(STORAGE_KEYS.ACTIVE_BREW, JSON.stringify(state))
+  try {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_BREW, JSON.stringify(state))
+  } catch {
+    // Silent fail — storage quota may be exceeded
+  }
 }
 
 export function clearActiveBrew() {
