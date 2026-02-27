@@ -36,6 +36,7 @@ function App() {
   const [editingBrew, setEditingBrew] = useState(null)    // Brew being edited (null = new brew mode)
   const [brewingBean, setBrewingBean] = useState(null)    // Bean selected for BrewScreen
   const [isBrewActive, setIsBrewActive] = useState(false) // Active brew timer running
+  const [brewFlowActive, setBrewFlowActive] = useState(false) // BrewScreen is in a flow phase (hides MobileNav)
   const viewRef = useRef(null)
   const prevViewRef = useRef(view)
 
@@ -63,6 +64,7 @@ function App() {
     if (view !== 'brew') {
       setEditingBrew(null)
       setBrewingBean(null)
+      setBrewFlowActive(false)
     }
   }, [view])
 
@@ -89,7 +91,7 @@ function App() {
         )}
       />
 
-      <main className="max-w-2xl mx-auto px-4 pb-32 md:pb-24">
+      <main className={`max-w-2xl mx-auto px-4 ${brewFlowActive ? 'pb-24' : 'pb-32'} md:pb-24`}>
         {/* First-time setup prompt */}
         {needsSetup && (
           <div className="mt-8 p-6 bg-white rounded-2xl shadow-sm border border-brew-100 animate-fade-in-up motion-reduce:animate-none">
@@ -124,6 +126,7 @@ function App() {
               }}
               onBrewActiveChange={setIsBrewActive}
               onNavigate={setView}
+              onFlowChange={setBrewFlowActive}
             />
           )}
           {view === 'brew' && !needsSetup && editingBrew && (
@@ -171,7 +174,7 @@ function App() {
         </div>
       </main>
 
-      <MobileNav activeView={view} onChangeView={setView} />
+      {!brewFlowActive && <MobileNav activeView={view} onChangeView={setView} />}
 
       {/* Equipment setup modal/overlay */}
       {showSetup && (

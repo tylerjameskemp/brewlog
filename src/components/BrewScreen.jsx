@@ -155,13 +155,23 @@ function BeanPicker({ beans, onSelect }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, equipment }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onBack, onBeanUpdate, equipment }) {
   const [cardIndex, setCardIndex] = useState(0)
   const [changesAccepted, setChangesAccepted] = useState({})
   const [editing, setEditing] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
+  const [beanOverrides, setBeanOverrides] = useState({})
 
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
+  const displayBean = Object.keys(beanOverrides).length > 0 ? { ...bean, ...beanOverrides } : bean
+
+  const handleDoneEditing = () => {
+    setEditing(false)
+    if (Object.keys(beanOverrides).length > 0) {
+      onBeanUpdate(beanOverrides)
+      setBeanOverrides({})
+    }
+  }
 
   const handleSwipe = (dir) => {
     setCardIndex(prev => Math.max(0, Math.min(2, prev + dir)))
@@ -179,6 +189,20 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   const updateField = (field, value) => {
     if (typeof value === 'number' && isNaN(value)) return // NaN guard for numeric inputs
     setRecipe(prev => ({ ...prev, [field]: value }))
+  }
+
+  const updateStep = (stepIndex, field, value) => {
+    if (typeof value === 'number' && isNaN(value)) return
+    setRecipe(prev => {
+      const updatedSteps = prev.steps.map((s, i) => i === stepIndex ? { ...s, [field]: value } : s)
+      // Recalculate start times when duration changes
+      if (field === 'duration') {
+        for (let i = 1; i < updatedSteps.length; i++) {
+          updatedSteps[i] = { ...updatedSteps[i], time: updatedSteps[i - 1].time + updatedSteps[i - 1].duration }
+        }
+      }
+      return { ...prev, steps: updatedSteps }
+    })
   }
 
   const essentialsCard = (
@@ -283,15 +307,55 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-sm text-brew-800">{step.name}</span>
-                <span className="text-xs text-brew-400">
-                  {formatTime(step.time)} → {formatTime(step.time + step.duration)}
-                </span>
-              </div>
-              <div className="flex gap-2 mt-1 flex-wrap">
-                {step.waterTo != null && (
-                  <span className="text-xs text-brew-500 font-medium">↑ {step.waterTo}g</span>
+                {editing ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={step.duration}
+                      onChange={e => updateStep(i, 'duration', Number(e.target.value))}
+                      className="w-12 text-center text-brew-800 bg-transparent
+                                 border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+                    />
+                    <span className="text-xs text-brew-400">sec</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-brew-400">
+                    {formatTime(step.time)} → {formatTime(step.time + step.duration)}
+                  </span>
                 )}
-                <span className="text-xs text-brew-400">{step.note}</span>
+              </div>
+              <div className="flex gap-2 mt-1 flex-wrap items-center">
+                {editing ? (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-brew-400">→</span>
+                      <input
+                        type="number"
+                        value={step.waterTo ?? ''}
+                        onChange={e => updateStep(i, 'waterTo', e.target.value ? Number(e.target.value) : null)}
+                        placeholder="—"
+                        className="w-12 text-center text-brew-500 font-medium bg-transparent
+                                   border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+                      />
+                      <span className="text-xs text-brew-400">g</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={step.note || ''}
+                      onChange={e => updateStep(i, 'note', e.target.value)}
+                      placeholder="Note..."
+                      className="flex-1 min-w-[80px] text-brew-400 bg-transparent
+                                 border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {step.waterTo != null && (
+                      <span className="text-xs text-brew-500 font-medium">↑ {step.waterTo}g</span>
+                    )}
+                    <span className="text-xs text-brew-400">{step.note}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -304,13 +368,24 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
     <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
       <h3 className="text-lg font-semibold text-brew-800 mb-4">Origin Details</h3>
       {[
-        { label: 'Origin', value: bean.origin },
-        { label: 'Process', value: bean.process },
-        { label: 'Roaster', value: bean.roaster },
+        { label: 'Origin', value: displayBean.origin, field: 'origin' },
+        { label: 'Process', value: displayBean.process, field: 'process' },
+        { label: 'Roaster', value: displayBean.roaster, field: 'roaster' },
       ].map(item => (
-        <div key={item.label} className="flex justify-between py-2.5 border-b border-brew-50 text-sm last:border-0">
+        <div key={item.label} className="flex justify-between items-center py-2.5 border-b border-brew-50 text-sm last:border-0">
           <span className="text-brew-400">{item.label}</span>
-          <span className="font-medium text-brew-800">{item.value || '—'}</span>
+          {editing ? (
+            <input
+              type="text"
+              value={item.value || ''}
+              onChange={e => setBeanOverrides(prev => ({ ...prev, [item.field]: e.target.value }))}
+              placeholder="—"
+              className="text-right font-medium text-brew-800 bg-transparent w-1/2
+                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+            />
+          ) : (
+            <span className="font-medium text-brew-800">{item.value || '—'}</span>
+          )}
         </div>
       ))}
     </div>
@@ -320,11 +395,22 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
     <div className="pb-28">
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
-        <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-1">Recipe</div>
+        <div className="flex items-center gap-2 mb-1">
+          <button
+            onClick={onBack}
+            className="text-brew-400 hover:text-brew-600 min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2"
+            aria-label="Back to bean selection"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 4l-6 6 6 6" />
+            </svg>
+          </button>
+          <div className="text-[11px] text-brew-400 uppercase tracking-widest">Recipe</div>
+        </div>
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-semibold text-brew-800">Prepare Your Brew</h1>
           <button
-            onClick={() => setEditing(!editing)}
+            onClick={() => editing ? handleDoneEditing() : setEditing(true)}
             className="border border-brew-200 rounded-lg px-3 py-1.5 text-xs text-brew-400
                        hover:bg-brew-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
@@ -951,7 +1037,7 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
 }
 
 // ─── Main BrewScreen Component ──────────────────────────────
-export default function BrewScreen({ equipment, beans, setBeans, initialBean, onBrewSaved, onBrewActiveChange, onNavigate }) {
+export default function BrewScreen({ equipment, beans, setBeans, initialBean, onBrewSaved, onBrewActiveChange, onNavigate, onFlowChange }) {
   const [phase, setPhase] = useState(() => initialBean ? 'recipe' : 'pick')
   const [selectedBean, setSelectedBean] = useState(initialBean || null)
   const [brewData, setBrewData] = useState(null)
@@ -998,6 +1084,20 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     setRecipe(buildRecipeFromBean(bean.name))
     setPhase('recipe')
   }, [buildRecipeFromBean])
+
+  // Report flow state to parent (hides MobileNav during flow phases)
+  useEffect(() => {
+    onFlowChange(phase !== 'pick')
+  }, [phase, onFlowChange])
+
+  // Update bean fields — batched, called once when editing completes
+  const handleBeanUpdate = useCallback((overrides) => {
+    setSelectedBean(prev => ({ ...prev, ...overrides }))
+    if (selectedBean?.id) {
+      const updated = updateBean(selectedBean.id, overrides)
+      setBeans(updated)
+    }
+  }, [selectedBean, setBeans])
 
   // Persist active brew state to localStorage
   const persistState = useCallback((brewState) => {
@@ -1056,6 +1156,8 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
           templates={templates}
           equipment={equipment}
           onStartBrew={() => setPhase('brew')}
+          onBack={() => setPhase('pick')}
+          onBeanUpdate={handleBeanUpdate}
         />
       )}
 
