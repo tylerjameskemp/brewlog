@@ -9,13 +9,15 @@
 // but for the MVP, localStorage is perfect. Zero setup, works offline.
 // ============================================================
 
-import { numericToGrindNotation } from './defaults'
+import { numericToGrindNotation, DEFAULT_POUR_TEMPLATES } from './defaults'
 
 const STORAGE_KEYS = {
   BREWS: 'brewlog_brews',
   EQUIPMENT: 'brewlog_equipment',
   BEANS: 'brewlog_beans',
   UI_PREFS: 'brewlog_ui_prefs',
+  POUR_TEMPLATES: 'brewlog_pour_templates',
+  ACTIVE_BREW: 'brewlog_active_brew',
 }
 
 // --- BREW LOGS ---
@@ -224,7 +226,82 @@ export function migrateGrindSettings() {
   return brews
 }
 
+// --- POUR TEMPLATES ---
+
+export function getPourTemplates() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.POUR_TEMPLATES)
+    return data ? JSON.parse(data) : []
+  } catch {
+    return []
+  }
+}
+
+export function seedDefaultPourTemplates() {
+  // Idempotent — only seeds if no templates exist yet
+  const existing = getPourTemplates()
+  if (existing.length > 0) return existing
+  localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(DEFAULT_POUR_TEMPLATES))
+  return DEFAULT_POUR_TEMPLATES
+}
+
+// --- ACTIVE BREW (in-progress state persistence) ---
+
+export function getActiveBrew() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_BREW)
+    return data ? JSON.parse(data) : null
+  } catch {
+    return null
+  }
+}
+
+export function saveActiveBrew(state) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_BREW, JSON.stringify(state))
+  } catch {
+    // Silent fail — storage quota may be exceeded
+  }
+}
+
+export function clearActiveBrew() {
+  localStorage.removeItem(STORAGE_KEYS.ACTIVE_BREW)
+}
+
+// --- BREW SCREEN HELPERS ---
+
+export function getChangesForBean(beanName) {
+  // Returns the nextBrewChanges string from the most recent brew of that bean
+  if (!beanName) return null
+  const brew = getLastBrewOfBean(beanName)
+  return brew?.nextBrewChanges || null
+}
+
+export function normalizeSteps(steps) {
+  // Converts legacy { label, startTime, targetWater, note } to
+  // new { id, name, waterTo, time, duration, note } format.
+  // Returns new-format steps unchanged.
+  if (!Array.isArray(steps) || steps.length === 0) return []
+  // Check if already in new format (has 'name' field)
+  if (steps[0].name !== undefined) return steps
+  return steps.map((step, i) => ({
+    id: i + 1,
+    name: step.label || `Step ${i + 1}`,
+    waterTo: step.targetWater ?? null,
+    time: step.startTime ?? 0,
+    duration: (steps[i + 1]?.startTime ?? step.startTime + 60) - (step.startTime ?? 0),
+    note: step.note || '',
+  }))
+}
+
 // --- UTILITY ---
+
+export function formatTime(seconds) {
+  if (seconds == null) return '—'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
 
 export function getLastBrew() {
   // Returns the most recent brew — used to pre-populate the form
@@ -249,6 +326,7 @@ export function exportData() {
     brews: getBrews(),
     equipment: getEquipment(),
     beans: getBeans(),
+    pourTemplates: getPourTemplates(),
     exportedAt: new Date().toISOString(),
   }
 }
@@ -267,6 +345,9 @@ export function importData(data) {
   }
   if ('beans' in data) {
     localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(data.beans || []))
+  }
+  if ('pourTemplates' in data) {
+    localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(data.pourTemplates || []))
   }
 }
 
@@ -296,5 +377,15 @@ export function mergeData(data) {
   // Equipment: only use imported if local is null
   if (data.equipment && !getEquipment()) {
     localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
+  }
+
+  // Pour templates: merge by ID
+  if (data.pourTemplates && Array.isArray(data.pourTemplates)) {
+    const existing = getPourTemplates()
+    const existingIds = new Set(existing.map(t => t.id))
+    const newTemplates = data.pourTemplates.filter(t => !existingIds.has(t.id))
+    if (newTemplates.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify([...existing, ...newTemplates]))
+    }
   }
 }

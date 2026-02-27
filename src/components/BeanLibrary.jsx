@@ -10,7 +10,7 @@ import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE } from '../data/defaults'
 // Click a card to expand and see all brews made with that bean.
 // Add/edit beans via a modal form. Delete with inline confirmation.
 
-export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
+export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onBrewBean }) {
   const [expandedBeanId, setExpandedBeanId] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingBean, setEditingBean] = useState(null)
@@ -183,6 +183,15 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange }) {
                 {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
                   {/* Action buttons */}
                   <div className="flex gap-2 mt-3 mb-4 flex-wrap">
+                    {onBrewBean && (
+                      <button
+                        onClick={() => onBrewBean(bean)}
+                        className="text-sm px-4 py-2 min-h-[44px] rounded-lg bg-brew-600 text-white
+                                   font-medium hover:bg-brew-700 active:scale-[0.98] transition-all"
+                      >
+                        Brew this bean
+                      </button>
+                    )}
                     <button
                       onClick={() => handleOpenEdit(bean)}
                       className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-brew-500
