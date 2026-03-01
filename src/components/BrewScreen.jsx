@@ -597,11 +597,9 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
   const progress = Math.min(timer.elapsed / totalDuration, 1)
   const overTime = timer.elapsed > totalDuration
 
+  // top-12/md:top-14 must match Header h-12/md:h-14 in Header.jsx
   return (
-    <div className={`fixed top-12 md:top-14 left-0 right-0 bottom-0 flex flex-col
-                     transition-colors duration-700 motion-reduce:transition-none z-10 ${
-      timer.running ? 'bg-white' : 'bg-brew-50'
-    }`}>
+    <div className="fixed top-12 md:top-14 left-0 right-0 bottom-0 flex flex-col bg-white z-10">
       {/* Pinned timer area */}
       <div className="bg-white shadow-md shrink-0">
         {/* Timer Display */}
@@ -612,7 +610,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
             }`}>
               {formatTime(timer.elapsed)}
             </div>
-            <div className="text-sm text-brew-400 tabular-nums">
+            <div className="text-sm text-brew-400">
               Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
             </div>
           </div>
@@ -620,7 +618,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
           {/* Progress bar */}
           <div className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-1000 linear ${
+              className={`h-full rounded-full transition-[width,background-color] duration-1000 linear ${
                 overTime ? 'bg-red-500' : 'bg-brew-500'
               }`}
               style={{ width: `${progress * 100}%` }}
@@ -629,13 +627,13 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
         </div>
 
         {/* Controls — fixed height container prevents layout shift */}
-        <div className="flex items-center justify-center h-20 shrink-0">
+        <div className="flex items-center justify-center h-20">
           {!hasStarted && (
             <button
               onClick={() => timer.play()}
               className="w-[72px] h-[72px] rounded-full bg-brew-800 text-white text-2xl
                          shadow-xl flex items-center justify-center
-                         hover:bg-brew-700 active:scale-95 transition-all min-h-[44px]"
+                         hover:bg-brew-700 active:scale-95 transition-all"
               aria-label="Start brew"
             >
               ▶
@@ -666,18 +664,18 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
       <div ref={stepsContainerRef} className="flex-1 px-4 pb-36 overflow-y-auto">
         {steps.map((step, i) => {
           const isCurrent = i === currentStepIdx && timer.running
-          const isPast = timer.elapsed >= step.time + step.duration || skippedSteps[step.id]
+          const skipped = skippedSteps[step.id]
+          const isPast = timer.elapsed >= step.time + step.duration || skipped
           const isFuture = !isCurrent && !isPast
           const tappedAt = tappedSteps[step.id]
           const variance = tappedAt !== undefined ? tappedAt - step.time : null
-          const skipped = skippedSteps[step.id]
 
           return (
             <div
               key={step.id}
               ref={el => (stepRefs.current[step.id] = el)}
               onClick={() => timer.running && !isPast && !skipped && handleTapStep(step)}
-              className={`p-3 mb-1.5 rounded-lg relative transition-all duration-400 min-h-[44px]
+              className={`p-3 mb-1.5 rounded-lg relative transition-[background-color,color,opacity,border-color] duration-400 min-h-[44px]
                           motion-reduce:transition-none ${
                 skipped
                   ? 'bg-gray-50 text-gray-300 line-through opacity-40'
@@ -736,7 +734,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
         })}
       </div>
 
-      {/* Finish Brew */}
+      {/* Finish Brew — fixed relative to viewport (works because parent has no transform/filter/will-change) */}
       {hasStarted && (
         <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
                         bg-gradient-to-t from-white via-white to-transparent pointer-events-none z-10">
