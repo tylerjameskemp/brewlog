@@ -77,6 +77,8 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
   const [saved, setSaved] = useState(false)
   const savingRef = useRef(false)
+  const stepsModifiedRef = useRef(false)
+  const recipeStepsModifiedRef = useRef(false)
   const [beanRecipeSource, setBeanRecipeSource] = useState(null)
   const [lastBeanBrew, setLastBeanBrew] = useState(null)
   const [pendingStepChoice, setPendingStepChoice] = useState(false)
@@ -185,8 +187,23 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
     const trimmedName = form.beanName.trim()
 
-    // Resolve steps: if user didn't modify brew steps, actual = recipe
-    const resolvedSteps = form.steps.length > 0 ? form.steps : form.recipeSteps
+    // Resolve steps: preserve original data unless user actively modified
+    let finalRecipeSteps = form.recipeSteps
+    let finalSteps
+
+    if (isEditing) {
+      // Preserve original exactly as stored — including undefined/missing
+      if (!recipeStepsModifiedRef.current) {
+        finalRecipeSteps = editBrew.recipeSteps
+      }
+      if (!stepsModifiedRef.current) {
+        finalSteps = editBrew.steps ?? editBrew.recipeSteps ?? []
+      } else {
+        finalSteps = form.steps.length > 0 ? form.steps : finalRecipeSteps
+      }
+    } else {
+      finalSteps = form.steps.length > 0 ? form.steps : form.recipeSteps
+    }
 
     // Edit mode — update existing brew and navigate back
     if (isEditing) {
@@ -195,8 +212,8 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         beanName: trimmedName,
         targetTime: form.targetTime || undefined,
         totalTime: form.totalTime || form.targetTime || undefined,
-        recipeSteps: form.recipeSteps,
-        steps: resolvedSteps,
+        recipeSteps: finalRecipeSteps,
+        steps: finalSteps,
       })
       if (trimmedName) {
         saveBean({ name: trimmedName, roaster: form.roaster, roastDate: form.roastDate })
@@ -215,7 +232,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       targetTime: form.targetTime || undefined,
       totalTime: form.totalTime || form.targetTime || undefined,
       recipeSteps: form.recipeSteps,
-      steps: resolvedSteps,
+      steps: finalSteps,
       method: equipment?.brewMethod,
       grinder: equipment?.grinder,
       dripper: equipment?.dripper,
@@ -452,7 +469,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       <Section title="Pour Steps" defaultOpen={form.recipeSteps.length > 0}>
         <StepEditor
           steps={form.recipeSteps}
-          onChange={(steps) => update('recipeSteps', steps)}
+          onChange={(steps) => { recipeStepsModifiedRef.current = true; update('recipeSteps', steps) }}
           hint="Plan each pour stage — bloom, main pours, drawdown."
         />
       </Section>
@@ -491,7 +508,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         <Section title="Pour Steps" defaultOpen>
           <StepEditor
             steps={form.steps.length > 0 ? form.steps : form.recipeSteps}
-            onChange={(steps) => update('steps', steps)}
+            onChange={(steps) => { stepsModifiedRef.current = true; update('steps', steps) }}
             hint="Your planned steps are shown below. Modify anything that went differently, or delete steps you skipped."
           />
         </Section>
