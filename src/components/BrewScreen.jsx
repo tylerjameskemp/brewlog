@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
   getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
-  parseTime, formatTimeRange,
+  parseTime, formatTimeRange, computeTimeStatus,
   getPourTemplates, saveBrew, saveBean, getBeans, updateBean,
   saveActiveBrew, getActiveBrew, clearActiveBrew,
 } from '../data/storage'
@@ -169,38 +169,34 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const displayBean = Object.keys(beanOverrides).length > 0 ? { ...bean, ...beanOverrides } : bean
 
+  // Normalize a single field on blur (no swap — prevents value flicker when tabbing between fields)
+  const handleMinBlur = () => {
+    const val = parseTime(targetMinInput)
+    if (val !== null) setTargetMinInput(formatTime(val))
+  }
+  const handleMaxBlur = () => {
+    const val = parseTime(targetMaxInput)
+    if (val !== null) setTargetMaxInput(formatTime(val))
+  }
+
+  // Full commit with auto-swap — called only on Done
   const commitTargetTimeInputs = () => {
     const min = parseTime(targetMinInput)
     const max = parseTime(targetMaxInput)
-    if (min !== null && max !== null) {
-      const lo = Math.min(min, max)
-      const hi = Math.max(min, max)
-      setRecipe(prev => ({
-        ...prev,
-        targetTimeMin: lo,
-        targetTimeMax: hi,
-        targetTime: Math.round((lo + hi) / 2),
-        targetTimeRange: formatTimeRange(lo, hi),
-      }))
-      setTargetMinInput(formatTime(lo))
-      setTargetMaxInput(formatTime(hi))
-    } else if (min !== null) {
-      setRecipe(prev => ({
-        ...prev,
-        targetTimeMin: min,
-        targetTimeMax: min,
-        targetTime: min,
-        targetTimeRange: formatTime(min),
-      }))
-    } else if (max !== null) {
-      setRecipe(prev => ({
-        ...prev,
-        targetTimeMin: max,
-        targetTimeMax: max,
-        targetTime: max,
-        targetTimeRange: formatTime(max),
-      }))
-    }
+    const validMin = min ?? max
+    const validMax = max ?? min
+    if (validMin == null) return
+    const lo = Math.min(validMin, validMax)
+    const hi = Math.max(validMin, validMax)
+    setRecipe(prev => ({
+      ...prev,
+      targetTimeMin: lo,
+      targetTimeMax: hi,
+      targetTime: Math.round((lo + hi) / 2),
+      targetTimeRange: formatTimeRange(lo, hi),
+    }))
+    setTargetMinInput(formatTime(lo))
+    setTargetMaxInput(formatTime(hi))
   }
 
   const handleDoneEditing = () => {
@@ -338,7 +334,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               inputMode="numeric"
               value={targetMinInput}
               onChange={e => setTargetMinInput(e.target.value)}
-              onBlur={commitTargetTimeInputs}
+              onBlur={handleMinBlur}
               placeholder="3:00"
               className="w-16 text-center text-lg font-medium text-brew-800 bg-transparent
                          border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
@@ -349,7 +345,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               inputMode="numeric"
               value={targetMaxInput}
               onChange={e => setTargetMaxInput(e.target.value)}
-              onBlur={commitTargetTimeInputs}
+              onBlur={handleMaxBlur}
               placeholder="3:30"
               className="w-16 text-center text-lg font-medium text-brew-800 bg-transparent
                          border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
@@ -879,14 +875,7 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         ? steps[steps.length - 1].time + steps[steps.length - 1].duration
         : 210
 
-      // Compute time status (in-range, over, under)
-      const tMin = recipe.targetTimeMin || recipe.targetTime || totalDuration
-      const tMax = recipe.targetTimeMax || recipe.targetTime || totalDuration
-      const tolerance = tMin === tMax ? 10 : 0
-      let timeStatus = null
-      if (brewData.elapsed < tMin - tolerance) timeStatus = 'under'
-      else if (brewData.elapsed > tMax + tolerance) timeStatus = 'over'
-      else timeStatus = 'on-target'
+      const timeResult = computeTimeStatus(brewData.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
 
       const brew = {
         id: uuidv4(),
@@ -902,7 +891,7 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         targetTimeRange: recipe.targetTimeRange || formatTime(recipe.targetTime || totalDuration),
         targetTimeMin: recipe.targetTimeMin || null,
         targetTimeMax: recipe.targetTimeMax || null,
-        timeStatus,
+        timeStatus: timeResult?.status || null,
         totalTime: brewData.elapsed,
         recipeSteps: recipe.steps,
         stepResults,
@@ -945,6 +934,11 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
     }
   }
 
+  const displayTotalDuration = steps.length > 0
+    ? steps[steps.length - 1].time + steps[steps.length - 1].duration
+    : 210
+  const displayTimeResult = computeTimeStatus(brewData.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, displayTotalDuration)
+
   return (
     <div className="px-4 pt-4 pb-28">
       {/* Summary */}
@@ -957,22 +951,17 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         <div className="text-sm text-brew-400 mt-1">
           Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
         </div>
-        {(() => {
-          const tMin = recipe.targetTimeMin || recipe.targetTime
-          const tMax = recipe.targetTimeMax || recipe.targetTime
-          if (!tMin) return null
-          const tolerance = tMin === tMax ? 10 : 0
-          const under = brewData.elapsed < tMin - tolerance
-          const over = brewData.elapsed > tMax + tolerance
-          const delta = under ? tMin - brewData.elapsed : over ? brewData.elapsed - tMax : 0
-          return (
-            <div className={`text-sm font-semibold mt-1 ${
-              under ? 'text-amber-500' : over ? 'text-red-500' : 'text-green-600'
-            }`}>
-              {under ? `${delta}s under target` : over ? `${delta}s over target` : 'On target'}
-            </div>
-          )
-        })()}
+        {displayTimeResult && (
+          <div className={`text-sm font-semibold mt-1 ${
+            displayTimeResult.status === 'under' ? 'text-amber-500'
+              : displayTimeResult.status === 'over' ? 'text-red-500'
+              : 'text-green-600'
+          }`}>
+            {displayTimeResult.status === 'under' ? `${displayTimeResult.delta}s under target`
+              : displayTimeResult.status === 'over' ? `${displayTimeResult.delta}s over target`
+              : 'On target'}
+          </div>
+        )}
       </div>
 
       {/* Step Results */}
@@ -1198,8 +1187,9 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     setSelectedBean(null)
     setBrewData(null)
     setSavedBrewState(null)
+    setRecipe(buildRecipeFromBean(null))
     setPhase('pick')
-  }, [])
+  }, [buildRecipeFromBean])
 
   // Update bean fields — batched, called once when editing completes
   const handleBeanUpdate = useCallback((overrides) => {

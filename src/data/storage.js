@@ -310,20 +310,22 @@ export function parseTime(str) {
   return parseInt(match[1], 10) * 60 + parseInt(match[2], 10)
 }
 
-export function parseTimeRange(str) {
-  if (!str || typeof str !== 'string') return null
-  const parts = str.split(/\s*[-\u2013]\s*/)
-  const min = parseTime(parts[0])
-  if (min === null) return null
-  const max = parts.length > 1 ? parseTime(parts[1]) : min
-  if (max === null) return null
-  return min <= max ? { min, max } : { min: max, max: min }
-}
-
 export function formatTimeRange(min, max) {
   if (min == null || max == null) return formatTime(min ?? max)
   if (min === max) return formatTime(min)
   return `${formatTime(min)} - ${formatTime(max)}`
+}
+
+const SINGLE_TARGET_TOLERANCE_SECS = 10
+
+export function computeTimeStatus(elapsed, targetTimeMin, targetTimeMax, targetTime, fallbackDuration) {
+  const tMin = targetTimeMin || targetTime || fallbackDuration
+  const tMax = targetTimeMax || targetTime || fallbackDuration
+  if (tMin == null) return null
+  const tolerance = tMin === tMax ? SINGLE_TARGET_TOLERANCE_SECS : 0
+  if (elapsed < tMin - tolerance) return { status: 'under', delta: tMin - elapsed }
+  if (elapsed > tMax + tolerance) return { status: 'over', delta: elapsed - tMax }
+  return { status: 'on-target', delta: 0 }
 }
 
 export function getLastBrew() {
