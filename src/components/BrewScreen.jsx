@@ -669,7 +669,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
         {steps.map((step, i) => {
           const isCurrent = i === currentStepIdx && hasStarted
           const skipped = skippedSteps[step.id]
-          const isPast = timer.elapsed >= step.time + step.duration || skipped
+          const isPast = hasStarted && (timer.elapsed >= step.time + step.duration || skipped)
           const isFuture = !isCurrent && !isPast
           const isNext = isFuture && i === currentStepIdx + 1 && hasStarted
           const tappedAt = tappedSteps[step.id]
@@ -681,8 +681,8 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
               <div
                 key={step.id}
                 ref={el => (stepRefs.current[step.id] = el)}
-                className="py-2 px-3 mb-1 rounded-lg bg-gray-50 transition-all duration-400
-                           motion-reduce:transition-none"
+                className="py-2 px-3 mb-1 rounded-lg bg-gray-50 animate-fade-in
+                           motion-reduce:animate-none"
               >
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
@@ -709,8 +709,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
                   : isCurrent
                     ? 'bg-amber-50 border-l-4 border-l-brew-600 text-brew-900 shadow-sm'
                     : 'bg-white border border-gray-100'
-              } ${hasStarted && isFuture && !isNext ? 'opacity-40' : ''
-              } ${hasStarted && isNext ? 'opacity-70' : ''
+              } ${hasStarted && isFuture ? (isNext ? 'opacity-70' : 'opacity-40') : ''
               } ${timer.running && !isPast && !skipped ? 'cursor-pointer' : ''
               }`}
             >
@@ -749,8 +748,8 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
                 </div>
               )}
 
-              {/* Tap prompt */}
-              {isCurrent && tappedAt === undefined && !skipped && (
+              {/* Tap prompt — only while running (user can't tap during pause) */}
+              {isCurrent && timer.running && tappedAt === undefined && !skipped && (
                 <div className="mt-2 text-[11px] text-brew-400">
                   Tap when you start this step
                 </div>
