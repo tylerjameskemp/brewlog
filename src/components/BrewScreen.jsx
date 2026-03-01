@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
   getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
+  parseTime, formatTimeRange,
   getPourTemplates, saveBrew, saveBean, getBeans, updateBean,
   saveActiveBrew, getActiveBrew, clearActiveBrew,
 } from '../data/storage'
@@ -162,11 +163,48 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   const [editing, setEditing] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
   const [beanOverrides, setBeanOverrides] = useState({})
+  const [targetMinInput, setTargetMinInput] = useState(() => formatTime(recipe.targetTimeMin || recipe.targetTime))
+  const [targetMaxInput, setTargetMaxInput] = useState(() => formatTime(recipe.targetTimeMax || recipe.targetTime))
 
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const displayBean = Object.keys(beanOverrides).length > 0 ? { ...bean, ...beanOverrides } : bean
 
+  const commitTargetTimeInputs = () => {
+    const min = parseTime(targetMinInput)
+    const max = parseTime(targetMaxInput)
+    if (min !== null && max !== null) {
+      const lo = Math.min(min, max)
+      const hi = Math.max(min, max)
+      setRecipe(prev => ({
+        ...prev,
+        targetTimeMin: lo,
+        targetTimeMax: hi,
+        targetTime: Math.round((lo + hi) / 2),
+        targetTimeRange: formatTimeRange(lo, hi),
+      }))
+      setTargetMinInput(formatTime(lo))
+      setTargetMaxInput(formatTime(hi))
+    } else if (min !== null) {
+      setRecipe(prev => ({
+        ...prev,
+        targetTimeMin: min,
+        targetTimeMax: min,
+        targetTime: min,
+        targetTimeRange: formatTime(min),
+      }))
+    } else if (max !== null) {
+      setRecipe(prev => ({
+        ...prev,
+        targetTimeMin: max,
+        targetTimeMax: max,
+        targetTime: max,
+        targetTimeRange: formatTime(max),
+      }))
+    }
+  }
+
   const handleDoneEditing = () => {
+    commitTargetTimeInputs()
     setEditing(false)
     if (Object.keys(beanOverrides).length > 0) {
       onBeanUpdate(beanOverrides)
@@ -291,8 +329,37 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
         </div>
       </div>
 
-      <div className="mt-4 text-xs text-brew-400 text-center">
-        Target time: <span className="text-brew-800 font-medium">{recipe.targetTimeRange || formatTime(recipe.targetTime)}</span>
+      <div className="mt-4 text-center">
+        <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Target Time</div>
+        {editing ? (
+          <div className="flex items-center justify-center gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={targetMinInput}
+              onChange={e => setTargetMinInput(e.target.value)}
+              onBlur={commitTargetTimeInputs}
+              placeholder="3:00"
+              className="w-16 text-center text-lg font-medium text-brew-800 bg-transparent
+                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+            />
+            <span className="text-brew-400 text-sm">to</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={targetMaxInput}
+              onChange={e => setTargetMaxInput(e.target.value)}
+              onBlur={commitTargetTimeInputs}
+              placeholder="3:30"
+              className="w-16 text-center text-lg font-medium text-brew-800 bg-transparent
+                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+            />
+          </div>
+        ) : (
+          <div className="text-brew-800 font-medium">
+            {recipe.targetTimeRange || formatTime(recipe.targetTime)}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -595,8 +662,9 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
     doPersist(tappedSteps, updated) // immediate persist on user action
   }
 
-  const progress = Math.min(timer.elapsed / totalDuration, 1)
-  const overTime = timer.elapsed > totalDuration
+  const targetMax = recipe.targetTimeMax || recipe.targetTime || totalDuration
+  const progress = Math.min(timer.elapsed / targetMax, 1)
+  const overTime = timer.elapsed > targetMax
 
   // top-12/md:top-14 must match Header h-12/md:h-14 in Header.jsx
   return (
@@ -811,6 +879,15 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         ? steps[steps.length - 1].time + steps[steps.length - 1].duration
         : 210
 
+      // Compute time status (in-range, over, under)
+      const tMin = recipe.targetTimeMin || recipe.targetTime || totalDuration
+      const tMax = recipe.targetTimeMax || recipe.targetTime || totalDuration
+      const tolerance = tMin === tMax ? 10 : 0
+      let timeStatus = null
+      if (brewData.elapsed < tMin - tolerance) timeStatus = 'under'
+      else if (brewData.elapsed > tMax + tolerance) timeStatus = 'over'
+      else timeStatus = 'on-target'
+
       const brew = {
         id: uuidv4(),
         brewScreenVersion: 1,
@@ -821,8 +898,11 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         waterGrams: recipe.waterGrams,
         grindSetting: recipe.grindSetting,
         waterTemp: recipe.waterTemp,
-        targetTime: totalDuration,
-        targetTimeRange: recipe.targetTimeRange || formatTime(totalDuration),
+        targetTime: recipe.targetTime || totalDuration,
+        targetTimeRange: recipe.targetTimeRange || formatTime(recipe.targetTime || totalDuration),
+        targetTimeMin: recipe.targetTimeMin || null,
+        targetTimeMax: recipe.targetTimeMax || null,
+        timeStatus,
         totalTime: brewData.elapsed,
         recipeSteps: recipe.steps,
         stepResults,
@@ -877,6 +957,22 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         <div className="text-sm text-brew-400 mt-1">
           Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
         </div>
+        {(() => {
+          const tMin = recipe.targetTimeMin || recipe.targetTime
+          const tMax = recipe.targetTimeMax || recipe.targetTime
+          if (!tMin) return null
+          const tolerance = tMin === tMax ? 10 : 0
+          const under = brewData.elapsed < tMin - tolerance
+          const over = brewData.elapsed > tMax + tolerance
+          const delta = under ? tMin - brewData.elapsed : over ? brewData.elapsed - tMax : 0
+          return (
+            <div className={`text-sm font-semibold mt-1 ${
+              under ? 'text-amber-500' : over ? 'text-red-500' : 'text-green-600'
+            }`}>
+              {under ? `${delta}s under target` : over ? `${delta}s over target` : 'On target'}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Step Results */}
@@ -1053,7 +1149,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   // Build recipe from a bean's last brew, or return defaults
   const buildRecipeFromBean = useCallback((beanName) => {
     if (!beanName) {
-      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', steps: templates[0]?.steps || [], pourTemplateId: templates[0]?.id || null }
+      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: templates[0]?.steps || [], pourTemplateId: templates[0]?.id || null }
     }
     const lastBrew = getLastBrewOfBean(beanName)
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
@@ -1067,6 +1163,8 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       waterTemp: lastBrew?.waterTemp || 200,
       targetTime: lastBrew?.targetTime || method.defaultTotalTime,
       targetTimeRange: lastBrew?.targetTimeRange || '',
+      targetTimeMin: lastBrew?.targetTimeMin || null,
+      targetTimeMax: lastBrew?.targetTimeMax || null,
       steps,
       pourTemplateId: lastBrew?.pourTemplateId || templates[0]?.id || null,
     }
