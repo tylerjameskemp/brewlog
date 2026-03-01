@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
   getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
+  parseTime, formatTimeRange, computeTimeStatus,
   getPourTemplates, saveBrew, saveBean, getBeans, updateBean,
   saveActiveBrew, getActiveBrew, clearActiveBrew,
 } from '../data/storage'
@@ -162,11 +163,44 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   const [editing, setEditing] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
   const [beanOverrides, setBeanOverrides] = useState({})
+  const [targetMinInput, setTargetMinInput] = useState(() => formatTime(recipe.targetTimeMin || recipe.targetTime))
+  const [targetMaxInput, setTargetMaxInput] = useState(() => formatTime(recipe.targetTimeMax || recipe.targetTime))
 
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const displayBean = Object.keys(beanOverrides).length > 0 ? { ...bean, ...beanOverrides } : bean
 
+  // Normalize a single field on blur (no swap — prevents value flicker when tabbing between fields)
+  const handleMinBlur = () => {
+    const val = parseTime(targetMinInput)
+    if (val !== null) setTargetMinInput(formatTime(val))
+  }
+  const handleMaxBlur = () => {
+    const val = parseTime(targetMaxInput)
+    if (val !== null) setTargetMaxInput(formatTime(val))
+  }
+
+  // Full commit with auto-swap — called only on Done
+  const commitTargetTimeInputs = () => {
+    const min = parseTime(targetMinInput)
+    const max = parseTime(targetMaxInput)
+    const validMin = min ?? max
+    const validMax = max ?? min
+    if (validMin == null) return
+    const lo = Math.min(validMin, validMax)
+    const hi = Math.max(validMin, validMax)
+    setRecipe(prev => ({
+      ...prev,
+      targetTimeMin: lo,
+      targetTimeMax: hi,
+      targetTime: Math.round((lo + hi) / 2),
+      targetTimeRange: formatTimeRange(lo, hi),
+    }))
+    setTargetMinInput(formatTime(lo))
+    setTargetMaxInput(formatTime(hi))
+  }
+
   const handleDoneEditing = () => {
+    commitTargetTimeInputs()
     setEditing(false)
     if (Object.keys(beanOverrides).length > 0) {
       onBeanUpdate(beanOverrides)
@@ -291,8 +325,37 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
         </div>
       </div>
 
-      <div className="mt-4 text-xs text-brew-400 text-center">
-        Target time: <span className="text-brew-800 font-medium">{recipe.targetTimeRange || formatTime(recipe.targetTime)}</span>
+      <div className="mt-4 text-center">
+        <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Target Time</div>
+        {editing ? (
+          <div className="flex items-center justify-center gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={targetMinInput}
+              onChange={e => setTargetMinInput(e.target.value)}
+              onBlur={handleMinBlur}
+              placeholder="3:00"
+              className="w-16 text-center text-lg font-medium text-brew-800 bg-transparent
+                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+            />
+            <span className="text-brew-400 text-sm">to</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={targetMaxInput}
+              onChange={e => setTargetMaxInput(e.target.value)}
+              onBlur={handleMaxBlur}
+              placeholder="3:30"
+              className="w-16 text-center text-lg font-medium text-brew-800 bg-transparent
+                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+            />
+          </div>
+        ) : (
+          <div className="text-brew-800 font-medium">
+            {recipe.targetTimeRange || formatTime(recipe.targetTime)}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -595,8 +658,9 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
     doPersist(tappedSteps, updated) // immediate persist on user action
   }
 
-  const progress = Math.min(timer.elapsed / totalDuration, 1)
-  const overTime = timer.elapsed > totalDuration
+  const targetMax = recipe.targetTimeMax || recipe.targetTime || totalDuration
+  const progress = Math.min(timer.elapsed / targetMax, 1)
+  const overTime = timer.elapsed > targetMax
 
   // top-12/md:top-14 must match Header h-12/md:h-14 in Header.jsx
   return (
@@ -811,6 +875,8 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         ? steps[steps.length - 1].time + steps[steps.length - 1].duration
         : 210
 
+      const timeResult = computeTimeStatus(brewData.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
+
       const brew = {
         id: uuidv4(),
         brewScreenVersion: 1,
@@ -821,8 +887,11 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         waterGrams: recipe.waterGrams,
         grindSetting: recipe.grindSetting,
         waterTemp: recipe.waterTemp,
-        targetTime: totalDuration,
-        targetTimeRange: recipe.targetTimeRange || formatTime(totalDuration),
+        targetTime: recipe.targetTime || totalDuration,
+        targetTimeRange: recipe.targetTimeRange || formatTime(recipe.targetTime || totalDuration),
+        targetTimeMin: recipe.targetTimeMin || null,
+        targetTimeMax: recipe.targetTimeMax || null,
+        timeStatus: timeResult?.status || null,
         totalTime: brewData.elapsed,
         recipeSteps: recipe.steps,
         stepResults,
@@ -865,6 +934,11 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
     }
   }
 
+  const displayTotalDuration = steps.length > 0
+    ? steps[steps.length - 1].time + steps[steps.length - 1].duration
+    : 210
+  const displayTimeResult = computeTimeStatus(brewData.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, displayTotalDuration)
+
   return (
     <div className="px-4 pt-4 pb-28">
       {/* Summary */}
@@ -877,6 +951,17 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         <div className="text-sm text-brew-400 mt-1">
           Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
         </div>
+        {displayTimeResult && (
+          <div className={`text-sm font-semibold mt-1 ${
+            displayTimeResult.status === 'under' ? 'text-amber-500'
+              : displayTimeResult.status === 'over' ? 'text-red-500'
+              : 'text-green-600'
+          }`}>
+            {displayTimeResult.status === 'under' ? `${displayTimeResult.delta}s under target`
+              : displayTimeResult.status === 'over' ? `${displayTimeResult.delta}s over target`
+              : 'On target'}
+          </div>
+        )}
       </div>
 
       {/* Step Results */}
@@ -1053,7 +1138,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   // Build recipe from a bean's last brew, or return defaults
   const buildRecipeFromBean = useCallback((beanName) => {
     if (!beanName) {
-      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', steps: templates[0]?.steps || [], pourTemplateId: templates[0]?.id || null }
+      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: templates[0]?.steps || [], pourTemplateId: templates[0]?.id || null }
     }
     const lastBrew = getLastBrewOfBean(beanName)
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
@@ -1067,6 +1152,8 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       waterTemp: lastBrew?.waterTemp || 200,
       targetTime: lastBrew?.targetTime || method.defaultTotalTime,
       targetTimeRange: lastBrew?.targetTimeRange || '',
+      targetTimeMin: lastBrew?.targetTimeMin || null,
+      targetTimeMax: lastBrew?.targetTimeMax || null,
       steps,
       pourTemplateId: lastBrew?.pourTemplateId || templates[0]?.id || null,
     }
@@ -1100,8 +1187,9 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     setSelectedBean(null)
     setBrewData(null)
     setSavedBrewState(null)
+    setRecipe(buildRecipeFromBean(null))
     setPhase('pick')
-  }, [])
+  }, [buildRecipeFromBean])
 
   // Update bean fields — batched, called once when editing completes
   const handleBeanUpdate = useCallback((overrides) => {

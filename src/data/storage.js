@@ -303,6 +303,31 @@ export function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+export function parseTime(str) {
+  if (!str || typeof str !== 'string') return null
+  const match = str.trim().match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return null
+  return parseInt(match[1], 10) * 60 + parseInt(match[2], 10)
+}
+
+export function formatTimeRange(min, max) {
+  if (min == null || max == null) return formatTime(min ?? max)
+  if (min === max) return formatTime(min)
+  return `${formatTime(min)} - ${formatTime(max)}`
+}
+
+const SINGLE_TARGET_TOLERANCE_SECS = 10
+
+export function computeTimeStatus(elapsed, targetTimeMin, targetTimeMax, targetTime, fallbackDuration) {
+  const tMin = targetTimeMin || targetTime || fallbackDuration
+  const tMax = targetTimeMax || targetTime || fallbackDuration
+  if (tMin == null) return null
+  const tolerance = tMin === tMax ? SINGLE_TARGET_TOLERANCE_SECS : 0
+  if (elapsed < tMin - tolerance) return { status: 'under', delta: tMin - elapsed }
+  if (elapsed > tMax + tolerance) return { status: 'over', delta: elapsed - tMax }
+  return { status: 'on-target', delta: 0 }
+}
+
 export function getLastBrew() {
   // Returns the most recent brew — used to pre-populate the form
   // This is the "pulls up what you last used" feature from your Feb 9 transcript
