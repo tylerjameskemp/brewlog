@@ -628,17 +628,20 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
         </div>
 
         {/* Controls — fixed height container prevents layout shift */}
-        <div className="flex items-center justify-center h-20">
+        <div className="flex flex-col items-center justify-center h-24">
           {!hasStarted && (
-            <button
-              onClick={() => timer.play()}
-              className="w-[72px] h-[72px] rounded-full bg-brew-800 text-white text-2xl
-                         shadow-xl flex items-center justify-center
-                         hover:bg-brew-700 active:scale-95 transition-all"
-              aria-label="Start brew"
-            >
-              ▶
-            </button>
+            <>
+              <button
+                onClick={() => timer.play()}
+                className="w-[72px] h-[72px] rounded-full bg-brew-800 text-white text-2xl
+                           shadow-xl flex items-center justify-center
+                           hover:bg-brew-700 active:scale-95 transition-all"
+                aria-label="Start brew"
+              >
+                ▶
+              </button>
+              <div className="text-xs text-brew-400 mt-1.5">Tap to start brewing</div>
+            </>
           )}
           {timer.running && (
             <button
@@ -664,29 +667,50 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
       {/* Step Teleprompter */}
       <div ref={stepsContainerRef} className="flex-1 px-4 pb-36 overflow-y-auto">
         {steps.map((step, i) => {
-          const isCurrent = i === currentStepIdx && timer.running
+          const isCurrent = i === currentStepIdx && hasStarted
           const skipped = skippedSteps[step.id]
-          const isPast = timer.elapsed >= step.time + step.duration || skipped
+          const isPast = hasStarted && (timer.elapsed >= step.time + step.duration || skipped)
           const isFuture = !isCurrent && !isPast
+          const isNext = isFuture && i === currentStepIdx + 1 && hasStarted
           const tappedAt = tappedSteps[step.id]
           const variance = tappedAt !== undefined ? tappedAt - step.time : null
+
+          // Past steps (not skipped) collapse to a compact single line
+          if (isPast && !skipped) {
+            return (
+              <div
+                key={step.id}
+                ref={el => (stepRefs.current[step.id] = el)}
+                className="py-2 px-3 mb-1 rounded-lg bg-gray-50 animate-fade-in
+                           motion-reduce:animate-none"
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-500 text-xs">✓</span>
+                    <span className="text-sm text-gray-400">{step.name}</span>
+                  </div>
+                  <span className="text-xs tabular-nums text-gray-300">
+                    {tappedAt !== undefined ? formatTime(tappedAt) : formatTime(step.time)}
+                  </span>
+                </div>
+              </div>
+            )
+          }
 
           return (
             <div
               key={step.id}
               ref={el => (stepRefs.current[step.id] = el)}
               onClick={() => timer.running && !isPast && !skipped && handleTapStep(step)}
-              className={`p-3 mb-1.5 rounded-lg relative transition-[background-color,color,opacity,border-color] duration-400 min-h-[44px]
+              className={`p-3 mb-1.5 rounded-lg relative transition-[background-color,color,opacity,border-color,box-shadow] duration-400 min-h-[44px]
                           motion-reduce:transition-none ${
                 skipped
                   ? 'bg-gray-50 text-gray-300 line-through opacity-40'
                   : isCurrent
-                    ? 'bg-brew-50 border-l-4 border-l-brew-600 text-brew-900'
-                    : isPast
-                      ? 'bg-gray-50 text-gray-400'
-                      : 'bg-white border border-gray-100'
-              } ${timer.running && isFuture ? 'opacity-40' : ''} ${
-                timer.running && !isPast && !skipped ? 'cursor-pointer' : ''
+                    ? 'bg-amber-50 border-l-4 border-l-brew-600 text-brew-900 shadow-sm'
+                    : 'bg-white border border-gray-100'
+              } ${hasStarted && isFuture ? (isNext ? 'opacity-70' : 'opacity-40') : ''
+              } ${timer.running && !isPast && !skipped ? 'cursor-pointer' : ''
               }`}
             >
               {/* Skip button */}
@@ -703,7 +727,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
 
               <div className="flex justify-between items-center pr-8">
                 <div className="flex items-center gap-2.5">
-                  <span className="font-bold text-sm">{step.name}</span>
+                  <span className={`text-sm ${isCurrent ? 'font-bold' : 'font-semibold'}`}>{step.name}</span>
                   {step.waterTo != null && (
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-md text-brew-500 bg-brew-50">
                       → {step.waterTo}g
@@ -724,8 +748,8 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
                 </div>
               )}
 
-              {/* Tap prompt */}
-              {isCurrent && tappedAt === undefined && !skipped && (
+              {/* Tap prompt — only while running (user can't tap during pause) */}
+              {isCurrent && timer.running && tappedAt === undefined && !skipped && (
                 <div className="mt-2 text-[11px] text-brew-400">
                   Tap when you start this step
                 </div>
