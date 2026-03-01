@@ -37,9 +37,16 @@ export default function useTimer() {
   }, [])
 
   const stop = useCallback(() => {
+    // Account for final pause gap if currently paused
+    if (pausedAtRef.current !== null) {
+      pausedDurationRef.current += Date.now() - pausedAtRef.current
+      pausedAtRef.current = null
+    }
     clearInterval(intervalRef.current)
     setRunning(false)
-    return computeElapsed()
+    const finalElapsed = computeElapsed()
+    setElapsed(finalElapsed)
+    return finalElapsed
   }, [computeElapsed])
 
   // Restore from saved state (for resume after page refresh)
