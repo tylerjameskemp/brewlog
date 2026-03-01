@@ -757,14 +757,13 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
 }
 
 // ─── Phase 3: Post-Brew Commit ──────────────────────────────
-function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBeans, onNavigate, onFlowChange, onStartNewBrew, onCommitted }) {
+function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBeans, onCommit }) {
   const [brewNotes, setBrewNotes] = useState('')
   const [nextBrewChanges, setNextBrewChanges] = useState('')
   const [flavors, setFlavors] = useState([])
   const [body, setBody] = useState('')
   const [rating, setRating] = useState(null)
   const [issues, setIssues] = useState([])
-  const [committed, setCommitted] = useState(false)
   const savingRef = useRef(false)
 
   const steps = recipe.steps
@@ -836,44 +835,10 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
       setBeans(getBeans())
 
       clearActiveBrew()
-      setCommitted(true)
-      onFlowChange(false)
-      onCommitted()
+      onCommit()
     } finally {
       savingRef.current = false
     }
-  }
-
-  if (committed) {
-    return (
-      <div className="flex flex-col items-center justify-center p-10 pb-32 text-center
-                      animate-fade-in motion-reduce:animate-none" style={{ minHeight: 'calc(100vh - 3rem)' }}>
-        <div className="w-20 h-20 rounded-full bg-brew-50 flex items-center justify-center
-                        text-4xl text-brew-500 mb-5">
-          ✓
-        </div>
-        <h2 className="text-2xl font-semibold text-brew-800 mb-2">Brew Committed</h2>
-        <p className="text-sm text-brew-400 leading-relaxed max-w-[260px]">
-          Your brew report is saved. You can edit it anytime from your brew history.
-        </p>
-        <div className="flex flex-col gap-3 mt-6 w-full max-w-[260px]">
-          <button
-            onClick={onStartNewBrew}
-            className="bg-brew-800 text-white rounded-xl px-8 py-3.5 text-sm font-semibold
-                       hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
-          >
-            Start New Brew
-          </button>
-          <button
-            onClick={() => onNavigate('history')}
-            className="border border-brew-200 text-brew-600 rounded-xl px-8 py-3.5 text-sm font-semibold
-                       hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
-          >
-            View in History
-          </button>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -1058,7 +1023,6 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   const [selectedBean, setSelectedBean] = useState(initialBean || null)
   const [brewData, setBrewData] = useState(null)
   const [savedBrewState, setSavedBrewState] = useState(null)
-  const [committed, setCommitted] = useState(false)
 
   const templates = useMemo(() => getPourTemplates(), [])
 
@@ -1102,10 +1066,18 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     setPhase('recipe')
   }, [buildRecipeFromBean])
 
-  // Report flow state to parent (hides MobileNav during flow phases)
+  // Report flow state to parent (hides MobileNav during active flow phases)
   useEffect(() => {
-    onFlowChange(phase !== 'pick')
+    onFlowChange(phase !== 'pick' && phase !== 'committed')
   }, [phase, onFlowChange])
+
+  // Reset all flow state for a new brew
+  const handleStartNewBrew = useCallback(() => {
+    setSelectedBean(null)
+    setBrewData(null)
+    setSavedBrewState(null)
+    setPhase('pick')
+  }, [])
 
   // Update bean fields — batched, called once when editing completes
   const handleBeanUpdate = useCallback((overrides) => {
@@ -1159,7 +1131,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
 
   return (
     <div>
-      {phase !== 'pick' && !committed && <PhaseIndicator phase={phase} />}
+      {phase !== 'pick' && phase !== 'committed' && <PhaseIndicator phase={phase} />}
 
       {phase === 'pick' && (
         <BeanPicker beans={beans} onSelect={handleBeanSelect} />
@@ -1199,17 +1171,38 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
           equipment={equipment}
           onBrewSaved={onBrewSaved}
           setBeans={setBeans}
-          onNavigate={onNavigate}
-          onFlowChange={onFlowChange}
-          onCommitted={() => setCommitted(true)}
-          onStartNewBrew={() => {
-            setSelectedBean(null)
-            setBrewData(null)
-            setSavedBrewState(null)
-            setCommitted(false)
-            setPhase('pick')
-          }}
+          onCommit={() => setPhase('committed')}
         />
+      )}
+
+      {phase === 'committed' && (
+        <div className="flex flex-col items-center justify-center p-10 pb-32 text-center
+                        animate-fade-in motion-reduce:animate-none min-h-[calc(100vh-3rem)]">
+          <div className="w-20 h-20 rounded-full bg-brew-50 flex items-center justify-center
+                          text-4xl text-brew-500 mb-5">
+            ✓
+          </div>
+          <h2 className="text-2xl font-semibold text-brew-800 mb-2">Brew Committed</h2>
+          <p className="text-sm text-brew-400 leading-relaxed max-w-[260px]">
+            Your brew report is saved. You can edit it anytime from your brew history.
+          </p>
+          <div className="flex flex-col gap-3 mt-6 w-full max-w-[260px]">
+            <button
+              onClick={handleStartNewBrew}
+              className="bg-brew-800 text-white rounded-xl px-8 py-3.5 text-sm font-semibold
+                         hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
+            >
+              Start New Brew
+            </button>
+            <button
+              onClick={() => onNavigate('history')}
+              className="border border-brew-200 text-brew-600 rounded-xl px-8 py-3.5 text-sm font-semibold
+                         hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
+            >
+              View in History
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
