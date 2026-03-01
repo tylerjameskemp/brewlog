@@ -543,13 +543,18 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
     }
   }
 
-  // Auto-scroll to current step
+  // Auto-scroll to current step within the steps container
   useEffect(() => {
     if (!timer.running) return
     const currentStep = steps[currentStepIdx]
     const ref = stepRefs.current[currentStep?.id]
-    if (ref) {
-      ref.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const container = stepsContainerRef.current
+    if (ref && container) {
+      const stepTop = ref.offsetTop - container.offsetTop
+      container.scrollTo({
+        top: Math.max(0, stepTop - 16),
+        behavior: 'smooth'
+      })
     }
   }, [currentStepIdx, timer.running, steps])
 
@@ -593,68 +598,69 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
   const overTime = timer.elapsed > totalDuration
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-700 motion-reduce:transition-none ${
+    <div className={`fixed top-12 md:top-14 left-0 right-0 bottom-0 flex flex-col
+                     transition-colors duration-700 motion-reduce:transition-none z-10 ${
       timer.running ? 'bg-white' : 'bg-brew-50'
     }`}>
-      {/* Timer Display */}
-      <div className="text-center pt-10 pb-5 px-5">
-        <div className="font-mono text-7xl font-light text-brew-800 leading-none tabular-nums tracking-tight">
-          {formatTime(timer.elapsed)}
-        </div>
-        <div className="text-xs text-brew-400 mt-2">
-          Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
+      {/* Pinned timer area */}
+      <div className="bg-white shadow-md shrink-0">
+        {/* Timer Display */}
+        <div className="px-5 pt-6 pb-3">
+          <div className="flex items-baseline justify-between">
+            <div className={`font-mono text-7xl font-medium leading-none tabular-nums tracking-tight ${
+              overTime ? 'text-red-600' : 'text-gray-900'
+            }`}>
+              {formatTime(timer.elapsed)}
+            </div>
+            <div className="text-sm text-brew-400 tabular-nums">
+              Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 linear ${
+                overTime ? 'bg-red-500' : 'bg-brew-500'
+              }`}
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="mx-auto mt-4 max-w-[200px] h-0.5 bg-brew-200 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-1000 linear ${
-              overTime ? 'bg-red-500' : 'bg-brew-500'
-            }`}
-            style={{ width: `${progress * 100}%` }}
-          />
+        {/* Controls — fixed height container prevents layout shift */}
+        <div className="flex items-center justify-center h-20 shrink-0">
+          {!hasStarted && (
+            <button
+              onClick={() => timer.play()}
+              className="w-[72px] h-[72px] rounded-full bg-brew-800 text-white text-2xl
+                         shadow-xl flex items-center justify-center
+                         hover:bg-brew-700 active:scale-95 transition-all min-h-[44px]"
+              aria-label="Start brew"
+            >
+              ▶
+            </button>
+          )}
+          {timer.running && (
+            <button
+              onClick={() => timer.pause()}
+              className="border border-brew-200 rounded-full px-5 py-1.5 text-xs text-brew-400
+                         hover:bg-brew-50 min-h-[44px] min-w-[44px]"
+            >
+              Pause
+            </button>
+          )}
+          {!timer.running && hasStarted && (
+            <button
+              onClick={() => timer.play()}
+              className="bg-brew-800 text-white rounded-full px-6 py-2 text-sm font-semibold
+                         hover:bg-brew-700 active:scale-95 transition-all min-h-[44px]"
+            >
+              Resume
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Controls */}
-      {!hasStarted && (
-        <div className="text-center pb-5">
-          <button
-            onClick={() => timer.play()}
-            className="w-[72px] h-[72px] rounded-full bg-brew-800 text-white text-2xl
-                       shadow-xl flex items-center justify-center mx-auto
-                       hover:bg-brew-700 active:scale-95 transition-all min-h-[44px]"
-            aria-label="Start brew"
-          >
-            ▶
-          </button>
-          <div className="text-sm text-brew-400 mt-2.5">Tap to start brewing</div>
-        </div>
-      )}
-
-      {timer.running && (
-        <div className="text-center pb-3">
-          <button
-            onClick={() => timer.pause()}
-            className="border border-brew-200 rounded-full px-5 py-1.5 text-xs text-brew-400
-                       hover:bg-brew-50 min-h-[44px] min-w-[44px]"
-          >
-            Pause
-          </button>
-        </div>
-      )}
-
-      {!timer.running && hasStarted && (
-        <div className="text-center pb-3 flex gap-3 justify-center">
-          <button
-            onClick={() => timer.play()}
-            className="bg-brew-800 text-white rounded-full px-6 py-2 text-sm font-semibold
-                       hover:bg-brew-700 active:scale-95 transition-all min-h-[44px]"
-          >
-            Resume
-          </button>
-        </div>
-      )}
 
       {/* Step Teleprompter */}
       <div ref={stepsContainerRef} className="flex-1 px-4 pb-36 overflow-y-auto">
@@ -671,15 +677,16 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
               key={step.id}
               ref={el => (stepRefs.current[step.id] = el)}
               onClick={() => timer.running && !isPast && !skipped && handleTapStep(step)}
-              className={`p-4 mb-2 rounded-xl relative transition-all duration-400 motion-reduce:transition-none ${
+              className={`p-3 mb-1.5 rounded-lg relative transition-all duration-400 min-h-[44px]
+                          motion-reduce:transition-none ${
                 skipped
-                  ? 'bg-brew-50 text-brew-200 line-through opacity-40'
+                  ? 'bg-gray-50 text-gray-300 line-through opacity-40'
                   : isCurrent
-                    ? 'bg-brew-800 text-white'
+                    ? 'bg-brew-50 border-l-4 border-l-brew-600 text-brew-900'
                     : isPast
-                      ? 'bg-brew-50 text-brew-400'
-                      : 'bg-white border border-brew-100'
-              } ${timer.running && isFuture ? 'opacity-50' : ''} ${
+                      ? 'bg-gray-50 text-gray-400'
+                      : 'bg-white border border-gray-100'
+              } ${timer.running && isFuture ? 'opacity-40' : ''} ${
                 timer.running && !isPast && !skipped ? 'cursor-pointer' : ''
               }`}
             >
@@ -687,10 +694,8 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
               {timer.running && !isPast && !skipped && (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleSkipStep(step) }}
-                  className={`absolute top-2 right-2 text-base px-2 py-1 leading-none
-                              min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                    isCurrent ? 'text-white/40' : 'text-brew-200'
-                  }`}
+                  className="absolute top-1 right-1 text-base px-2 py-1 leading-none
+                              min-h-[44px] min-w-[44px] flex items-center justify-center text-brew-300"
                   aria-label={`Skip ${step.name}`}
                 >
                   ✕
@@ -701,11 +706,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
                 <div className="flex items-center gap-2.5">
                   <span className="font-bold text-sm">{step.name}</span>
                   {step.waterTo != null && (
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${
-                      isCurrent
-                        ? 'text-amber-200 bg-white/10'
-                        : 'text-brew-500 bg-brew-50'
-                    }`}>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-md text-brew-500 bg-brew-50">
                       → {step.waterTo}g
                     </span>
                   )}
@@ -718,9 +719,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
               {/* Variance indicator */}
               {variance !== null && !skipped && (
                 <div className={`mt-1.5 text-[11px] font-semibold ${
-                  isCurrent
-                    ? Math.abs(variance) <= 3 ? 'text-green-300' : 'text-amber-300'
-                    : Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
+                  Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
                 }`}>
                   Tapped at {formatTime(tappedAt)} ({variance > 0 ? '+' : ''}{variance}s)
                 </div>
@@ -728,7 +727,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
 
               {/* Tap prompt */}
               {isCurrent && tappedAt === undefined && !skipped && (
-                <div className="mt-2 text-[11px] text-white/50">
+                <div className="mt-2 text-[11px] text-brew-400">
                   Tap when you start this step
                 </div>
               )}
