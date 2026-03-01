@@ -403,12 +403,13 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
         <div className="flex items-center gap-2 mb-1">
           <button
             onClick={onBack}
-            className="text-brew-400 hover:text-brew-600 min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2"
+            className="text-brew-500 hover:text-brew-700 min-h-[44px] flex items-center gap-1 -ml-2 px-2"
             aria-label="Back to bean selection"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 4l-6 6 6 6" />
             </svg>
+            <span className="text-sm font-medium">Back</span>
           </button>
           <div className="text-[11px] text-brew-400 uppercase tracking-widest">Recipe</div>
         </div>
@@ -756,7 +757,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
 }
 
 // ─── Phase 3: Post-Brew Commit ──────────────────────────────
-function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBeans, onNavigate }) {
+function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBeans, onNavigate, onFlowChange, onStartNewBrew, onCommitted }) {
   const [brewNotes, setBrewNotes] = useState('')
   const [nextBrewChanges, setNextBrewChanges] = useState('')
   const [flavors, setFlavors] = useState([])
@@ -836,6 +837,8 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
 
       clearActiveBrew()
       setCommitted(true)
+      onFlowChange(false)
+      onCommitted()
     } finally {
       savingRef.current = false
     }
@@ -843,8 +846,8 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
 
   if (committed) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-10 text-center
-                      animate-fade-in motion-reduce:animate-none">
+      <div className="flex flex-col items-center justify-center p-10 pb-32 text-center
+                      animate-fade-in motion-reduce:animate-none" style={{ minHeight: 'calc(100vh - 3rem)' }}>
         <div className="w-20 h-20 rounded-full bg-brew-50 flex items-center justify-center
                         text-4xl text-brew-500 mb-5">
           ✓
@@ -853,13 +856,22 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         <p className="text-sm text-brew-400 leading-relaxed max-w-[260px]">
           Your brew report is saved. You can edit it anytime from your brew history.
         </p>
-        <button
-          onClick={() => onNavigate('history')}
-          className="mt-6 bg-brew-800 text-white rounded-xl px-8 py-3.5 text-sm font-semibold
-                     hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
-        >
-          View in History
-        </button>
+        <div className="flex flex-col gap-3 mt-6 w-full max-w-[260px]">
+          <button
+            onClick={onStartNewBrew}
+            className="bg-brew-800 text-white rounded-xl px-8 py-3.5 text-sm font-semibold
+                       hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
+          >
+            Start New Brew
+          </button>
+          <button
+            onClick={() => onNavigate('history')}
+            className="border border-brew-200 text-brew-600 rounded-xl px-8 py-3.5 text-sm font-semibold
+                       hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
+          >
+            View in History
+          </button>
+        </div>
       </div>
     )
   }
@@ -1046,6 +1058,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   const [selectedBean, setSelectedBean] = useState(initialBean || null)
   const [brewData, setBrewData] = useState(null)
   const [savedBrewState, setSavedBrewState] = useState(null)
+  const [committed, setCommitted] = useState(false)
 
   const templates = useMemo(() => getPourTemplates(), [])
 
@@ -1146,7 +1159,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
 
   return (
     <div>
-      {phase !== 'pick' && <PhaseIndicator phase={phase} />}
+      {phase !== 'pick' && !committed && <PhaseIndicator phase={phase} />}
 
       {phase === 'pick' && (
         <BeanPicker beans={beans} onSelect={handleBeanSelect} />
@@ -1187,6 +1200,15 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
           onBrewSaved={onBrewSaved}
           setBeans={setBeans}
           onNavigate={onNavigate}
+          onFlowChange={onFlowChange}
+          onCommitted={() => setCommitted(true)}
+          onStartNewBrew={() => {
+            setSelectedBean(null)
+            setBrewData(null)
+            setSavedBrewState(null)
+            setCommitted(false)
+            setPhase('pick')
+          }}
         />
       )}
     </div>
