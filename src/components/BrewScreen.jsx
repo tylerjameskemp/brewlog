@@ -331,7 +331,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
           <div className="flex items-center justify-center gap-2">
             <input
               type="text"
-              inputMode="numeric"
               value={targetMinInput}
               onChange={e => setTargetMinInput(e.target.value)}
               onBlur={handleMinBlur}
@@ -342,7 +341,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             <span className="text-brew-400 text-sm">to</span>
             <input
               type="text"
-              inputMode="numeric"
               value={targetMaxInput}
               onChange={e => setTargetMaxInput(e.target.value)}
               onBlur={handleMaxBlur}
