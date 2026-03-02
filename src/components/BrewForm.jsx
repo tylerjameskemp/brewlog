@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { saveBrew, updateBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans } from '../data/storage'
+import { saveBrew, updateBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans, formatTime, parseTimeRange, formatTimeRange } from '../data/storage'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import StepEditor from './StepEditor'
@@ -56,6 +56,9 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       grindSetting: source?.grindSetting ?? (grinder.settingType === 'ode' ? '6' : 6),
       waterTemp: source?.waterTemp || 205,
       targetTime: source?.targetTime || method.defaultTotalTime,
+      targetTimeRange: source?.targetTimeRange || '',
+      targetTimeMin: source?.targetTimeMin || null,
+      targetTimeMax: source?.targetTimeMax || null,
 
       // Brew execution — edit mode populates from saved data, new mode starts empty
       totalTime: editBrew?.totalTime || '',
@@ -73,6 +76,11 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       recipeSteps: getRecipeSteps(source),
       steps: editBrew ? getActualSteps(editBrew) : [],
     }
+  })
+
+  const [targetTimeInput, setTargetTimeInput] = useState(() => {
+    const source = editBrew || lastBrew
+    return source?.targetTimeRange || formatTime(source?.targetTime || method.defaultTotalTime)
   })
 
   const [saved, setSaved] = useState(false)
@@ -123,11 +131,15 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
           grindSetting: beanBrew.grindSetting ?? prev.grindSetting,
           waterTemp: beanBrew.waterTemp || prev.waterTemp,
           targetTime: beanBrew.targetTime || prev.targetTime,
+          targetTimeRange: beanBrew.targetTimeRange || prev.targetTimeRange,
+          targetTimeMin: beanBrew.targetTimeMin || prev.targetTimeMin,
+          targetTimeMax: beanBrew.targetTimeMax || prev.targetTimeMax,
           recipeSteps: canChooseSource
             ? recipeSteps
             : (hasRecipe ? recipeSteps : actualSteps),
           steps: [],
         }))
+        setTargetTimeInput(beanBrew.targetTimeRange || formatTime(beanBrew.targetTime || form.targetTime))
         setBeanRecipeSource(beanBrew.beanName)
         setLastBeanBrew(beanBrew)
         setPendingStepChoice(canChooseSource)
@@ -170,14 +182,6 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     }))
     setPendingStepChoice(false)
     setSaved(false)
-  }
-
-  // Format time display (e.g., "3:30")
-  const formatTime = (seconds) => {
-    if (!seconds) return ''
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
   }
 
   // Save the brew (guarded against double-tap)
@@ -447,20 +451,29 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
           {/* Target brew time */}
           <div className="col-span-2">
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Target Time (sec)</label>
+            <label className="text-xs font-medium text-brew-500 mb-1 block">Target Time (M:SS or M:SS - M:SS)</label>
             <input
-              type="number"
-              value={form.targetTime}
-              onChange={(e) => update('targetTime', Number(e.target.value))}
-              placeholder={method.defaultTotalTime}
-              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+              type="text"
+              value={targetTimeInput}
+              onChange={e => setTargetTimeInput(e.target.value)}
+              onBlur={() => {
+                const range = parseTimeRange(targetTimeInput)
+                if (range) {
+                  setTargetTimeInput(formatTimeRange(range.min, range.max))
+                  setForm(prev => ({
+                    ...prev,
+                    targetTime: Math.round((range.min + range.max) / 2),
+                    targetTimeMin: range.min,
+                    targetTimeMax: range.max,
+                    targetTimeRange: formatTimeRange(range.min, range.max),
+                  }))
+                  setSaved(false)
+                }
+              }}
+              placeholder="3:00 - 3:30"
+              className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono text-center
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
-            {form.targetTime && (
-              <div className="text-xs text-brew-400 mt-1 text-center">
-                {formatTime(form.targetTime)}
-              </div>
-            )}
           </div>
         </div>
       </Section>
