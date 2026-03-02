@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
   getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
-  parseTime, formatTimeRange, computeTimeStatus,
+  parseTime, parseTimeRange, formatTimeRange, computeTimeStatus,
   getPourTemplates, saveBrew, saveBean, getBeans, updateBean,
   saveActiveBrew, getActiveBrew, clearActiveBrew,
 } from '../data/storage'
@@ -163,40 +163,29 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   const [editing, setEditing] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
   const [beanOverrides, setBeanOverrides] = useState({})
-  const [targetMinInput, setTargetMinInput] = useState(() => formatTime(recipe.targetTimeMin || recipe.targetTime))
-  const [targetMaxInput, setTargetMaxInput] = useState(() => formatTime(recipe.targetTimeMax || recipe.targetTime))
+  const [targetTimeInput, setTargetTimeInput] = useState(
+    () => recipe.targetTimeRange || formatTime(recipe.targetTime)
+  )
 
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const displayBean = Object.keys(beanOverrides).length > 0 ? { ...bean, ...beanOverrides } : bean
 
-  // Normalize a single field on blur (no swap — prevents value flicker when tabbing between fields)
-  const handleMinBlur = () => {
-    const val = parseTime(targetMinInput)
-    if (val !== null) setTargetMinInput(formatTime(val))
-  }
-  const handleMaxBlur = () => {
-    const val = parseTime(targetMaxInput)
-    if (val !== null) setTargetMaxInput(formatTime(val))
+  const handleTargetTimeBlur = () => {
+    const range = parseTimeRange(targetTimeInput)
+    if (range) setTargetTimeInput(formatTimeRange(range.min, range.max))
   }
 
-  // Full commit with auto-swap — called only on Done
   const commitTargetTimeInputs = () => {
-    const min = parseTime(targetMinInput)
-    const max = parseTime(targetMaxInput)
-    const validMin = min ?? max
-    const validMax = max ?? min
-    if (validMin == null) return
-    const lo = Math.min(validMin, validMax)
-    const hi = Math.max(validMin, validMax)
+    const range = parseTimeRange(targetTimeInput)
+    if (!range) return
     setRecipe(prev => ({
       ...prev,
-      targetTimeMin: lo,
-      targetTimeMax: hi,
-      targetTime: Math.round((lo + hi) / 2),
-      targetTimeRange: formatTimeRange(lo, hi),
+      targetTimeMin: range.min,
+      targetTimeMax: range.max,
+      targetTime: Math.round((range.min + range.max) / 2),
+      targetTimeRange: formatTimeRange(range.min, range.max),
     }))
-    setTargetMinInput(formatTime(lo))
-    setTargetMaxInput(formatTime(hi))
+    setTargetTimeInput(formatTimeRange(range.min, range.max))
   }
 
   const handleDoneEditing = () => {
@@ -328,27 +317,15 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
       <div className="mt-4 text-center">
         <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Target Time</div>
         {editing ? (
-          <div className="flex items-center justify-center gap-2">
-            <input
-              type="text"
-              value={targetMinInput}
-              onChange={e => setTargetMinInput(e.target.value)}
-              onBlur={handleMinBlur}
-              placeholder="3:00"
-              className="w-16 text-center text-lg font-medium text-brew-800 bg-transparent
-                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
-            />
-            <span className="text-brew-400 text-sm">to</span>
-            <input
-              type="text"
-              value={targetMaxInput}
-              onChange={e => setTargetMaxInput(e.target.value)}
-              onBlur={handleMaxBlur}
-              placeholder="3:30"
-              className="w-16 text-center text-lg font-medium text-brew-800 bg-transparent
-                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
-            />
-          </div>
+          <input
+            type="text"
+            value={targetTimeInput}
+            onChange={e => setTargetTimeInput(e.target.value)}
+            onBlur={handleTargetTimeBlur}
+            placeholder="3:00 - 3:30"
+            className="w-32 mx-auto text-center text-lg font-medium text-brew-800 bg-transparent
+                       border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base block"
+          />
         ) : (
           <div className="text-brew-800 font-medium">
             {recipe.targetTimeRange || formatTime(recipe.targetTime)}

@@ -310,6 +310,16 @@ export function parseTime(str) {
   return parseInt(match[1], 10) * 60 + parseInt(match[2], 10)
 }
 
+export function parseTimeRange(str) {
+  if (!str || typeof str !== 'string') return null
+  const parts = str.split(/\s*[-–]\s*/)
+  const min = parseTime(parts[0])
+  if (min === null) return null
+  const max = parts.length > 1 ? parseTime(parts[1]) : min
+  if (max === null) return null
+  return min <= max ? { min, max } : { min: max, max: min }
+}
+
 export function formatTimeRange(min, max) {
   if (min == null || max == null) return formatTime(min ?? max)
   if (min === max) return formatTime(min)
