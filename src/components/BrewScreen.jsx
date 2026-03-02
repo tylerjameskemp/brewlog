@@ -162,6 +162,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   const [changesAccepted, setChangesAccepted] = useState({})
   const [editing, setEditing] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
+  const [templatePicked, setTemplatePicked] = useState(() => recipe.steps.length > 0 || !!recipe.pourTemplateId)
   const [beanOverrides, setBeanOverrides] = useState({})
   const [targetTimeInput, setTargetTimeInput] = useState(
     () => recipe.targetTimeRange || formatTime(recipe.targetTime)
@@ -203,13 +204,13 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   }
 
   const handleTemplateSelect = (template) => {
-    setSelectedTemplateId(template.id)
+    setSelectedTemplateId(template?.id ?? null)
     setRecipe(prev => ({
       ...prev,
-      steps: template.steps,
-      pourTemplateId: template.id,
-      needsTemplatePick: false,
+      steps: template?.steps ?? [],
+      pourTemplateId: template?.id ?? null,
     }))
+    setTemplatePicked(true)
   }
 
   const updateField = (field, value) => {
@@ -507,7 +508,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
       )}
 
       {/* Template Picker (new beans with no prior brews) */}
-      {recipe.needsTemplatePick ? (
+      {!templatePicked ? (
         <div className="px-4 mt-4">
           <div className="text-sm font-medium text-brew-700 mb-1">Choose a pour template</div>
           <div className="text-xs text-brew-400 mb-3">Pick a starting recipe, or go custom</div>
@@ -519,8 +520,8 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
                   key={t.id}
                   onClick={() => handleTemplateSelect(t)}
                   className="w-full text-left p-4 rounded-2xl border border-brew-200
-                             bg-white hover:bg-brew-50 hover:border-brew-400 transition-all
-                             min-h-[44px]"
+                             bg-white shadow-sm hover:bg-brew-50 hover:border-brew-400
+                             active:scale-[0.99] transition-all min-h-[44px]"
                 >
                   <div className="font-medium text-brew-800 text-sm">{t.name}</div>
                   <div className="text-xs text-brew-400 mt-1">
@@ -530,18 +531,10 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               )
             })}
             <button
-              onClick={() => {
-                setSelectedTemplateId(null)
-                setRecipe(prev => ({
-                  ...prev,
-                  steps: [],
-                  pourTemplateId: null,
-                  needsTemplatePick: false,
-                }))
-              }}
+              onClick={() => handleTemplateSelect(null)}
               className="w-full text-left p-4 rounded-2xl border border-dashed border-brew-300
-                         bg-brew-50/50 hover:bg-brew-50 hover:border-brew-400 transition-all
-                         min-h-[44px]"
+                         bg-brew-50/50 shadow-sm hover:bg-brew-50 hover:border-brew-400
+                         active:scale-[0.99] transition-all min-h-[44px]"
             >
               <div className="font-medium text-brew-600 text-sm">Custom</div>
               <div className="text-xs text-brew-400 mt-1">Timer only — no step guidance</div>
@@ -1161,7 +1154,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   const buildRecipeFromBean = useCallback((beanName) => {
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
     if (!beanName) {
-      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: [], pourTemplateId: null, needsTemplatePick: false }
+      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: [], pourTemplateId: null }
     }
     const lastBrew = getLastBrewOfBean(beanName)
 
@@ -1181,16 +1174,15 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
         targetTimeMax: lastBrew.targetTimeMax || null,
         steps,
         pourTemplateId: lastBrew.pourTemplateId || templates[0]?.id || null,
-        needsTemplatePick: false,
       }
     }
 
-    // No prior brew for this bean — show template picker
+    // No prior brew for this bean — empty steps, user picks template in RecipeAssembly
     return {
       coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200,
       targetTime: method.defaultTotalTime, targetTimeRange: '',
       targetTimeMin: null, targetTimeMax: null,
-      steps: [], pourTemplateId: null, needsTemplatePick: true,
+      steps: [], pourTemplateId: null,
     }
   }, [equipment, templates])
 
