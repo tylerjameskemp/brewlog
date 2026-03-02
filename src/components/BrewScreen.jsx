@@ -162,6 +162,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   const [changesAccepted, setChangesAccepted] = useState({})
   const [editing, setEditing] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
+  const [templatePicked, setTemplatePicked] = useState(() => recipe.steps.length > 0 || !!recipe.pourTemplateId)
   const [beanOverrides, setBeanOverrides] = useState({})
   const [targetTimeInput, setTargetTimeInput] = useState(
     () => recipe.targetTimeRange || formatTime(recipe.targetTime)
@@ -203,12 +204,13 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   }
 
   const handleTemplateSelect = (template) => {
-    setSelectedTemplateId(template.id)
+    setSelectedTemplateId(template?.id ?? null)
     setRecipe(prev => ({
       ...prev,
-      steps: template.steps,
-      pourTemplateId: template.id,
+      steps: template?.steps ?? [],
+      pourTemplateId: template?.id ?? null,
     }))
+    setTemplatePicked(true)
   }
 
   const updateField = (field, value) => {
@@ -505,46 +507,84 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
         </div>
       )}
 
-      {/* Swipeable Cards */}
-      <div className="mt-4">
-        <SwipeCards cards={[essentialsCard, stepsCard, originCard]} currentIndex={cardIndex} onSwipe={handleSwipe} />
-      </div>
-
-      {/* Pour Template Selector */}
-      {templates.length > 0 && (
+      {/* Template Picker (new beans with no prior brews) */}
+      {!templatePicked ? (
         <div className="px-4 mt-4">
-          <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-2">Pour Templates</div>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-            {templates.map(t => (
-              <button
-                key={t.id}
-                onClick={() => handleTemplateSelect(t)}
-                className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-sm border transition-all
-                            min-h-[44px] shrink-0 ${
-                  t.id === selectedTemplateId
-                    ? 'bg-brew-50 border-brew-500 text-brew-500 font-semibold'
-                    : 'bg-white border-brew-200 text-brew-400'
-                }`}
-              >
-                {t.name}
-              </button>
-            ))}
+          <div className="text-sm font-medium text-brew-700 mb-1">Choose a pour template</div>
+          <div className="text-xs text-brew-400 mb-3">Pick a starting recipe, or go custom</div>
+          <div className="space-y-2">
+            {templates.map(t => {
+              const totalWater = t.steps.reduce((max, s) => Math.max(max, s.waterTo || 0), 0)
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => handleTemplateSelect(t)}
+                  className="w-full text-left p-4 rounded-2xl border border-brew-200
+                             bg-white shadow-sm hover:bg-brew-50 hover:border-brew-400
+                             active:scale-[0.99] transition-all min-h-[44px]"
+                >
+                  <div className="font-medium text-brew-800 text-sm">{t.name}</div>
+                  <div className="text-xs text-brew-400 mt-1">
+                    {t.steps.length} steps · {totalWater}g total water
+                  </div>
+                </button>
+              )
+            })}
+            <button
+              onClick={() => handleTemplateSelect(null)}
+              className="w-full text-left p-4 rounded-2xl border border-dashed border-brew-300
+                         bg-brew-50/50 shadow-sm hover:bg-brew-50 hover:border-brew-400
+                         active:scale-[0.99] transition-all min-h-[44px]"
+            >
+              <div className="font-medium text-brew-600 text-sm">Custom</div>
+              <div className="text-xs text-brew-400 mt-1">Timer only — no step guidance</div>
+            </button>
           </div>
         </div>
-      )}
+      ) : (
+        <>
+          {/* Swipeable Cards */}
+          <div className="mt-4">
+            <SwipeCards cards={[essentialsCard, stepsCard, originCard]} currentIndex={cardIndex} onSwipe={handleSwipe} />
+          </div>
 
-      {/* Brew This CTA */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
-                      bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
-        <button
-          onClick={onStartBrew}
-          className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
-                     shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
-                     pointer-events-auto min-h-[44px]"
-        >
-          Brew This
-        </button>
-      </div>
+          {/* Pour Template Selector */}
+          {templates.length > 0 && (
+            <div className="px-4 mt-4">
+              <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-2">Pour Templates</div>
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+                {templates.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => handleTemplateSelect(t)}
+                    className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-sm border transition-all
+                                min-h-[44px] shrink-0 ${
+                      t.id === selectedTemplateId
+                        ? 'bg-brew-50 border-brew-500 text-brew-500 font-semibold'
+                        : 'bg-white border-brew-200 text-brew-400'
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Brew This CTA */}
+          <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
+                          bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
+            <button
+              onClick={onStartBrew}
+              className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
+                         shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
+                         pointer-events-auto min-h-[44px]"
+            >
+              Brew This
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -1112,25 +1152,37 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
 
   // Build recipe from a bean's last brew, or return defaults
   const buildRecipeFromBean = useCallback((beanName) => {
+    const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
     if (!beanName) {
-      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: templates[0]?.steps || [], pourTemplateId: templates[0]?.id || null }
+      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: [], pourTemplateId: null }
     }
     const lastBrew = getLastBrewOfBean(beanName)
-    const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
-    const steps = lastBrew?.recipeSteps
-      ? normalizeSteps(lastBrew.recipeSteps)
-      : templates[0]?.steps || []
+
+    // Bean has prior brew — auto-fill from it
+    if (lastBrew) {
+      const steps = lastBrew.recipeSteps
+        ? normalizeSteps(lastBrew.recipeSteps)
+        : templates[0]?.steps || []
+      return {
+        coffeeGrams: lastBrew.coffeeGrams || 15,
+        waterGrams: lastBrew.waterGrams || 240,
+        grindSetting: lastBrew.grindSetting || '',
+        waterTemp: lastBrew.waterTemp || 200,
+        targetTime: lastBrew.targetTime || method.defaultTotalTime,
+        targetTimeRange: lastBrew.targetTimeRange || '',
+        targetTimeMin: lastBrew.targetTimeMin || null,
+        targetTimeMax: lastBrew.targetTimeMax || null,
+        steps,
+        pourTemplateId: lastBrew.pourTemplateId || templates[0]?.id || null,
+      }
+    }
+
+    // No prior brew for this bean — empty steps, user picks template in RecipeAssembly
     return {
-      coffeeGrams: lastBrew?.coffeeGrams || 15,
-      waterGrams: lastBrew?.waterGrams || 240,
-      grindSetting: lastBrew?.grindSetting || '',
-      waterTemp: lastBrew?.waterTemp || 200,
-      targetTime: lastBrew?.targetTime || method.defaultTotalTime,
-      targetTimeRange: lastBrew?.targetTimeRange || '',
-      targetTimeMin: lastBrew?.targetTimeMin || null,
-      targetTimeMax: lastBrew?.targetTimeMax || null,
-      steps,
-      pourTemplateId: lastBrew?.pourTemplateId || templates[0]?.id || null,
+      coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200,
+      targetTime: method.defaultTotalTime, targetTimeRange: '',
+      targetTimeMin: null, targetTimeMax: null,
+      steps: [], pourTemplateId: null,
     }
   }, [equipment, templates])
 
