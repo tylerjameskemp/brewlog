@@ -350,6 +350,7 @@ function TagSelectWithOther({ label, options, value, onChange }) {
           value={isOther ? value : ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={`Custom ${label.toLowerCase()}...`}
+          maxLength={100}
           className="mt-2 w-full p-3 rounded-xl border border-brew-200 text-base
                      focus:outline-none focus:ring-2 focus:ring-brew-400"
         />
@@ -426,6 +427,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
                 value={form.name}
                 onChange={(e) => update('name', e.target.value)}
                 placeholder="e.g., Heart Columbia Javier Omar"
+                maxLength={100}
                 className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
@@ -444,6 +446,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
                 value={form.roaster}
                 onChange={(e) => update('roaster', e.target.value)}
                 placeholder="e.g., Heart, Tandem, Onyx"
+                maxLength={100}
                 className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />

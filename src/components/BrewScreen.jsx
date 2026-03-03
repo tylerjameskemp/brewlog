@@ -272,8 +272,8 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
       {/* Coffee / Water / Ratio */}
       <div className="grid grid-cols-3 gap-2 mt-5">
         {[
-          { label: 'Coffee', value: `${recipe.coffeeGrams}g`, field: 'coffeeGrams', type: 'number' },
-          { label: 'Water', value: `${recipe.waterGrams}g`, field: 'waterGrams', type: 'number' },
+          { label: 'Coffee', value: `${recipe.coffeeGrams}g`, field: 'coffeeGrams', type: 'number', min: 1, max: 100 },
+          { label: 'Water', value: `${recipe.waterGrams}g`, field: 'waterGrams', type: 'number', min: 1, max: 2000 },
           { label: 'Ratio', value: ratio(recipe.coffeeGrams, recipe.waterGrams) },
         ].map(item => (
           <div key={item.label} className="text-center p-3 bg-brew-50 rounded-xl">
@@ -283,6 +283,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
                 type={item.type}
                 value={recipe[item.field]}
                 onChange={e => updateField(item.field, Number(e.target.value))}
+                min={item.min} max={item.max}
                 className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
                            border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
               />
@@ -314,6 +315,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
                 type="text"
                 value={recipe.grindSetting}
                 onChange={e => updateField('grindSetting', e.target.value)}
+                maxLength={50}
                 className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
                            border-b border-brew-300 focus:outline-none text-base"
               />
@@ -329,6 +331,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               type="number"
               value={recipe.waterTemp}
               onChange={e => updateField('waterTemp', Number(e.target.value))}
+              min={32} max={212}
               className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
                          border-b border-brew-300 focus:outline-none text-base"
             />
@@ -347,6 +350,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             onChange={e => setTargetTimeInput(e.target.value)}
             onBlur={handleTargetTimeBlur}
             placeholder="3:00 - 3:30"
+            maxLength={15}
             className="w-32 mx-auto text-center text-lg font-medium text-brew-800 bg-transparent
                        border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base block"
           />
@@ -1197,6 +1201,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
           value={notes}
           onChange={e => setNotes(e.target.value)}
           placeholder="Bed looked uneven after bloom, water temp dropped fast..."
+          maxLength={2000}
           className="w-full min-h-[80px] p-3 rounded-xl border border-brew-200 bg-brew-50
                      text-sm text-brew-800 resize-y focus:outline-none focus:border-brew-500 text-base"
         />
@@ -1212,6 +1217,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
           value={nextBrewChanges}
           onChange={e => setNextBrewChanges(e.target.value)}
           placeholder="Try coarser grind, extend bloom to 45s..."
+          maxLength={500}
           className="w-full min-h-[80px] p-3 rounded-xl border border-amber-200 bg-white
                      text-sm text-brew-800 resize-y focus:outline-none focus:border-brew-500 text-base"
         />
