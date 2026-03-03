@@ -594,6 +594,45 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             </div>
           )}
 
+          {/* Revert to template — shown when returning bean has modified steps */}
+          {(() => {
+            const originalTemplate = recipe.pourTemplateId
+              ? templates.find(t => t.id === recipe.pourTemplateId)
+              : null
+            if (originalTemplate && JSON.stringify(recipe.steps) !== JSON.stringify(originalTemplate.steps)) {
+              return (
+                <div className="px-4 mt-2">
+                  <button
+                    onClick={() => {
+                      setRecipe(prev => ({
+                        ...prev,
+                        steps: structuredClone(originalTemplate.steps),
+                        pourTemplateId: originalTemplate.id,
+                      }))
+                      setSelectedTemplateId(originalTemplate.id)
+                    }}
+                    className="text-xs text-brew-500 hover:text-brew-700 underline min-h-[44px]"
+                  >
+                    Revert steps to {originalTemplate.name}
+                  </button>
+                </div>
+              )
+            }
+            if (!recipe.pourTemplateId && recipe.steps.length > 0) {
+              return (
+                <div className="px-4 mt-2">
+                  <button
+                    onClick={() => setTemplatePicked(false)}
+                    className="text-xs text-brew-500 hover:text-brew-700 underline min-h-[44px]"
+                  >
+                    Choose a pour template
+                  </button>
+                </div>
+              )
+            }
+            return null
+          })()}
+
           {/* Equipment Section */}
           <div className="px-4 mt-4">
             <button
