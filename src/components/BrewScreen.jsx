@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import {
   getBrews, getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
   parseTime, parseTimeRange, formatTimeRange, computeTimeStatus,
-  getPourTemplates, saveBrew, updateBrew, saveBean, getBeans, updateBean,
+  getPourTemplates, saveBrew, updateBrew, getBeans, updateBean,
   saveActiveBrew, getActiveBrew, clearActiveBrew,
 } from '../data/storage'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
@@ -12,7 +12,7 @@ import useTimer from '../hooks/useTimer'
 import useWakeLock from '../hooks/useWakeLock'
 
 // ============================================================
-// BREW SCREEN — Guided three-phase brewing experience
+// BREW SCREEN — Guided brewing experience
 // ============================================================
 // Phase state machine: pick → recipe → brew → rate → success
 // pick:    Bean picker (if no bean pre-selected)
@@ -22,6 +22,11 @@ import useWakeLock from '../hooks/useWakeLock'
 // success: Done — start new brew or view history
 
 const ratio = (c, w) => c > 0 ? `1:${(w / c).toFixed(1)}` : '—'
+
+const getTotalDuration = (steps) =>
+  steps.length > 0
+    ? steps[steps.length - 1].time + steps[steps.length - 1].duration
+    : 210
 
 // ─── Swipe Cards ────────────────────────────────────────────
 function SwipeCards({ cards, currentIndex, onSwipe }) {
@@ -611,9 +616,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const steps = recipe.steps
-  const totalDuration = steps.length > 0
-    ? steps[steps.length - 1].time + steps[steps.length - 1].duration
-    : 210
+  const totalDuration = getTotalDuration(steps)
 
   // Determine current step
   let currentStepIdx = 0
@@ -865,7 +868,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
 // Brew is already saved to localStorage on "Finish Brew".
 // This screen lets user correct actuals, add tasting notes, and plan next brew.
 // "Done" calls updateBrew() to merge tasting data into the saved record.
-function RateThisBrew({ brew, bean, equipment, onComplete, onBrewUpdated, setBeans }) {
+function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
   const [notes, setNotes] = useState(brew.notes || '')
   const [nextBrewChanges, setNextBrewChanges] = useState(brew.nextBrewChanges || '')
   const [flavors, setFlavors] = useState(brew.flavors || [])
@@ -880,9 +883,7 @@ function RateThisBrew({ brew, bean, equipment, onComplete, onBrewUpdated, setBea
   const stepResults = brew.stepResults || {}
 
   // Compute time status for display
-  const totalDuration = steps.length > 0
-    ? steps[steps.length - 1].time + steps[steps.length - 1].duration
-    : 210
+  const totalDuration = getTotalDuration(steps)
   const timeResult = computeTimeStatus(brew.totalTime, brew.targetTimeMin, brew.targetTimeMax, brew.targetTime, totalDuration)
 
   const handleDone = () => {
@@ -1233,15 +1234,13 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       const tappedAt = tappedSteps[step.id]
       const skipped = !!skippedSteps[step.id]
       stepResults[step.id] = {
-        tappedAt: tappedAt !== undefined ? tappedAt : null,
+        tappedAt: tappedAt != null ? tappedAt : null,
         skipped,
-        variance: tappedAt !== undefined ? tappedAt - step.time : null,
+        variance: tappedAt != null ? tappedAt - step.time : null,
       }
     })
 
-    const totalDuration = recipe.steps.length > 0
-      ? recipe.steps[recipe.steps.length - 1].time + recipe.steps[recipe.steps.length - 1].duration
-      : 210
+    const totalDuration = getTotalDuration(recipe.steps)
 
     const timeResult = computeTimeStatus(elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
 
@@ -1300,25 +1299,13 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     const updatedBrews = saveBrew(brew)
     onBrewSaved(updatedBrews)
 
-    // Save bean (idempotent)
-    saveBean({
-      id: selectedBean.id || uuidv4(),
-      name: selectedBean.name.trim(),
-      roaster: selectedBean.roaster || '',
-      roastDate: selectedBean.roastDate || '',
-      origin: selectedBean.origin || '',
-      process: selectedBean.process || '',
-      addedAt: selectedBean.addedAt || new Date().toISOString(),
-    })
-    setBeans(getBeans())
-
     // Persist for crash recovery during rating
     saveActiveBrew({ phase: 'rate', brewId: brew.id, beanName: selectedBean.name, recipe })
 
     setRatingBrew(brew)
     setSavedBrewState(null)
     setPhase('rate')
-  }, [recipe, selectedBean, equipment, onBrewSaved, setBeans])
+  }, [recipe, selectedBean, equipment, onBrewSaved])
 
   // Persist active brew state to localStorage
   const persistState = useCallback((brewState) => {
@@ -1340,7 +1327,6 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
         const bean = beans.find(b => b.name?.trim().toLowerCase() === active.beanName?.trim().toLowerCase())
         if (brew && bean) {
           setSelectedBean(bean)
-          setRecipe(active.recipe)
           setRatingBrew(brew)
           setPhase('rate')
         } else {
@@ -1412,7 +1398,6 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
         <RateThisBrew
           brew={ratingBrew}
           bean={selectedBean}
-          equipment={equipment}
           onComplete={() => setPhase('success')}
           onBrewUpdated={onBrewSaved}
           setBeans={setBeans}
