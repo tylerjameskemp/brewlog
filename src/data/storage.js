@@ -23,24 +23,34 @@ const STORAGE_KEYS = {
 
 // --- BREW LOGS ---
 
+let _brewsCache = null
+let _brewsCacheRaw = null
+
+function _invalidateBrewsCache() {
+  _brewsCache = null
+  _brewsCacheRaw = null
+}
+
 export function getBrews() {
   // Read from localStorage, parse the JSON string back into an array
   const data = localStorage.getItem(STORAGE_KEYS.BREWS)
   if (!data) return []
+  if (data === _brewsCacheRaw && _brewsCache) return _brewsCache
   let brews
   try {
     brews = JSON.parse(data)
   } catch {
     return []
   }
-  return brews.sort((a, b) => {
-    const dateA = a?.brewedAt ? new Date(a.brewedAt).getTime() : 0
-    const dateB = b?.brewedAt ? new Date(b.brewedAt).getTime() : 0
-    return dateB - dateA // newest first
-  })
+  brews = brews.filter(b => b != null)
+  brews.sort((a, b) => (b?.brewedAt || '').localeCompare(a?.brewedAt || ''))
+  _brewsCache = brews
+  _brewsCacheRaw = data
+  return brews
 }
 
 export function saveBrew(brew) {
+  _invalidateBrewsCache()
   // Get existing brews, add the new one at the beginning, save back
   const brews = getBrews()
   brews.unshift(brew) // unshift = add to front (newest first)
@@ -49,6 +59,7 @@ export function saveBrew(brew) {
 }
 
 export function updateBrew(id, updates) {
+  _invalidateBrewsCache()
   // Find a brew by ID and update its properties
   const brews = getBrews()
   const index = brews.findIndex(b => b.id === id)
@@ -60,6 +71,7 @@ export function updateBrew(id, updates) {
 }
 
 export function deleteBrew(id) {
+  _invalidateBrewsCache()
   const brews = getBrews().filter(b => b.id !== id)
   localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
   return brews
@@ -68,8 +80,12 @@ export function deleteBrew(id) {
 // --- EQUIPMENT PROFILE ---
 
 export function getEquipment() {
-  const data = localStorage.getItem(STORAGE_KEYS.EQUIPMENT)
-  return data ? JSON.parse(data) : null
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.EQUIPMENT)
+    return data ? JSON.parse(data) : null
+  } catch {
+    return null
+  }
 }
 
 export function saveEquipment(equipment) {
@@ -80,8 +96,12 @@ export function saveEquipment(equipment) {
 // --- BEAN LIBRARY ---
 
 export function getBeans() {
-  const data = localStorage.getItem(STORAGE_KEYS.BEANS)
-  return data ? JSON.parse(data) : []
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.BEANS)
+    return data ? JSON.parse(data) : []
+  } catch {
+    return []
+  }
 }
 
 export function saveBean(bean) {
@@ -138,6 +158,7 @@ export function deduplicateBeans() {
 }
 
 export function renameBrewBean(oldName, newName) {
+  _invalidateBrewsCache()
   const brews = getBrews()
   let changed = false
   const oldNorm = oldName.trim().toLowerCase()
@@ -179,6 +200,7 @@ export function setUIPref(key, value) {
 // --- MIGRATIONS ---
 
 export function migrateBloomToSteps() {
+  _invalidateBrewsCache()
   // Convert legacy bloom fields to step 0 in the steps array.
   // Idempotent — skips brews that already have recipeSteps.
   const brews = getBrews()
@@ -215,6 +237,7 @@ export function migrateBloomToSteps() {
 }
 
 export function migrateGrindSettings() {
+  _invalidateBrewsCache()
   // Convert Fellow Ode numeric grind settings to X-1/X-2 notation.
   // Idempotent — skips brews that already have string grindSettings.
   const brews = getBrews()
@@ -233,6 +256,7 @@ export function migrateGrindSettings() {
 }
 
 export function migrateToSchemaV2() {
+  _invalidateBrewsCache()
   // Unify all brews to schema version 2.
   // Idempotent — skips brews where schemaVersion >= 2.
   const raw = localStorage.getItem(STORAGE_KEYS.BREWS)
@@ -245,8 +269,14 @@ export function migrateToSchemaV2() {
     // Corrupted JSON — try restoring from backup
     const backup = localStorage.getItem(STORAGE_KEYS.BACKUP_V1)
     if (backup) {
-      localStorage.setItem(STORAGE_KEYS.BREWS, backup)
-      return migrateToSchemaV2()
+      try {
+        JSON.parse(backup) // validate backup is valid JSON
+        localStorage.setItem(STORAGE_KEYS.BREWS, backup)
+        localStorage.removeItem(STORAGE_KEYS.BACKUP_V1) // prevent re-entry
+        return migrateToSchemaV2()
+      } catch {
+        // Backup also corrupt — fall through
+      }
     }
     return getBrews()
   }
@@ -396,13 +426,6 @@ export function computeTimeStatus(elapsed, targetTimeMin, targetTimeMax, targetT
   return { status: 'on-target', delta: 0 }
 }
 
-export function getLastBrew() {
-  // Returns the most recent brew — used to pre-populate the form
-  // This is the "pulls up what you last used" feature from your Feb 9 transcript
-  const brews = getBrews()
-  return brews.length > 0 ? brews[0] : null
-}
-
 export function getLastBrewOfBean(beanName) {
   // Returns the most recent brew for a specific bean — used for "dial-in" pre-fill
   if (!beanName) return null
@@ -425,6 +448,7 @@ export function exportData() {
 }
 
 export function importData(data) {
+  _invalidateBrewsCache()
   // Full replace: only touch keys present in the import payload
   if ('brews' in data) {
     localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews || []))
@@ -445,6 +469,7 @@ export function importData(data) {
 }
 
 export function mergeData(data) {
+  _invalidateBrewsCache()
   // Merge imported data with existing: local wins on ID conflicts, new records are added
   if (data.brews && Array.isArray(data.brews)) {
     const existing = getBrews()
