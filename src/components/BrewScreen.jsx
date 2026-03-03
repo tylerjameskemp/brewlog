@@ -894,7 +894,8 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
 
       const brew = {
         id: uuidv4(),
-        brewScreenVersion: 1,
+        schemaVersion: 2,
+        isManualEntry: false,
         beanName: bean.name.trim(),
         roaster: bean.roaster || '',
         roastDate: bean.roastDate || '',

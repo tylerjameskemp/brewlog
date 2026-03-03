@@ -84,6 +84,7 @@ function App() {
           <SettingsMenu
             onEquipmentClick={() => setShowSetup(true)}
             onImportComplete={() => {
+              migrateToSchemaV2()
               setBrews(getBrews())
               setEquipment(getEquipment())
               setBeans(deduplicateBeans())

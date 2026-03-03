@@ -18,6 +18,7 @@ const STORAGE_KEYS = {
   UI_PREFS: 'brewlog_ui_prefs',
   POUR_TEMPLATES: 'brewlog_pour_templates',
   ACTIVE_BREW: 'brewlog_active_brew',
+  BACKUP_V1: 'brewlog_brews_backup_v1',
 }
 
 // --- BREW LOGS ---
@@ -26,10 +27,15 @@ export function getBrews() {
   // Read from localStorage, parse the JSON string back into an array
   const data = localStorage.getItem(STORAGE_KEYS.BREWS)
   if (!data) return []
-  const brews = JSON.parse(data)
+  let brews
+  try {
+    brews = JSON.parse(data)
+  } catch {
+    return []
+  }
   return brews.sort((a, b) => {
-    const dateA = a.brewedAt ? new Date(a.brewedAt).getTime() : 0
-    const dateB = b.brewedAt ? new Date(b.brewedAt).getTime() : 0
+    const dateA = a?.brewedAt ? new Date(a.brewedAt).getTime() : 0
+    const dateB = b?.brewedAt ? new Date(b.brewedAt).getTime() : 0
     return dateB - dateA // newest first
   })
 }
@@ -231,40 +237,49 @@ export function migrateToSchemaV2() {
   // Idempotent — skips brews where schemaVersion >= 2.
   const raw = localStorage.getItem(STORAGE_KEYS.BREWS)
   if (!raw) return getBrews()
-  const brews = JSON.parse(raw)
+
+  let brews
+  try {
+    brews = JSON.parse(raw)
+  } catch {
+    // Corrupted JSON — try restoring from backup
+    const backup = localStorage.getItem(STORAGE_KEYS.BACKUP_V1)
+    if (backup) {
+      localStorage.setItem(STORAGE_KEYS.BREWS, backup)
+      return migrateToSchemaV2()
+    }
+    return getBrews()
+  }
 
   // Pre-migration backup (only once — don't overwrite an existing backup)
-  if (!localStorage.getItem('brewlog_brews_backup_v1')) {
-    localStorage.setItem('brewlog_brews_backup_v1', raw)
+  if (!localStorage.getItem(STORAGE_KEYS.BACKUP_V1)) {
+    localStorage.setItem(STORAGE_KEYS.BACKUP_V1, raw)
   }
 
   let changed = false
   brews.forEach(b => {
-    if (b.schemaVersion >= 2) return // already migrated
+    if (!b || b.schemaVersion >= 2) return // null guard + already migrated
 
     if (b.brewScreenVersion === 1) {
       // BrewScreen brews — steps already in new format
-      b.isManualEntry = false
-      b.recipeSnapshot = b.recipeSnapshot ?? null
       b.schemaVersion = 2
       delete b.brewScreenVersion
     } else {
       // Legacy BrewForm brews — convert steps to new format
       b.recipeSteps = normalizeSteps(b.recipeSteps)
       b.steps = normalizeSteps(b.steps)
-      b.stepResults = null
-      b.timeStatus = null
-      b.nextBrewChanges = null
-      b.pourTemplateId = null
-      b.isManualEntry = true
-      b.recipeSnapshot = null
       b.schemaVersion = 2
     }
     changed = true
   })
 
   if (changed) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    try {
+      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    } catch {
+      // Quota exceeded — restore original data
+      localStorage.setItem(STORAGE_KEYS.BREWS, raw)
+    }
   }
   return getBrews()
 }

@@ -19,17 +19,11 @@ import StepEditor from './StepEditor'
 export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete }) {
   const getRecipeSteps = (brew) => {
     if (Array.isArray(brew?.recipeSteps) && brew.recipeSteps.length > 0) return normalizeSteps(brew.recipeSteps)
-    if (brew?.bloomTime || brew?.bloomWater) {
-      return [{ id: 1, name: 'Bloom', time: 0, waterTo: brew.bloomWater || null, duration: null, note: '' }]
-    }
     return []
   }
 
   const getActualSteps = (brew) => {
     if (Array.isArray(brew?.steps) && brew.steps.length > 0) return normalizeSteps(brew.steps)
-    if (brew?.actualBloomTime || brew?.actualBloomWater || brew?.bloomWater) {
-      return [{ id: 1, name: 'Bloom', time: 0, waterTo: brew.actualBloomWater || brew.bloomWater || null, duration: null, note: '' }]
-    }
     return []
   }
 
@@ -224,10 +218,8 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         stepResults: editBrew.stepResults,
         timeStatus: editBrew.timeStatus,
         schemaVersion: editBrew.schemaVersion,
-        isManualEntry: editBrew.isManualEntry,
         pourTemplateId: editBrew.pourTemplateId,
         nextBrewChanges: editBrew.nextBrewChanges,
-        recipeSnapshot: editBrew.recipeSnapshot,
       })
       if (trimmedName) {
         saveBean({ name: trimmedName, roaster: form.roaster, roastDate: form.roastDate })
@@ -251,14 +243,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       grinder: equipment?.grinder,
       dripper: equipment?.dripper,
       brewedAt: new Date().toISOString(),
-      // Schema V2 fields for manual-entry brews
       schemaVersion: 2,
-      isManualEntry: true,
-      stepResults: null,
-      timeStatus: null,
-      nextBrewChanges: null,
-      pourTemplateId: null,
-      recipeSnapshot: null,
     }
 
     const updatedBrews = saveBrew(brew)
