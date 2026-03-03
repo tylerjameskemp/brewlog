@@ -712,7 +712,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
 }
 
 // ─── Phase 2: Active Brew ───────────────────────────────────
-function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistState, savedBrewState }) {
+function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedBrewState }) {
   const timer = useTimer()
   const [tappedSteps, setTappedSteps] = useState(() => savedBrewState?.tappedSteps || {})
   const [skippedSteps, setSkippedSteps] = useState(() => savedBrewState?.skippedSteps || {})
@@ -1381,10 +1381,10 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       targetTimeMax: recipe.targetTimeMax,
       steps: structuredClone(recipe.steps),
       pourTemplateId: recipe.pourTemplateId,
-      method: equipment?.brewMethod,
-      grinder: equipment?.grinder,
-      dripper: equipment?.dripper,
-      filterType: equipment?.filterType,
+      method: recipe.method,
+      grinder: recipe.grinder,
+      dripper: recipe.dripper,
+      filterType: recipe.filterType,
     }
 
     const brew = {
@@ -1414,9 +1414,10 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       notes: '',
       nextBrewChanges: '',
       pourTemplateId: recipe.pourTemplateId || null,
-      method: equipment?.brewMethod,
-      grinder: equipment?.grinder,
-      dripper: equipment?.dripper,
+      method: recipe.method,
+      grinder: recipe.grinder,
+      dripper: recipe.dripper,
+      filterType: recipe.filterType,
       brewedAt: new Date().toISOString(),
     }
 
@@ -1430,7 +1431,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     setRatingBrew(brew)
     setSavedBrewState(null)
     setPhase('rate')
-  }, [recipe, selectedBean, equipment, onBrewSaved])
+  }, [recipe, selectedBean, onBrewSaved])
 
   // Persist active brew state to localStorage
   const persistState = useCallback((brewState) => {
@@ -1511,7 +1512,6 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       {phase === 'brew' && (
         <ActiveBrew
           recipe={recipe}
-          equipment={equipment}
           onFinish={handleFinishBrew}
           onBrewActiveChange={onBrewActiveChange}
           persistState={persistState}
