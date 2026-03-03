@@ -21,6 +21,18 @@ const STORAGE_KEYS = {
   BACKUP_V1: 'brewlog_brews_backup_v1',
 }
 
+// --- SAFE STORAGE WRITE ---
+
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value)
+    return true
+  } catch (e) {
+    console.warn(`Storage write failed for ${key}:`, e)
+    return false
+  }
+}
+
 // --- BREW LOGS ---
 
 let _brewsCache = null
@@ -35,7 +47,7 @@ export function getBrews() {
   // Read from localStorage, parse the JSON string back into an array
   const data = localStorage.getItem(STORAGE_KEYS.BREWS)
   if (!data) return []
-  if (data === _brewsCacheRaw && _brewsCache) return _brewsCache
+  if (data === _brewsCacheRaw && _brewsCache) return [..._brewsCache]
   let brews
   try {
     brews = JSON.parse(data)
@@ -46,7 +58,7 @@ export function getBrews() {
   brews.sort((a, b) => (b?.brewedAt || '').localeCompare(a?.brewedAt || ''))
   _brewsCache = brews
   _brewsCacheRaw = data
-  return brews
+  return [...brews]
 }
 
 export function saveBrew(brew) {
@@ -54,12 +66,12 @@ export function saveBrew(brew) {
   // Get existing brews, add the new one at the beginning, save back
   const brews = getBrews()
   brews.unshift(brew) // unshift = add to front (newest first)
-  try {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
-  } catch (e) {
-    console.warn('Failed to save brew (storage quota?):', e)
+  if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
+    _invalidateBrewsCache()
+    return getBrews()
   }
-  return brews
+  _invalidateBrewsCache()
+  return getBrews()
 }
 
 export function updateBrew(id, updates) {
@@ -69,24 +81,24 @@ export function updateBrew(id, updates) {
   const index = brews.findIndex(b => b.id === id)
   if (index !== -1) {
     brews[index] = { ...brews[index], ...updates }
-    try {
-      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
-    } catch (e) {
-      console.warn('Failed to update brew (storage quota?):', e)
+    if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
+      _invalidateBrewsCache()
+      return getBrews()
     }
   }
-  return brews
+  _invalidateBrewsCache()
+  return getBrews()
 }
 
 export function deleteBrew(id) {
   _invalidateBrewsCache()
   const brews = getBrews().filter(b => b.id !== id)
-  try {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
-  } catch (e) {
-    console.warn('Failed to delete brew (storage quota?):', e)
+  if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
+    _invalidateBrewsCache()
+    return getBrews()
   }
-  return brews
+  _invalidateBrewsCache()
+  return getBrews()
 }
 
 // --- EQUIPMENT PROFILE ---
@@ -101,7 +113,7 @@ export function getEquipment() {
 }
 
 export function saveEquipment(equipment) {
-  localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(equipment))
+  safeSetItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(equipment))
   return equipment
 }
 
@@ -123,7 +135,7 @@ export function saveBean(bean) {
     return beans // Already exists, skip
   }
   beans.unshift(bean)
-  localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
+  safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
 }
 
@@ -140,17 +152,17 @@ export function updateBean(id, updates) {
     const deduped = beans.filter(b =>
       b.id === id || b.name?.trim().toLowerCase() !== newName
     )
-    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
+    safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
     return deduped
   }
 
-  localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
+  safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
 }
 
 export function deleteBean(id) {
   const beans = getBeans().filter(b => b.id !== id)
-  localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
+  safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
 }
 
@@ -164,7 +176,7 @@ export function deduplicateBeans() {
     return true
   })
   if (deduped.length !== beans.length) {
-    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
+    safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
   }
   return deduped
 }
@@ -181,13 +193,13 @@ export function renameBrewBean(oldName, newName) {
     }
   })
   if (changed) {
-    try {
-      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
-    } catch (e) {
-      console.warn('Failed to rename brew bean (storage quota?):', e)
+    if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
+      _invalidateBrewsCache()
+      return getBrews()
     }
   }
-  return brews
+  _invalidateBrewsCache()
+  return getBrews()
 }
 
 // --- UI PREFERENCES ---
@@ -207,9 +219,9 @@ export function setUIPref(key, value) {
     const data = localStorage.getItem(STORAGE_KEYS.UI_PREFS)
     const prefs = data ? JSON.parse(data) : {}
     prefs[key] = value
-    localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify(prefs))
+    safeSetItem(STORAGE_KEYS.UI_PREFS, JSON.stringify(prefs))
   } catch {
-    localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify({ [key]: value }))
+    safeSetItem(STORAGE_KEYS.UI_PREFS, JSON.stringify({ [key]: value }))
   }
 }
 
@@ -247,9 +259,10 @@ export function migrateBloomToSteps() {
     changed = true
   })
   if (changed) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
   }
-  return brews
+  _invalidateBrewsCache()
+  return getBrews()
 }
 
 export function migrateGrindSettings() {
@@ -266,9 +279,10 @@ export function migrateGrindSettings() {
     }
   })
   if (changed) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
   }
-  return brews
+  _invalidateBrewsCache()
+  return getBrews()
 }
 
 export function migrateToSchemaV2() {
@@ -299,7 +313,7 @@ export function migrateToSchemaV2() {
 
   // Pre-migration backup (only once — don't overwrite an existing backup)
   if (!localStorage.getItem(STORAGE_KEYS.BACKUP_V1)) {
-    localStorage.setItem(STORAGE_KEYS.BACKUP_V1, raw)
+    safeSetItem(STORAGE_KEYS.BACKUP_V1, raw)
   }
 
   let changed = false
@@ -320,13 +334,12 @@ export function migrateToSchemaV2() {
   })
 
   if (changed) {
-    try {
-      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
-    } catch {
+    if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
       // Quota exceeded — restore original data
-      localStorage.setItem(STORAGE_KEYS.BREWS, raw)
+      safeSetItem(STORAGE_KEYS.BREWS, raw)
     }
   }
+  _invalidateBrewsCache()
   return getBrews()
 }
 
@@ -345,7 +358,7 @@ export function seedDefaultPourTemplates() {
   // Idempotent — only seeds if no templates exist yet
   const existing = getPourTemplates()
   if (existing.length > 0) return existing
-  localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(DEFAULT_POUR_TEMPLATES))
+  safeSetItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(DEFAULT_POUR_TEMPLATES))
   return DEFAULT_POUR_TEMPLATES
 }
 
@@ -361,11 +374,7 @@ export function getActiveBrew() {
 }
 
 export function saveActiveBrew(state) {
-  try {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_BREW, JSON.stringify(state))
-  } catch {
-    // Silent fail — storage quota may be exceeded
-  }
+  safeSetItem(STORAGE_KEYS.ACTIVE_BREW, JSON.stringify(state))
 }
 
 export function clearActiveBrew() {
@@ -405,6 +414,35 @@ export function formatTime(seconds) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+export function formatDate(isoString) {
+  if (!isoString) return '—'
+  const d = new Date(isoString)
+  return d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+export function formatShortDate(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr + (dateStr.includes('T') ? '' : 'T00:00:00'))
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+export function formatRoastDate(dateStr) {
+  if (!dateStr) return null
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+export function formatRatio(coffeeGrams, waterGrams) {
+  if (!coffeeGrams || coffeeGrams <= 0) return '—'
+  return `1:${(waterGrams / coffeeGrams).toFixed(1)}`
 }
 
 export function parseTime(str) {
@@ -467,21 +505,24 @@ export function importData(data) {
   _invalidateBrewsCache()
   // Full replace: only touch keys present in the import payload
   if ('brews' in data) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews || []))
+    safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews || []))
   }
   if ('equipment' in data) {
     if (data.equipment) {
-      localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
+      safeSetItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
     } else {
       localStorage.removeItem(STORAGE_KEYS.EQUIPMENT)
     }
   }
   if ('beans' in data) {
-    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(data.beans || []))
+    safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(data.beans || []))
   }
   if ('pourTemplates' in data) {
-    localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(data.pourTemplates || []))
+    safeSetItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(data.pourTemplates || []))
   }
+  // Run migration chain on imported data
+  _invalidateBrewsCache()
+  migrateToSchemaV2()
 }
 
 export function mergeData(data) {
@@ -492,7 +533,7 @@ export function mergeData(data) {
     const existingIds = new Set(existing.map(b => b.id))
     const newBrews = data.brews.filter(b => !existingIds.has(b.id))
     if (newBrews.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify([...existing, ...newBrews]))
+      safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify([...existing, ...newBrews]))
     }
   }
 
@@ -504,13 +545,13 @@ export function mergeData(data) {
       !existingIds.has(b.id) && !existingNames.has(b.name?.trim().toLowerCase())
     )
     if (newBeans.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify([...existing, ...newBeans]))
+      safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify([...existing, ...newBeans]))
     }
   }
 
   // Equipment: only use imported if local is null
   if (data.equipment && !getEquipment()) {
-    localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
+    safeSetItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
   }
 
   // Pour templates: merge by ID
@@ -519,7 +560,11 @@ export function mergeData(data) {
     const existingIds = new Set(existing.map(t => t.id))
     const newTemplates = data.pourTemplates.filter(t => !existingIds.has(t.id))
     if (newTemplates.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify([...existing, ...newTemplates]))
+      safeSetItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify([...existing, ...newTemplates]))
     }
   }
+
+  // Run migration chain on merged data
+  _invalidateBrewsCache()
+  migrateToSchemaV2()
 }
