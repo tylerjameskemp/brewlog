@@ -3,6 +3,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { grindNotationToNumeric } from '../data/defaults'
 import { formatTime, normalizeName } from '../data/storage'
 
+function formatChartDate(isoString) {
+  const d = new Date(isoString)
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
 // ============================================================
 // BREW TRENDS -- Visual charts showing brewing patterns over time
 // ============================================================
@@ -104,21 +109,16 @@ export default function BrewTrends({ brews, beans }) {
     )
   }
 
-  const formatDate = (isoString) => {
-    const d = new Date(isoString)
-    return `${d.getMonth() + 1}/${d.getDate()}`
-  }
-
-  // Take last 20 (stored newest-first), reverse for chronological order
-  const recent = filteredBrews.slice(0, 20).reverse()
-
-  const chartData = recent.map(brew => ({
-    date: formatDate(brew.brewedAt),
-    beanName: brew.beanName || 'Unknown',
-    rating: brew.rating || null,
-    grindSetting: grindNotationToNumeric(brew.grindSetting),
-    totalTime: brew.totalTime ? Number(brew.totalTime) : null,
-  }))
+  const chartData = useMemo(() => {
+    const recent = filteredBrews.slice(0, 20).reverse()
+    return recent.map(brew => ({
+      date: formatChartDate(brew.brewedAt),
+      beanName: brew.beanName || 'Unknown',
+      rating: brew.rating || null,
+      grindSetting: grindNotationToNumeric(brew.grindSetting),
+      totalTime: brew.totalTime ? Number(brew.totalTime) : null,
+    }))
+  }, [filteredBrews])
 
   const charts = [
     { title: 'Rating',        dataKey: 'rating',       stroke: '#7c4f2e', domain: [1, 5] },

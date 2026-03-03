@@ -772,9 +772,10 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
     const ref = stepRefs.current[currentStep?.id]
     const container = stepsContainerRef.current
     if (ref && container) {
-      const stepTop = ref.offsetTop - container.offsetTop
+      const rect = ref.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
       container.scrollTo({
-        top: Math.max(0, stepTop - 16),
+        top: container.scrollTop + (rect.top - containerRect.top) - 16,
         behavior: 'smooth'
       })
     }
