@@ -492,7 +492,7 @@ All changes stay within the existing React/props-down architecture. No new state
 
 **Tasks:**
 
-- [ ] **4.1 Add equipment section to RecipeAssembly** (`src/components/BrewScreen.jsx`)
+- [x] **4.1 Add equipment section to RecipeAssembly** (`src/components/BrewScreen.jsx`)
   - New collapsible section below step cards
   - **Compact view** (default): single line — "V60 · Fellow Ode · Paper tabbed"
   - **Expanded view**: selectable fields for method, dripper, grinder, filterType
@@ -502,12 +502,12 @@ All changes stay within the existing React/props-down architecture. No new state
   - Changes apply to this brew only — do NOT update `brewlog_equipment`
   - When grinder changes, swap grind input widget (Ode select vs numeric vs text)
 
-- [ ] **4.2 Update brew record creation for per-brew equipment** (`src/components/BrewScreen.jsx`)
+- [x] **4.2 Update brew record creation for per-brew equipment** (`src/components/BrewScreen.jsx`)
   - Source `method`, `grinder`, `dripper`, `filterType` from `recipe` state (not global `equipment` prop)
   - `recipeSnapshot` also captures these from recipe state
   - Global `equipment` prop still used for defaults when building recipe
 
-- [ ] **4.3 Add skip-timer mode** (`src/components/BrewScreen.jsx`)
+- [x] **4.3 Add skip-timer mode** (`src/components/BrewScreen.jsx`)
   - "Log without timer" button in RecipeAssembly (alongside "Brew This")
   - On click: construct brew record from recipe, set `isManualEntry: true`, `stepResults: null`, `timeStatus: null`, `totalTime: null`
   - Call `saveBrew(brew)` immediately
@@ -515,31 +515,31 @@ All changes stay within the existing React/props-down architecture. No new state
   - No step timing report section in RateThisBrew for manual brews
   - No active brew persistence needed (no timer to recover)
 
-- [ ] **4.4 Scope BrewForm to edit-only** (`src/components/BrewForm.jsx`, `src/App.jsx`)
+- [x] **4.4 Scope BrewForm to edit-only** (`src/components/BrewForm.jsx`, `src/App.jsx`)
   - Remove the new-brew creation path from BrewForm (keep edit-brew path only)
   - In App.jsx: remove BrewForm rendering for `view === 'brew'` when `!editingBrew`
   - BrewScreen is now the sole entry point for new brews
   - BrewForm edit mode already updated in Phase 2 to handle unified format
 
-- [ ] **4.5 Add "Revert to template" option** (`src/components/BrewScreen.jsx`)
+- [x] **4.5 Add "Revert to template" option** (`src/components/BrewScreen.jsx`)
   - In RecipeAssembly, when a returning bean has pre-filled from last brew:
   - Show "Revert to template" link/button
   - On click: load steps from the original pour template (via `pourTemplateId` → `getPourTemplates()`)
   - Only reverts steps and pourTemplateId — keeps other recipe fields (dose, grind, temp) from last brew
   - If `pourTemplateId` is null (legacy brews), show pour template picker instead
 
-- [ ] **4.6 Update BrewHistory for per-brew equipment display** (`src/components/BrewHistory.jsx`)
+- [x] **4.6 Update BrewHistory for per-brew equipment display** (`src/components/BrewHistory.jsx`)
   - Show equipment used on each brew in expanded card (method, grinder, dripper)
   - Highlight when equipment differs from previous brew of same bean (auto-diff)
 
 **Verification:** Change dripper in recipe assembly → brew → verify brew record stores per-brew equipment, global equipment unchanged. Log a brew without timer → verify appears in history with `isManualEntry: true`. Start a new brew → verify only BrewScreen renders (not BrewForm). Revert to template → verify only steps change.
 
 **Success criteria:**
-- [ ] Equipment section visible in RecipeAssembly, compact by default
-- [ ] Per-brew equipment stored on brew record, global equipment unaffected
-- [ ] Skip-timer brew appears in history with correct fields
-- [ ] BrewForm only renders for editing existing brews
-- [ ] "Revert to template" replaces steps without affecting other recipe fields
+- [x] Equipment section visible in RecipeAssembly, compact by default
+- [x] Per-brew equipment stored on brew record, global equipment unaffected
+- [x] Skip-timer brew appears in history with correct fields
+- [x] BrewForm only renders for editing existing brews
+- [x] "Revert to template" replaces steps without affecting other recipe fields
 
 ---
 
@@ -597,8 +597,8 @@ All changes stay within the existing React/props-down architecture. No new state
 - [x] "Finish Brew" saves the brew record to localStorage immediately
 - [x] Rating screen allows correcting grind, total time, and adding tasting notes
 - [x] Pre-fill for returning beans uses corrected actual values from last brew
-- [ ] Equipment is selectable per-brew in recipe assembly
-- [ ] Skip-timer mode allows logging brews without using the timer
+- [x] Equipment is selectable per-brew in recipe assembly
+- [x] Skip-timer mode allows logging brews without using the timer
 - [ ] All brews in history display correctly regardless of original creation path
 - [ ] Editing a past brew preserves all fields the user didn't modify
 
