@@ -240,14 +240,14 @@ Check off all Phase 5 tasks (5.1–5.4). Mark the overall plan as complete.
 
 ## Acceptance Criteria
 
-- [ ] Tests A–E all pass without data loss or navigation dead-ends
-- [ ] `npm test` passes all unit tests
-- [ ] `npm run build` succeeds with no errors
-- [ ] CLAUDE.md accurately describes the final app state
-- [ ] History auto-diff compares same-bean brews (not cross-bean)
-- [ ] `brew.steps` populated for all BrewScreen-created brews
-- [ ] BrewForm edit preserves `rating: null` (not coerced to 0)
-- [ ] localStorage write failures don't crash the app
+- [x] Tests A–E all pass without data loss or navigation dead-ends
+- [x] `npm test` passes all unit tests (74 tests)
+- [x] `npm run build` succeeds with no errors
+- [x] CLAUDE.md accurately describes the final app state
+- [x] History auto-diff compares same-bean brews (not cross-bean)
+- [x] `brew.steps` populated for all BrewScreen-created brews
+- [x] BrewForm edit preserves `rating: null` (not coerced to 0)
+- [x] localStorage write failures don't crash the app
 
 ## Critical Files
 
