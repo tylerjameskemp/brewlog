@@ -1431,6 +1431,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       timeStatus: null,
       totalTime: null,
       recipeSteps: recipe.steps,
+      steps: recipe.steps,
       stepResults: null,
       flavors: [], body: '', rating: null, issues: [], notes: '', nextBrewChanges: '',
       pourTemplateId: recipe.pourTemplateId || null,
