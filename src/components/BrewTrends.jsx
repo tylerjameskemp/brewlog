@@ -1,6 +1,13 @@
 import { useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { grindToNumeric } from '../data/defaults'
+import { grindNotationToNumeric } from '../data/defaults'
+import { formatTime, normalizeName } from '../data/storage'
+import EmptyState from './EmptyState'
+
+function formatChartDate(isoString) {
+  const d = new Date(isoString)
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
 
 // ============================================================
 // BREW TRENDS -- Visual charts showing brewing patterns over time
@@ -16,11 +23,11 @@ export default function BrewTrends({ brews, beans }) {
   const beanOptions = useMemo(() => {
     const nameSet = new Map()
     beans.forEach(b => {
-      if (b.name?.trim()) nameSet.set(b.name.trim().toLowerCase(), b.name.trim())
+      if (b.name?.trim()) nameSet.set(normalizeName(b.name), b.name.trim())
     })
     brews.forEach(b => {
       if (b.beanName?.trim()) {
-        const key = b.beanName.trim().toLowerCase()
+        const key = normalizeName(b.beanName)
         if (!nameSet.has(key)) nameSet.set(key, b.beanName.trim())
       }
     })
@@ -29,7 +36,7 @@ export default function BrewTrends({ brews, beans }) {
 
   // Filter brews by selected bean
   const filteredBrews = selectedBean
-    ? brews.filter(b => b.beanName?.trim().toLowerCase() === selectedBean.trim().toLowerCase())
+    ? brews.filter(b => normalizeName(b.beanName) === normalizeName(selectedBean))
     : brews
 
   // Compute stats for the filtered bean
@@ -37,7 +44,7 @@ export default function BrewTrends({ brews, beans }) {
     if (!selectedBean || filteredBrews.length === 0) return null
 
     const ratings = filteredBrews.map(b => b.rating).filter(r => r != null)
-    const grinds = filteredBrews.map(b => grindToNumeric(b.grindSetting)).filter(g => g != null)
+    const grinds = filteredBrews.map(b => grindNotationToNumeric(b.grindSetting)).filter(g => g != null)
 
     const flavorCounts = {}
     filteredBrews.forEach(b => {
@@ -87,43 +94,28 @@ export default function BrewTrends({ brews, beans }) {
           )}
         </div>
 
-        <div className="mt-8 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
-          <div className="text-4xl mb-3">📈</div>
-          <p className="text-lg font-medium text-brew-700">
-            {selectedBean ? `Trends for ${selectedBean}` : 'Brew Trends'}
-          </p>
-          <p className="text-sm mt-2 max-w-xs mx-auto">
-            {selectedBean
-              ? `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} with ${selectedBean} to see trend charts.`
-              : `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} to unlock trend charts for your rating, grind setting, and brew time.`
-            }
-          </p>
-        </div>
+        <EmptyState
+          emoji="📈"
+          title={selectedBean ? `Trends for ${selectedBean}` : 'Brew Trends'}
+          description={selectedBean
+            ? `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} with ${selectedBean} to see trend charts.`
+            : `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} to unlock trend charts for your rating, grind setting, and brew time.`
+          }
+        />
       </div>
     )
   }
 
-  const formatDate = (isoString) => {
-    const d = new Date(isoString)
-    return `${d.getMonth() + 1}/${d.getDate()}`
-  }
-
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
-
-  // Take last 20 (stored newest-first), reverse for chronological order
-  const recent = filteredBrews.slice(0, 20).reverse()
-
-  const chartData = recent.map(brew => ({
-    date: formatDate(brew.brewedAt),
-    beanName: brew.beanName || 'Unknown',
-    rating: brew.rating || null,
-    grindSetting: grindToNumeric(brew.grindSetting),
-    totalTime: brew.totalTime ? Number(brew.totalTime) : null,
-  }))
+  const chartData = useMemo(() => {
+    const recent = filteredBrews.slice(0, 20).reverse()
+    return recent.map(brew => ({
+      date: formatChartDate(brew.brewedAt),
+      beanName: brew.beanName || 'Unknown',
+      rating: brew.rating || null,
+      grindSetting: grindNotationToNumeric(brew.grindSetting),
+      totalTime: brew.totalTime ? Number(brew.totalTime) : null,
+    }))
+  }, [filteredBrews])
 
   const charts = [
     { title: 'Rating',        dataKey: 'rating',       stroke: '#7c4f2e', domain: [1, 5] },

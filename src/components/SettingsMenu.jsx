@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { exportData, importData, mergeData, getBrews, getBeans, getEquipment } from '../data/storage'
+import Modal from './Modal'
 
 export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClose }) {
   const [importState, setImportState] = useState(null) // null | parsed data object
@@ -163,20 +164,7 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
       : 'unknown date'
 
     return (
-      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-fade-in motion-reduce:animate-none" onClick={() => setImportState(null)}>
-        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in motion-reduce:animate-none" onClick={e => e.stopPropagation()}>
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-brew-800">Import Data</h2>
-              <button
-                onClick={() => setImportState(null)}
-                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center
-                           text-brew-400 hover:text-brew-600 text-xl rounded-lg hover:bg-brew-50"
-              >
-                ✕
-              </button>
-            </div>
-
+      <Modal title="Import Data" onClose={() => setImportState(null)}>
             <div className="space-y-4 mb-6">
               <div className="p-4 bg-brew-50 rounded-xl">
                 <p className="text-sm font-medium text-brew-700 mb-1">File contents</p>
@@ -228,9 +216,7 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
                 Cancel
               </button>
             </div>
-          </div>
-        </div>
-      </div>
+      </Modal>
     )
   }
 

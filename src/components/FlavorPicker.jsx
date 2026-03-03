@@ -116,6 +116,7 @@ export default function FlavorPicker({ selected = [], onChange }) {
           onChange={(e) => setCustomInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addCustom()}
           placeholder="Add custom flavor..."
+          maxLength={50}
           className="flex-1 p-3 rounded-lg border border-brew-200 text-base
                      text-brew-800 placeholder:text-brew-300
                      focus:outline-none focus:ring-2 focus:ring-brew-400"

@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
-import { deleteBrew, getUIPref, setUIPref, normalizeSteps } from '../data/storage'
-import { RATING_SCALE, BREW_METHODS, GRINDERS, grindToNumeric, getMethodName, getGrinderName } from '../data/defaults'
+import { deleteBrew, getUIPref, setUIPref, normalizeSteps, formatTime } from '../data/storage'
+import { RATING_SCALE, BREW_METHODS, GRINDERS, grindNotationToNumeric, getMethodName, getGrinderName } from '../data/defaults'
+import Collapsible from './Collapsible'
+import EmptyState from './EmptyState'
 
 // ============================================================
 // BREW HISTORY — View and compare past brews
@@ -14,13 +16,6 @@ import { RATING_SCALE, BREW_METHODS, GRINDERS, grindToNumeric, getMethodName, ge
 // comparison with differences highlighted in amber.
 
 // --- Comparison helpers (pure functions) ---
-
-function formatTime(seconds) {
-  if (seconds == null) return '—'
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 function formatDate(isoString) {
   const d = new Date(isoString)
@@ -179,13 +174,11 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
 
   if (brews.length === 0) {
     return (
-      <div className="mt-12 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
-        <div className="text-4xl mb-3">📋</div>
-        <p className="text-lg font-medium text-brew-700">No brews logged yet</p>
-        <p className="text-sm mt-2 text-brew-400 max-w-xs mx-auto">
-          Your brew history will show up here with details on what you changed between sessions.
-        </p>
-        {onNavigate && (
+      <EmptyState
+        emoji="📋"
+        title="No brews logged yet"
+        description="Your brew history will show up here with details on what you changed between sessions."
+        action={onNavigate && (
           <button
             onClick={() => onNavigate('brew')}
             className="mt-5 px-6 py-3 bg-brew-600 text-white rounded-xl font-medium
@@ -194,20 +187,30 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
             Log Your First Brew
           </button>
         )}
-      </div>
+      />
     )
   }
 
-  // Compute differences between consecutive brews (memoized)
+  // Compute differences between same-bean brews (memoized)
   const diffsMap = useMemo(() => {
+    // Build same-bean previous-brew lookup (brews sorted newest-first)
+    const lastSeenByBean = {}
+    const prevByBean = {}
+    for (const brew of brews) {
+      if (lastSeenByBean[brew.beanName]) {
+        prevByBean[brew.id] = lastSeenByBean[brew.beanName]
+      }
+      lastSeenByBean[brew.beanName] = brew
+    }
+
     const map = {}
-    brews.forEach((brew, index) => {
-      const prev = brews[index + 1]
-      if (!prev) return
+    for (const brew of brews) {
+      const prev = prevByBean[brew.id]
+      if (!prev) continue
 
       const diffs = []
-      const currGrind = grindToNumeric(brew.grindSetting)
-      const prevGrind = grindToNumeric(prev.grindSetting)
+      const currGrind = grindNotationToNumeric(brew.grindSetting)
+      const prevGrind = grindNotationToNumeric(prev.grindSetting)
       if (currGrind != null && prevGrind != null && currGrind !== prevGrind) {
         const dir = currGrind > prevGrind ? '↑' : '↓'
         diffs.push(`Grind ${dir} ${prev.grindSetting} → ${brew.grindSetting}`)
@@ -229,9 +232,6 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
       if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
         diffs.push(`Target: ${formatTime(prev.targetTime) || '—'} → ${formatTime(brew.targetTime) || '—'}`)
       }
-      if (brew.beanName !== prev.beanName) {
-        diffs.push(`New beans: ${brew.beanName}`)
-      }
       if ((brew.method || '') !== (prev.method || '')) {
         diffs.push(`Method: ${getMethodName(brew.method)}`)
       }
@@ -243,7 +243,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
       }
 
       if (diffs.length > 0) map[brew.id] = diffs
-    })
+    }
     return map
   }, [brews])
 
@@ -567,12 +567,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
             )}
 
             {/* Expanded detail */}
-            <div
-              aria-hidden={!isExpanded}
-              className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
-                isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
-              }`}
-            >
+            <Collapsible open={isExpanded}>
               {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
                 {/* --- RECIPE --- */}
                 <div className="mt-3">
@@ -736,7 +731,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                   </button>
                 </div>
               </div>}
-            </div>
+            </Collapsible>
           </div>
         )
       })}

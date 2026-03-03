@@ -14,14 +14,14 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
 
 ## Key Files
 - `src/App.jsx` — Root component. Manages 4 views (`brew`, `beans`, `history`, `trends`), top-level state, view transitions. Runs migrations on init.
-- `src/data/defaults.js` — Static options: brew methods, grinders, flavor descriptors (7 categories, 56 flavors), body, ratings, issues, bean origins (15), bean processes (7), 3 default pour templates.
-- `src/data/storage.js` — All localStorage logic (35 exported functions). CRUD for brews, beans, equipment, pour templates, active brew. Also: `deduplicateBeans()`, `renameBrewBean()`, `migrateGrindSettings()`, `migrateBloomToSteps()`, `normalizeSteps()`, `formatTime()`/`parseTime()`, `exportData()`/`importData()`/`mergeData()`, `getUIPref()`/`setUIPref()`, `getLastBrew()`/`getLastBrewOfBean()`, `getChangesForBean()`, `computeTimeStatus()`. Sort by `brewedAt` descending in `getBrews()`.
-- `src/components/BrewScreen.jsx` — **Largest file (1,348 lines).** Guided brew flow with 5 inline sub-components: `BeanPicker`, `RecipeAssembly`, `ActiveBrew`, `PostBrewCommit`, `SwipeCards`, plus `PhaseIndicator`. Phase state machine: `pick → recipe → brew → commit → committed`. Manages its own substantial internal state (phase, selectedBean, brewData, recipe). Communicates with App.jsx via narrow callback interface.
-- `src/components/BrewForm.jsx` — Legacy brew form. Currently used for both new brews and editing existing brews. Supports dual mode: create (pre-fills from last brew of same bean) and edit (pre-fills via `editBrew` prop). Uses legacy step format.
+- `src/data/defaults.js` — Static options: brew methods, grinders, flavor descriptors (7 categories, 56 flavors), body, ratings, issues, bean origins (15), bean processes (7), 3 default pour templates. Exports `getMethodName(id)` and `getGrinderName(id)` lookup helpers for display names.
+- `src/data/storage.js` — All localStorage logic (34 exported functions). CRUD for brews, beans, equipment, pour templates, active brew. Also: `deduplicateBeans()`, `renameBrewBean()`, `migrateGrindSettings()`, `migrateBloomToSteps()`, `migrateToSchemaV2()`, `normalizeSteps()`, `formatTime()`/`parseTime()`, `exportData()`/`importData()`/`mergeData()`, `getUIPref()`/`setUIPref()`, `getLastBrewOfBean()`, `getChangesForBean()`, `computeTimeStatus()`. `getBrews()` sorts by `brewedAt` descending with module-level cache (`_brewsCache`/`_brewsCacheRaw`); all write functions call `_invalidateBrewsCache()`.
+- `src/components/BrewScreen.jsx` — **Largest file (~1,620 lines).** Guided brew flow with 5 inline sub-components: `BeanPicker`, `RecipeAssembly`, `ActiveBrew`, `RateThisBrew`, `SwipeCards`, plus `PhaseIndicator`. Phase state machine: `pick → recipe → brew → rate → success`. Key helpers: `buildBrewRecord` (useCallback, shared by `handleFinishBrew` and `handleLogWithoutTimer`), `buildRecipeFromBean` (pre-fill from last brew). Equipment section in RecipeAssembly allows per-brew equipment selection. Skip-timer mode via "Log without timer" button bypasses ActiveBrew phase. Communicates with App.jsx via narrow callback interface.
+- `src/components/BrewForm.jsx` — Edit-only brew form. Used exclusively for editing existing brews from History (via `editBrew` prop). New brew creation goes through BrewScreen. Preserves `recipeSnapshot`, `stepResults`, `method`, `grinder`, `dripper`, `filterType` on save.
 - `src/components/BrewHistory.jsx` — Timeline of past brews with auto-diff badges. Edit navigates to BrewForm. Compare mode: select 2 brews for side-by-side diff.
 - `src/components/BeanLibrary.jsx` — Bean CRUD with expandable cards. Shows brew count per bean. Rename cascades to all brews.
 - `src/components/BrewTrends.jsx` — Three stacked Recharts line charts (rating, grind, time) for the last 20 brews.
-- `src/components/StepEditor.jsx` — Step editor for BrewForm. Reads/writes legacy step format.
+- `src/components/StepEditor.jsx` — Step editor for BrewForm. Reads/writes unified step format (`{ id, name, waterTo, time, duration, note }`).
 - `src/components/EquipmentSetup.jsx` — 3-step onboarding wizard for new users; single-page edit for returning users.
 - `src/components/FlavorPicker.jsx` — Clickable flavor tags grouped by category. Custom flavor input.
 - `src/components/Header.jsx` — Sticky top bar with desktop tab navigation (hidden below `md:`), settings gear icon.
@@ -32,17 +32,17 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
 
 ## Data Models
 
-### Brew (Current — two formats coexist)
+### Brew (Unified — Schema V2)
 
-**BrewScreen format** (brews created via guided flow, has `brewScreenVersion: 1`):
-- Includes: `brewScreenVersion`, `recipeSteps` (new step format), `stepResults`, `timeStatus`, `nextBrewChanges`, `pourTemplateId`, `targetTimeRange`, `targetTimeMin`, `targetTimeMax`
-- Steps use new format: `{ id, name, waterTo, time, duration, note }`
+All brews use one canonical format (`schemaVersion: 2`). Legacy brews are migrated on app load by `migrateToSchemaV2()`. Steps use format: `{ id, name, waterTo, time, duration, note }`.
 
-**BrewForm format** (legacy brews, no `brewScreenVersion`):
-- Includes: `recipeSteps`/`steps` (legacy step format), may have `bloomTime`, `bloomWater`, `actualBloomTime`, `actualBloomWater`
-- Steps use legacy format: `{ label, startTime, targetWater, note }`
+**Core fields:** `id`, `schemaVersion`, `beanName`, `roaster`, `roastDate`, `coffeeGrams`, `waterGrams`, `grindSetting`, `waterTemp`, `targetTime`, `targetTimeRange`, `targetTimeMin`, `targetTimeMax`, `totalTime`, `timeStatus`, `flavors`, `body`, `rating`, `issues`, `notes`, `nextBrewChanges`, `method`, `grinder`, `dripper`, `filterType`, `pourTemplateId`, `brewedAt`
 
-**Both share:** `id`, `beanName`, `roaster`, `roastDate`, `coffeeGrams`, `waterGrams`, `grindSetting`, `waterTemp`, `targetTime`, `totalTime`, `flavors`, `body`, `rating`, `issues`, `notes`, `method`, `grinder`, `dripper`, `brewedAt`
+**Recipe snapshot:** `recipeSnapshot` object frozen at brew start — captures all recipe fields + equipment + steps. Never edited after creation. Enables planned-vs-actual comparison.
+
+**Steps & results:** `recipeSteps` (planned steps), `steps` (actual steps — same as recipeSteps at creation, can be corrected post-brew), `stepResults` (per-step timing: `{ stepId: { tappedAt, skipped, variance } }`).
+
+**Flags:** `isManualEntry` (true for skip-timer brews, no stepResults/timeStatus).
 
 ### Bean
 ```json
@@ -52,7 +52,7 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
 ```
 
 ### Equipment
-Stored with `brewMethod` field, but brew records use `method`. Fields `kettle`, `scale`, `filterType`, `notes` exist on equipment but are NOT copied to brew records currently.
+Global equipment inventory stored with `brewMethod` field. Serves as defaults for per-brew equipment selection in RecipeAssembly. Per-brew equipment is stored on each brew record as `method`, `grinder`, `dripper`, `filterType`.
 ```json
 { "brewMethod": "v60", "dripper": "ceramic", "grinder": "fellow-ode",
   "kettle": "gooseneck-electric", "scale": "", "filterType": "paper-tabbed", "notes": "" }
@@ -66,24 +66,28 @@ Three built-in templates seeded on first load. Steps use new format.
 ```
 
 ### Active Brew (crash recovery)
-At most one in-progress brew. Persisted every 5 seconds during timer and immediately on step tap/skip. Cleared on commit.
+At most one in-progress brew. Persisted every 5 seconds during timer and immediately on step tap/skip. Includes `phase` field for recovery routing.
 ```json
-{ "beanId": "uuid", "beanName": "string", "recipe": { "...recipe state..." },
+{ "phase": "brew|rate", "beanId": "uuid", "beanName": "string", "recipe": { "...recipe state..." },
   "timerState": { "startedAt": 123, "pausedDuration": 0, "pausedAt": null },
-  "tappedSteps": { "stepId": 45 }, "skippedSteps": { "stepId": true }, "elapsed": 120 }
+  "tappedSteps": { "stepId": 45 }, "skippedSteps": { "stepId": true }, "elapsed": 120,
+  "brewId": "uuid (present when phase=rate)" }
 ```
+On recovery: `phase === 'brew'` resumes timer, `phase === 'rate'` skips to rating screen with saved `brewId`. Cleared on "Done" in RateThisBrew.
 
 ## BrewScreen Phase State Machine
 ```
-pick → recipe → brew → commit → committed
+pick → recipe → brew → rate → success
+                  ↓ (skip timer)
+               recipe → rate → success
 ```
 - **pick**: BeanPicker — select from library. Skipped if entering via BeanLibrary "Brew this bean".
-- **recipe**: RecipeAssembly — review/edit recipe. Template picker shown for beans with no prior brew. Three swipeable cards.
-- **brew**: ActiveBrew — timer, step teleprompter, tap-to-record. Active brew persists to localStorage.
-- **commit**: PostBrewCommit — brew report, tasting notes, "what to try next". `saveBrew()` called here.
-- **committed**: Success screen — "Start New Brew" or "View in History".
+- **recipe**: RecipeAssembly — review/edit recipe, per-brew equipment, template picker. "Brew This" or "Log without timer".
+- **brew**: ActiveBrew — timer, step teleprompter, tap-to-record. Active brew persists to localStorage. "Finish Brew" calls `saveBrew()` immediately, then transitions to rate.
+- **rate**: RateThisBrew — correct actuals, tasting notes (flavors, body, rating, issues), "what to try next". Edits already-saved brew via `updateBrew()`.
+- **success**: Done — "Start New Brew" or "View in History".
 
-**Navigation guard:** `isBrewActive` state in App.jsx triggers `window.confirm` + `beforeunload` listener during `brew` phase. MobileNav hidden when `brewFlowActive` is true (phases recipe/brew/commit).
+**Navigation guard:** `isBrewActive` state in App.jsx triggers `window.confirm` + `beforeunload` listener during `brew` phase. MobileNav hidden when `brewFlowActive` is true (phases recipe/brew/rate).
 
 ## Design Principles
 1. **Pre-fill from last brew of same bean** — "Dial-in" pattern. `getLastBrewOfBean()` in storage. Falls back to global last brew for new beans. BrewScreen uses `buildRecipeFromBean()` with `normalizeSteps()` to convert legacy steps.
@@ -105,11 +109,17 @@ pick → recipe → brew → commit → committed
 
 **Rename cascade:** When a bean name changes, `renameBrewBean(oldName, newName)` updates all matching brew records. String-based references require cascading.
 
-**Double-save guards:** `savingRef` (useRef) in BrewForm and PostBrewCommit, `isImporting` state in SettingsMenu, `dismissed` ref in EquipmentSetup — all prevent duplicate submissions from fast taps.
+**Double-save guards:** `savingRef` (useRef) in BrewForm and RateThisBrew, `isImporting` state in SettingsMenu, `dismissed` ref in EquipmentSetup — all prevent duplicate submissions from fast taps.
 
-**Migrations:** Run synchronously in App.jsx lazy initializer. Pattern: idempotent check → in-place mutation → batch write → return brews. Current chain: `migrateGrindSettings()` → `seedDefaultPourTemplates()` → `migrateBloomToSteps()`.
+**Migrations:** Run synchronously in App.jsx lazy initializer. Pattern: idempotent check → in-place mutation → batch write → return brews. Current chain: `migrateGrindSettings()` → `seedDefaultPourTemplates()` → `migrateBloomToSteps()` → `migrateToSchemaV2()`. V2 migration creates backup in `brewlog_brews_backup_v1` (does not overwrite existing backup). On corrupt data, attempts restore from backup.
 
-**Step format normalization:** `normalizeSteps()` in storage.js converts legacy `{ label, startTime, targetWater, note }` to current `{ id, name, waterTo, time, duration, note }`. Detects format by checking for `name` field. BrewHistory.jsx has a separate local `normalizeSteps()` that only does array validation — this is a known issue (should use the canonical one).
+**Step format normalization:** `normalizeSteps()` in storage.js converts legacy `{ label, startTime, targetWater, note }` to current `{ id, name, waterTo, time, duration, note }`. Detects format by checking for `name` field. All consumers use the canonical `normalizeSteps()` from storage.js.
+
+**Brew record construction:** `buildBrewRecord` (useCallback in BrewScreen) is the single factory for new brew records. Both `handleFinishBrew` (timed brews) and `handleLogWithoutTimer` (manual entry) call it with overrides. Always call `clearActiveBrew()` before `saveBrew()` to prevent duplicate-on-crash.
+
+**getBrews() caching:** Module-level `_brewsCache`/`_brewsCacheRaw` avoids re-parsing JSON on every call. All write functions (`saveBrew`, `updateBrew`, `deleteBrew`, `renameBrewBean`, `importData`, `mergeData`, and migrations) call `_invalidateBrewsCache()`.
+
+**Equipment lookup helpers:** `getMethodName(id)` and `getGrinderName(id)` in defaults.js resolve equipment IDs to display names. Used by BrewHistory for diff badges and expanded card display.
 
 **Import merge vs replace:** Merge uses "local wins" — if an ID exists locally and in the import, keep local. Only add new records. Replace overwrites everything.
 
@@ -126,15 +136,15 @@ pick → recipe → brew → commit → committed
 **Per-keystroke storage writes:** Never call storage functions in `onChange` handlers. Buffer in local state, persist on blur or action button. See `docs/solutions/performance/per-keystroke-localstorage-writes-cause-render-cascade.md`.
 
 ## Bugs & Lessons Learned
-21 documented solutions in `docs/solutions/` across 6 categories:
-- **logic-errors/** (7): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence
+22 documented solutions in `docs/solutions/` across 6 categories:
+- **logic-errors/** (8): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence, cache mutation breaks sort invariant
 - **react-patterns/** (10): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow
 - **performance/** (1): per-keystroke localStorage writes
 - **state-management/** (1): lazy init state goes stale on prop change
 - **test-failures/** (1): Node 22 localStorage shadows browser mock
 - **ui-bugs/** (1): paired input blur race
 
-Full tracking: `todos/` (48 items, 40 complete, 8 pending). Plans: `docs/plans/`. Solutions: `docs/solutions/`.
+Full tracking: `todos/` (74 items, all complete). Plans: `docs/plans/`. Solutions: `docs/solutions/`.
 
 ## Commands
 - `npm install` — Install dependencies
@@ -151,7 +161,7 @@ Full tracking: `todos/` (48 items, 40 complete, 8 pending). Plans: `docs/plans/`
 - Commit after each completed change with a descriptive message
 
 ## Future Plans (Do NOT implement unless asked)
-- Foundation stabilization: unified brew schema, recipe snapshots, merged post-brew flow (see `docs/plans/2026-03-02-refactor-foundation-stabilization-plan.md`)
 - AI brewing coach (Claude API integration)
-- Per-recipe equipment selection
 - PWA for mobile
+- Grinder-aware trend filtering in BrewTrends
+- Export format versioning

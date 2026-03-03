@@ -3,6 +3,7 @@ import { updateBrew, saveBean, getBeans, formatTime, parseTimeRange, formatTimeR
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import StepEditor from './StepEditor'
+import Collapsible from './Collapsible'
 
 // ============================================================
 // BREW FORM — Edit-only brew form
@@ -53,7 +54,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       // Tasting
       flavors: editBrew?.flavors || [],
       body: editBrew?.body || '',
-      rating: editBrew?.rating || 0,
+      rating: editBrew?.rating ?? null,
       issues: editBrew?.issues || [],
 
       // Notes
@@ -170,6 +171,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
               onChange={(e) => handleBeanNameChange(e.target.value)}
               placeholder="e.g., Heart Columbia Javier Omar"
               list="bean-suggestions"
+              maxLength={100}
               className="w-full p-3 rounded-xl border border-brew-200 text-base
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
@@ -185,6 +187,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
               value={form.roaster}
               onChange={(e) => update('roaster', e.target.value)}
               placeholder="e.g., Heart, Tandem"
+              maxLength={100}
               className="w-full p-3 rounded-xl border border-brew-200 text-base
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
@@ -214,6 +217,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
               type="number"
               value={form.coffeeGrams}
               onChange={(e) => update('coffeeGrams', Number(e.target.value))}
+              min={1} max={100}
               className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
@@ -228,6 +232,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
               type="number"
               value={form.waterGrams}
               onChange={(e) => update('waterGrams', Number(e.target.value))}
+              min={1} max={2000}
               className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
@@ -278,6 +283,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
                 value={form.grindSetting}
                 onChange={(e) => update('grindSetting', e.target.value)}
                 placeholder="Describe grind..."
+                maxLength={50}
                 className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
@@ -293,6 +299,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
               type="number"
               value={form.waterTemp}
               onChange={(e) => update('waterTemp', Number(e.target.value))}
+              min={32} max={212}
               className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
@@ -305,6 +312,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
               type="text"
               value={targetTimeInput}
               onChange={e => setTargetTimeInput(e.target.value)}
+              maxLength={15}
               onBlur={() => {
                 const range = parseTimeRange(targetTimeInput)
                 if (range) {
@@ -347,6 +355,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
             type="number"
             value={form.totalTime}
             onChange={(e) => update('totalTime', Number(e.target.value))}
+            min={0} max={3600}
             placeholder={form.targetTime || method.defaultTotalTime}
             className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
                        placeholder:text-brew-300
@@ -407,6 +416,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
           onChange={(e) => update('notes', e.target.value)}
           placeholder="Any adjustments during the brew? How did the cup turn out?"
           rows={4}
+          maxLength={2000}
           className="w-full p-3 rounded-xl border border-brew-200 text-base
                      text-brew-800 placeholder:text-brew-300
                      focus:outline-none focus:ring-2 focus:ring-brew-400 resize-y"
@@ -509,16 +519,11 @@ function Section({ title, defaultOpen = false, children }) {
           {'\u25BE'}
         </span>
       </button>
-      <div
-        aria-hidden={!open}
-        className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
-          open ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
+      <Collapsible open={open}>
         {open && <div className="px-5 pb-5">
           {children}
         </div>}
-      </div>
+      </Collapsible>
     </div>
   )
 }

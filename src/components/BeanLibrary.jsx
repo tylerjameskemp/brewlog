@@ -1,7 +1,10 @@
 import { useState, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { saveBean, updateBean, deleteBean, renameBrewBean } from '../data/storage'
+import { saveBean, updateBean, deleteBean, renameBrewBean, formatTime, normalizeName } from '../data/storage'
 import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE } from '../data/defaults'
+import Collapsible from './Collapsible'
+import EmptyState from './EmptyState'
+import Modal from './Modal'
 
 // ============================================================
 // BEAN LIBRARY — Browse, add, edit, and delete your beans
@@ -20,7 +23,7 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
   const brewCounts = useMemo(() => {
     const counts = new Map()
     brews.forEach(b => {
-      const key = b.beanName?.trim().toLowerCase() || ''
+      const key = normalizeName(b.beanName)
       counts.set(key, (counts.get(key) || 0) + 1)
     })
     return counts
@@ -31,8 +34,8 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
     if (!expandedBeanId) return []
     const expandedBean = beans.find(b => b.id === expandedBeanId)
     if (!expandedBean) return []
-    const key = expandedBean.name.trim().toLowerCase()
-    return brews.filter(b => b.beanName?.trim().toLowerCase() === key)
+    const key = normalizeName(expandedBean.name)
+    return brews.filter(b => normalizeName(b.beanName) === key)
   }, [brews, beans, expandedBeanId])
 
   const formatDate = (dateStr) => {
@@ -50,13 +53,6 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
       hour: 'numeric',
       minute: '2-digit',
     })
-  }
-
-  const formatTime = (seconds) => {
-    if (!seconds) return '—'
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
   }
 
   const handleOpenAdd = () => {
@@ -117,20 +113,16 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
       </div>
 
       {beans.length === 0 ? (
-        <div className="mt-12 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
-          <div className="text-4xl mb-3">🫘</div>
-          <p className="text-lg font-medium text-brew-700">Your Bean Library</p>
-          <p className="text-sm mt-2 max-w-xs mx-auto">
-            Keep track of every bean you brew. See tasting notes across sessions and
-            build your personal catalog. Beans are added automatically when you log a brew,
-            or tap "+ Add Bean" to add one manually.
-          </p>
-        </div>
+        <EmptyState
+          emoji="🫘"
+          title="Your Bean Library"
+          description="Keep track of every bean you brew. See tasting notes across sessions and build your personal catalog. Beans are added automatically when you log a brew, or tap &quot;+ Add Bean&quot; to add one manually."
+        />
       ) : (
       <div className="space-y-3">
         {beans.map(bean => {
           const isExpanded = expandedBeanId === bean.id
-          const key = bean.name.trim().toLowerCase()
+          const key = normalizeName(bean.name)
           const count = brewCounts.get(key) || 0
           const beanBrews = isExpanded ? expandedBeanBrews : []
           const meta = [bean.roaster, bean.origin, bean.process].filter(Boolean).join(' · ')
@@ -174,12 +166,7 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
               </button>
 
               {/* Expanded content */}
-              <div
-                aria-hidden={!isExpanded}
-                className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
-                  isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
-                }`}
-              >
+              <Collapsible open={isExpanded}>
                 {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
                   {/* Action buttons */}
                   <div className="flex gap-2 mt-3 mb-4 flex-wrap">
@@ -277,7 +264,7 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
                     </div>
                   )}
                 </div>}
-              </div>
+              </Collapsible>
             </div>
           )
         })}
@@ -357,6 +344,7 @@ function TagSelectWithOther({ label, options, value, onChange }) {
           value={isOther ? value : ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={`Custom ${label.toLowerCase()}...`}
+          maxLength={100}
           className="mt-2 w-full p-3 rounded-xl border border-brew-200 text-base
                      focus:outline-none focus:ring-2 focus:ring-brew-400"
         />
@@ -387,7 +375,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
 
     // Check for duplicate names (excluding current bean if editing)
     const isDuplicate = beans.some(b =>
-      b.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+      normalizeName(b.name) === normalizeName(trimmedName) &&
       (!bean || b.id !== bean.id)
     )
 
@@ -406,22 +394,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-fade-in motion-reduce:animate-none" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in motion-reduce:animate-none" onClick={e => e.stopPropagation()}>
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-brew-800">
-              {bean ? 'Edit Bean' : 'Add Bean'}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center
-                         text-brew-400 hover:text-brew-600 text-xl rounded-lg hover:bg-brew-50"
-            >
-              ✕
-            </button>
-          </div>
-
+    <Modal title={bean ? 'Edit Bean' : 'Add Bean'} onClose={onClose}>
           <div className="space-y-5">
             {/* Bean Name */}
             <div>
@@ -433,6 +406,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
                 value={form.name}
                 onChange={(e) => update('name', e.target.value)}
                 placeholder="e.g., Heart Columbia Javier Omar"
+                maxLength={100}
                 className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
@@ -451,6 +425,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
                 value={form.roaster}
                 onChange={(e) => update('roaster', e.target.value)}
                 placeholder="e.g., Heart, Tandem, Onyx"
+                maxLength={100}
                 className="w-full p-3 rounded-xl border border-brew-200 text-base
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
@@ -497,8 +472,6 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
           >
             {bean ? 'Update Bean' : 'Save Bean'}
           </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

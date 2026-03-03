@@ -4,7 +4,7 @@ import {
   getBrews, getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
   parseTime, parseTimeRange, formatTimeRange, computeTimeStatus,
   getPourTemplates, saveBrew, updateBrew, getBeans, updateBean,
-  saveActiveBrew, getActiveBrew, clearActiveBrew,
+  saveActiveBrew, getActiveBrew, clearActiveBrew, normalizeName,
 } from '../data/storage'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
@@ -108,7 +108,7 @@ function BeanPicker({ beans, onSelect }) {
   const [search, setSearch] = useState('')
 
   const filtered = beans.filter(b => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeName(search)
     if (!q) return true
     return (b.name?.toLowerCase().includes(q) || b.roaster?.toLowerCase().includes(q))
   })
@@ -272,8 +272,8 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
       {/* Coffee / Water / Ratio */}
       <div className="grid grid-cols-3 gap-2 mt-5">
         {[
-          { label: 'Coffee', value: `${recipe.coffeeGrams}g`, field: 'coffeeGrams', type: 'number' },
-          { label: 'Water', value: `${recipe.waterGrams}g`, field: 'waterGrams', type: 'number' },
+          { label: 'Coffee', value: `${recipe.coffeeGrams}g`, field: 'coffeeGrams', type: 'number', min: 1, max: 100 },
+          { label: 'Water', value: `${recipe.waterGrams}g`, field: 'waterGrams', type: 'number', min: 1, max: 2000 },
           { label: 'Ratio', value: ratio(recipe.coffeeGrams, recipe.waterGrams) },
         ].map(item => (
           <div key={item.label} className="text-center p-3 bg-brew-50 rounded-xl">
@@ -283,6 +283,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
                 type={item.type}
                 value={recipe[item.field]}
                 onChange={e => updateField(item.field, Number(e.target.value))}
+                min={item.min} max={item.max}
                 className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
                            border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
               />
@@ -314,6 +315,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
                 type="text"
                 value={recipe.grindSetting}
                 onChange={e => updateField('grindSetting', e.target.value)}
+                maxLength={50}
                 className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
                            border-b border-brew-300 focus:outline-none text-base"
               />
@@ -329,6 +331,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               type="number"
               value={recipe.waterTemp}
               onChange={e => updateField('waterTemp', Number(e.target.value))}
+              min={32} max={212}
               className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
                          border-b border-brew-300 focus:outline-none text-base"
             />
@@ -347,6 +350,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             onChange={e => setTargetTimeInput(e.target.value)}
             onBlur={handleTargetTimeBlur}
             placeholder="3:00 - 3:30"
+            maxLength={15}
             className="w-32 mx-auto text-center text-lg font-medium text-brew-800 bg-transparent
                        border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base block"
           />
@@ -573,7 +577,10 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             const originalTemplate = recipe.pourTemplateId
               ? templates.find(t => t.id === recipe.pourTemplateId)
               : null
-            if (originalTemplate && JSON.stringify(recipe.steps) !== JSON.stringify(originalTemplate.steps)) {
+            const stepsMatch = originalTemplate && originalTemplate.steps.length === recipe.steps.length &&
+              originalTemplate.steps.every((s, i) => s.name === recipe.steps[i].name && s.waterTo === recipe.steps[i].waterTo &&
+                s.time === recipe.steps[i].time && s.duration === recipe.steps[i].duration)
+            if (originalTemplate && !stepsMatch) {
               return (
                 <div className="px-4 mt-2">
                   <button
@@ -769,9 +776,10 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
     const ref = stepRefs.current[currentStep?.id]
     const container = stepsContainerRef.current
     if (ref && container) {
-      const stepTop = ref.offsetTop - container.offsetTop
+      const rect = ref.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
       container.scrollTo({
-        top: Math.max(0, stepTop - 16),
+        top: container.scrollTop + (rect.top - containerRect.top) - 16,
         behavior: 'smooth'
       })
     }
@@ -1193,6 +1201,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
           value={notes}
           onChange={e => setNotes(e.target.value)}
           placeholder="Bed looked uneven after bloom, water temp dropped fast..."
+          maxLength={2000}
           className="w-full min-h-[80px] p-3 rounded-xl border border-brew-200 bg-brew-50
                      text-sm text-brew-800 resize-y focus:outline-none focus:border-brew-500 text-base"
         />
@@ -1208,6 +1217,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
           value={nextBrewChanges}
           onChange={e => setNextBrewChanges(e.target.value)}
           placeholder="Try coarser grind, extend bloom to 45s..."
+          maxLength={500}
           className="w-full min-h-[80px] p-3 rounded-xl border border-amber-200 bg-white
                      text-sm text-brew-800 resize-y focus:outline-none focus:border-brew-500 text-base"
         />
@@ -1334,20 +1344,20 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       ? normalizeSteps(lastBrew.recipeSteps)
       : templates[0]?.steps || []
     return {
-      coffeeGrams: lastBrew.coffeeGrams || 15,
-      waterGrams: lastBrew.waterGrams || 240,
-      grindSetting: lastBrew.grindSetting || '',
-      waterTemp: lastBrew.waterTemp || 200,
-      targetTime: lastBrew.targetTime || method.defaultTotalTime,
-      targetTimeRange: lastBrew.targetTimeRange || '',
-      targetTimeMin: lastBrew.targetTimeMin || null,
-      targetTimeMax: lastBrew.targetTimeMax || null,
+      coffeeGrams: lastBrew.coffeeGrams ?? 15,
+      waterGrams: lastBrew.waterGrams ?? 240,
+      grindSetting: lastBrew.grindSetting ?? '',
+      waterTemp: lastBrew.waterTemp ?? 200,
+      targetTime: lastBrew.targetTime ?? method.defaultTotalTime,
+      targetTimeRange: lastBrew.targetTimeRange ?? '',
+      targetTimeMin: lastBrew.targetTimeMin ?? null,
+      targetTimeMax: lastBrew.targetTimeMax ?? null,
       steps,
-      pourTemplateId: lastBrew.pourTemplateId || templates[0]?.id || null,
-      method: lastBrew.method || equipDefaults.method,
-      grinder: lastBrew.grinder || equipDefaults.grinder,
-      dripper: lastBrew.dripper || equipDefaults.dripper,
-      filterType: lastBrew.filterType || equipDefaults.filterType,
+      pourTemplateId: lastBrew.pourTemplateId ?? templates[0]?.id ?? null,
+      method: lastBrew.method ?? equipDefaults.method,
+      grinder: lastBrew.grinder ?? equipDefaults.grinder,
+      dripper: lastBrew.dripper ?? equipDefaults.dripper,
+      filterType: lastBrew.filterType ?? equipDefaults.filterType,
     }
   }, [equipment, templates])
 
@@ -1420,24 +1430,21 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       roaster: selectedBean.roaster || '',
       roastDate: selectedBean.roastDate || '',
       recipeSnapshot,
-      coffeeGrams: recipe.coffeeGrams,
-      waterGrams: recipe.waterGrams,
-      grindSetting: recipe.grindSetting,
-      waterTemp: recipe.waterTemp,
+      // Top-level recipe fields (backward compat — sourced from recipeSnapshot)
+      ...recipeSnapshot,
+      // Override snapshot fields that differ at top level
       targetTime: recipe.targetTime || totalDuration,
       targetTimeRange: recipe.targetTimeRange || formatTime(recipe.targetTime || totalDuration),
       targetTimeMin: recipe.targetTimeMin || null,
       targetTimeMax: recipe.targetTimeMax || null,
+      steps: recipe.steps.map(s => ({ ...s })),
+      recipeSteps: recipe.steps,
+      // Brew execution fields
       timeStatus: null,
       totalTime: null,
-      recipeSteps: recipe.steps,
       stepResults: null,
+      // Tasting fields
       flavors: [], body: '', rating: null, issues: [], notes: '', nextBrewChanges: '',
-      pourTemplateId: recipe.pourTemplateId || null,
-      method: recipe.method,
-      grinder: recipe.grinder,
-      dripper: recipe.dripper,
-      filterType: recipe.filterType,
       brewedAt: new Date().toISOString(),
       ...overrides,
     }
@@ -1485,10 +1492,13 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     const updatedBrews = saveBrew(brew)
     onBrewSaved(updatedBrews)
 
+    // Persist for crash recovery during rating (parity with handleFinishBrew)
+    saveActiveBrew({ phase: 'rate', brewId: brew.id, beanName: selectedBean.name, recipe })
+
     setRatingBrew(brew)
     setSavedBrewState(null)
     setPhase('rate')
-  }, [buildBrewRecord, onBrewSaved])
+  }, [buildBrewRecord, onBrewSaved, selectedBean, recipe])
 
   // Persist active brew state to localStorage
   const persistState = useCallback((brewState) => {
@@ -1507,7 +1517,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       if (active.phase === 'rate' && active.brewId) {
         // Recovery into rating screen — brew already saved
         const brew = getBrews().find(b => b.id === active.brewId)
-        const bean = beans.find(b => b.name?.trim().toLowerCase() === active.beanName?.trim().toLowerCase())
+        const bean = beans.find(b => normalizeName(b.name) === normalizeName(active.beanName))
         if (brew && bean) {
           setSelectedBean(bean)
           setRatingBrew(brew)
@@ -1519,7 +1529,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
         // Recovery into active brew (timer)
         const resume = window.confirm(`Resume brew in progress for ${active.beanName}?`)
         if (resume) {
-          const bean = beans.find(b => b.name?.trim().toLowerCase() === active.beanName?.trim().toLowerCase())
+          const bean = beans.find(b => normalizeName(b.name) === normalizeName(active.beanName))
           if (bean) {
             setSelectedBean(bean)
             setRecipe(active.recipe)

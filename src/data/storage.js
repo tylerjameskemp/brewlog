@@ -21,6 +21,24 @@ const STORAGE_KEYS = {
   BACKUP_V1: 'brewlog_brews_backup_v1',
 }
 
+// --- SAFE STORAGE WRITE ---
+
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value)
+    return true
+  } catch (e) {
+    console.warn(`Storage write failed for ${key}:`, e)
+    return false
+  }
+}
+
+// --- NAME NORMALIZATION ---
+
+export function normalizeName(name) {
+  return (name || '').trim().toLowerCase()
+}
+
 // --- BREW LOGS ---
 
 let _brewsCache = null
@@ -31,11 +49,16 @@ function _invalidateBrewsCache() {
   _brewsCacheRaw = null
 }
 
+function _setBrewsCache(brews, raw) {
+  _brewsCache = brews
+  _brewsCacheRaw = raw
+}
+
 export function getBrews() {
   // Read from localStorage, parse the JSON string back into an array
   const data = localStorage.getItem(STORAGE_KEYS.BREWS)
   if (!data) return []
-  if (data === _brewsCacheRaw && _brewsCache) return _brewsCache
+  if (data === _brewsCacheRaw && _brewsCache) return [..._brewsCache]
   let brews
   try {
     brews = JSON.parse(data)
@@ -46,35 +69,50 @@ export function getBrews() {
   brews.sort((a, b) => (b?.brewedAt || '').localeCompare(a?.brewedAt || ''))
   _brewsCache = brews
   _brewsCacheRaw = data
-  return brews
+  return [...brews]
 }
 
 export function saveBrew(brew) {
   _invalidateBrewsCache()
-  // Get existing brews, add the new one at the beginning, save back
   const brews = getBrews()
-  brews.unshift(brew) // unshift = add to front (newest first)
-  localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
-  return brews
+  brews.push(brew)
+  brews.sort((a, b) => (b?.brewedAt || '').localeCompare(a?.brewedAt || ''))
+  const raw = JSON.stringify(brews)
+  if (!safeSetItem(STORAGE_KEYS.BREWS, raw)) {
+    _invalidateBrewsCache()
+    return getBrews()
+  }
+  _setBrewsCache(brews, raw)
+  return [...brews]
 }
 
 export function updateBrew(id, updates) {
   _invalidateBrewsCache()
-  // Find a brew by ID and update its properties
   const brews = getBrews()
   const index = brews.findIndex(b => b.id === id)
   if (index !== -1) {
     brews[index] = { ...brews[index], ...updates }
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    const raw = JSON.stringify(brews)
+    if (!safeSetItem(STORAGE_KEYS.BREWS, raw)) {
+      _invalidateBrewsCache()
+      return getBrews()
+    }
+    _setBrewsCache(brews, raw)
+    return [...brews]
   }
-  return brews
+  return [...brews]
 }
 
 export function deleteBrew(id) {
   _invalidateBrewsCache()
   const brews = getBrews().filter(b => b.id !== id)
-  localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
-  return brews
+  const raw = JSON.stringify(brews)
+  if (!safeSetItem(STORAGE_KEYS.BREWS, raw)) {
+    _invalidateBrewsCache()
+    return getBrews()
+  }
+  _setBrewsCache(brews, raw)
+  return [...brews]
 }
 
 // --- EQUIPMENT PROFILE ---
@@ -89,7 +127,7 @@ export function getEquipment() {
 }
 
 export function saveEquipment(equipment) {
-  localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(equipment))
+  safeSetItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(equipment))
   return equipment
 }
 
@@ -106,12 +144,12 @@ export function getBeans() {
 
 export function saveBean(bean) {
   const beans = getBeans()
-  const normalized = bean.name?.trim().toLowerCase()
-  if (normalized && beans.some(b => b.name?.trim().toLowerCase() === normalized)) {
+  const normalized = normalizeName(bean.name)
+  if (normalized && beans.some(b => normalizeName(b.name) === normalized)) {
     return beans // Already exists, skip
   }
   beans.unshift(bean)
-  localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
+  safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
 }
 
@@ -123,22 +161,22 @@ export function updateBean(id, updates) {
   beans[index] = { ...beans[index], ...updates }
 
   // If name changed, remove any other bean with the same normalized name (merge)
-  const newName = updates.name?.trim().toLowerCase()
+  const newName = normalizeName(updates.name)
   if (newName) {
     const deduped = beans.filter(b =>
-      b.id === id || b.name?.trim().toLowerCase() !== newName
+      b.id === id || normalizeName(b.name) !== newName
     )
-    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
+    safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
     return deduped
   }
 
-  localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
+  safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
 }
 
 export function deleteBean(id) {
   const beans = getBeans().filter(b => b.id !== id)
-  localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
+  safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
 }
 
@@ -146,13 +184,13 @@ export function deduplicateBeans() {
   const beans = getBeans()
   const seen = new Map()
   const deduped = beans.filter(b => {
-    const key = b.name?.trim().toLowerCase()
+    const key = normalizeName(b.name)
     if (!key || seen.has(key)) return false
     seen.set(key, true)
     return true
   })
   if (deduped.length !== beans.length) {
-    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
+    safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
   }
   return deduped
 }
@@ -161,17 +199,22 @@ export function renameBrewBean(oldName, newName) {
   _invalidateBrewsCache()
   const brews = getBrews()
   let changed = false
-  const oldNorm = oldName.trim().toLowerCase()
+  const oldNorm = normalizeName(oldName)
   brews.forEach(b => {
-    if (b.beanName?.trim().toLowerCase() === oldNorm) {
+    if (normalizeName(b.beanName) === oldNorm) {
       b.beanName = newName.trim()
       changed = true
     }
   })
   if (changed) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    const raw = JSON.stringify(brews)
+    if (!safeSetItem(STORAGE_KEYS.BREWS, raw)) {
+      _invalidateBrewsCache()
+      return getBrews()
+    }
+    _setBrewsCache(brews, raw)
   }
-  return brews
+  return [...brews]
 }
 
 // --- UI PREFERENCES ---
@@ -191,9 +234,9 @@ export function setUIPref(key, value) {
     const data = localStorage.getItem(STORAGE_KEYS.UI_PREFS)
     const prefs = data ? JSON.parse(data) : {}
     prefs[key] = value
-    localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify(prefs))
+    safeSetItem(STORAGE_KEYS.UI_PREFS, JSON.stringify(prefs))
   } catch {
-    localStorage.setItem(STORAGE_KEYS.UI_PREFS, JSON.stringify({ [key]: value }))
+    safeSetItem(STORAGE_KEYS.UI_PREFS, JSON.stringify({ [key]: value }))
   }
 }
 
@@ -231,9 +274,10 @@ export function migrateBloomToSteps() {
     changed = true
   })
   if (changed) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
   }
-  return brews
+  _invalidateBrewsCache()
+  return getBrews()
 }
 
 export function migrateGrindSettings() {
@@ -250,9 +294,10 @@ export function migrateGrindSettings() {
     }
   })
   if (changed) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
   }
-  return brews
+  _invalidateBrewsCache()
+  return getBrews()
 }
 
 export function migrateToSchemaV2() {
@@ -283,7 +328,7 @@ export function migrateToSchemaV2() {
 
   // Pre-migration backup (only once — don't overwrite an existing backup)
   if (!localStorage.getItem(STORAGE_KEYS.BACKUP_V1)) {
-    localStorage.setItem(STORAGE_KEYS.BACKUP_V1, raw)
+    safeSetItem(STORAGE_KEYS.BACKUP_V1, raw)
   }
 
   let changed = false
@@ -304,13 +349,12 @@ export function migrateToSchemaV2() {
   })
 
   if (changed) {
-    try {
-      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
-    } catch {
+    if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
       // Quota exceeded — restore original data
-      localStorage.setItem(STORAGE_KEYS.BREWS, raw)
+      safeSetItem(STORAGE_KEYS.BREWS, raw)
     }
   }
+  _invalidateBrewsCache()
   return getBrews()
 }
 
@@ -329,7 +373,7 @@ export function seedDefaultPourTemplates() {
   // Idempotent — only seeds if no templates exist yet
   const existing = getPourTemplates()
   if (existing.length > 0) return existing
-  localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(DEFAULT_POUR_TEMPLATES))
+  safeSetItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(DEFAULT_POUR_TEMPLATES))
   return DEFAULT_POUR_TEMPLATES
 }
 
@@ -345,11 +389,7 @@ export function getActiveBrew() {
 }
 
 export function saveActiveBrew(state) {
-  try {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_BREW, JSON.stringify(state))
-  } catch {
-    // Silent fail — storage quota may be exceeded
-  }
+  safeSetItem(STORAGE_KEYS.ACTIVE_BREW, JSON.stringify(state))
 }
 
 export function clearActiveBrew() {
@@ -391,6 +431,35 @@ export function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+export function formatDate(isoString) {
+  if (!isoString) return '—'
+  const d = new Date(isoString)
+  return d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+export function formatShortDate(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr + (dateStr.includes('T') ? '' : 'T00:00:00'))
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+export function formatRoastDate(dateStr) {
+  if (!dateStr) return null
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+export function formatRatio(coffeeGrams, waterGrams) {
+  if (!coffeeGrams || coffeeGrams <= 0) return '—'
+  return `1:${(waterGrams / coffeeGrams).toFixed(1)}`
+}
+
 export function parseTime(str) {
   if (!str || typeof str !== 'string') return null
   const match = str.trim().match(/^(\d{1,2}):(\d{2})$/)
@@ -429,10 +498,10 @@ export function computeTimeStatus(elapsed, targetTimeMin, targetTimeMax, targetT
 export function getLastBrewOfBean(beanName) {
   // Returns the most recent brew for a specific bean — used for "dial-in" pre-fill
   if (!beanName) return null
-  const normalized = beanName.trim().toLowerCase()
+  const normalized = normalizeName(beanName)
   if (!normalized) return null
   const brews = getBrews() // already sorted by brewedAt descending
-  return brews.find(b => b.beanName?.trim().toLowerCase() === normalized) || null
+  return brews.find(b => normalizeName(b.beanName) === normalized) || null
 }
 
 export function exportData() {
@@ -451,21 +520,24 @@ export function importData(data) {
   _invalidateBrewsCache()
   // Full replace: only touch keys present in the import payload
   if ('brews' in data) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews || []))
+    safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews || []))
   }
   if ('equipment' in data) {
     if (data.equipment) {
-      localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
+      safeSetItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
     } else {
       localStorage.removeItem(STORAGE_KEYS.EQUIPMENT)
     }
   }
   if ('beans' in data) {
-    localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify(data.beans || []))
+    safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(data.beans || []))
   }
   if ('pourTemplates' in data) {
-    localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(data.pourTemplates || []))
+    safeSetItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(data.pourTemplates || []))
   }
+  // Run migration chain on imported data
+  _invalidateBrewsCache()
+  migrateToSchemaV2()
 }
 
 export function mergeData(data) {
@@ -476,25 +548,25 @@ export function mergeData(data) {
     const existingIds = new Set(existing.map(b => b.id))
     const newBrews = data.brews.filter(b => !existingIds.has(b.id))
     if (newBrews.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify([...existing, ...newBrews]))
+      safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify([...existing, ...newBrews]))
     }
   }
 
   if (data.beans && Array.isArray(data.beans)) {
     const existing = getBeans()
     const existingIds = new Set(existing.map(b => b.id))
-    const existingNames = new Set(existing.map(b => b.name?.trim().toLowerCase()))
+    const existingNames = new Set(existing.map(b => normalizeName(b.name)))
     const newBeans = data.beans.filter(b =>
-      !existingIds.has(b.id) && !existingNames.has(b.name?.trim().toLowerCase())
+      !existingIds.has(b.id) && !existingNames.has(normalizeName(b.name))
     )
     if (newBeans.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.BEANS, JSON.stringify([...existing, ...newBeans]))
+      safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify([...existing, ...newBeans]))
     }
   }
 
   // Equipment: only use imported if local is null
   if (data.equipment && !getEquipment()) {
-    localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
+    safeSetItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(data.equipment))
   }
 
   // Pour templates: merge by ID
@@ -503,7 +575,11 @@ export function mergeData(data) {
     const existingIds = new Set(existing.map(t => t.id))
     const newTemplates = data.pourTemplates.filter(t => !existingIds.has(t.id))
     if (newTemplates.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify([...existing, ...newTemplates]))
+      safeSetItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify([...existing, ...newTemplates]))
     }
   }
+
+  // Run migration chain on merged data
+  _invalidateBrewsCache()
+  migrateToSchemaV2()
 }
