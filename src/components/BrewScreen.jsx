@@ -163,7 +163,7 @@ function BeanPicker({ beans, onSelect }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onBack, onBeanUpdate, equipment }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onLogWithoutTimer, onBack, onBeanUpdate, equipment }) {
 
   const [cardIndex, setCardIndex] = useState(0)
   const [changesAccepted, setChangesAccepted] = useState({})
@@ -704,6 +704,13 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             >
               Brew This
             </button>
+            <button
+              onClick={onLogWithoutTimer}
+              className="w-full py-3 mt-2 text-brew-500 text-sm font-medium
+                         hover:text-brew-700 pointer-events-auto min-h-[44px]"
+            >
+              Log without timer
+            </button>
           </div>
         </>
       )}
@@ -991,9 +998,10 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
   const [rating, setRating] = useState(brew.rating ?? null)
   const [issues, setIssues] = useState(brew.issues || [])
   const [grindSetting, setGrindSetting] = useState(brew.grindSetting || '')
-  const [totalTimeStr, setTotalTimeStr] = useState(formatTime(brew.totalTime))
+  const [totalTimeStr, setTotalTimeStr] = useState(brew.totalTime != null ? formatTime(brew.totalTime) : '')
   const savingRef = useRef(false)
 
+  const isManual = brew.isManualEntry === true
   const steps = brew.recipeSteps || []
   const stepResults = brew.stepResults || {}
 
@@ -1043,29 +1051,37 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
     <div className="px-4 pt-4 pb-28">
       {/* Summary */}
       <div className="text-center mb-6">
-        <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-1">Brew Complete</div>
+        <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-1">
+          {isManual ? 'Log Brew' : 'Brew Complete'}
+        </div>
         <h1 className="text-2xl font-semibold text-brew-800">Rate This Brew</h1>
-        <div className="font-mono text-5xl text-brew-500 mt-2 tabular-nums">
-          {formatTime(brew.totalTime)}
-        </div>
-        <div className="text-sm text-brew-400 mt-1">
-          Target: {brew.targetTimeRange || formatTime(brew.targetTime)}
-        </div>
-        {timeResult && (
-          <div className={`text-sm font-semibold mt-1 ${
-            timeResult.status === 'under' ? 'text-amber-500'
-              : timeResult.status === 'over' ? 'text-red-500'
-              : 'text-green-600'
-          }`}>
-            {timeResult.status === 'under' ? `${timeResult.delta}s under target`
-              : timeResult.status === 'over' ? `${timeResult.delta}s over target`
-              : 'On target'}
-          </div>
+        {isManual && brew.totalTime == null ? (
+          <div className="text-sm text-brew-400 mt-2">Enter your brew time below</div>
+        ) : (
+          <>
+            <div className="font-mono text-5xl text-brew-500 mt-2 tabular-nums">
+              {formatTime(brew.totalTime)}
+            </div>
+            <div className="text-sm text-brew-400 mt-1">
+              Target: {brew.targetTimeRange || formatTime(brew.targetTime)}
+            </div>
+            {timeResult && (
+              <div className={`text-sm font-semibold mt-1 ${
+                timeResult.status === 'under' ? 'text-amber-500'
+                  : timeResult.status === 'over' ? 'text-red-500'
+                  : 'text-green-600'
+              }`}>
+                {timeResult.status === 'under' ? `${timeResult.delta}s under target`
+                  : timeResult.status === 'over' ? `${timeResult.delta}s over target`
+                  : 'On target'}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Step Results */}
-      {steps.length > 0 && (
+      {/* Step Results — hidden for manual brews (no timer data) */}
+      {!isManual && steps.length > 0 && (
         <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
           <h3 className="text-lg font-semibold text-brew-800 mb-3">Step Timing</h3>
           {steps.map(step => {
@@ -1109,8 +1125,26 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
 
       {/* Correct Actuals */}
       <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
-        <h3 className="text-lg font-semibold text-brew-800 mb-1">Correct Actuals</h3>
-        <p className="text-xs text-brew-400 mb-3">Adjust if the actual values differed from planned.</p>
+        <h3 className="text-lg font-semibold text-brew-800 mb-1">
+          {isManual ? 'Brew Details' : 'Correct Actuals'}
+        </h3>
+        <p className="text-xs text-brew-400 mb-3">
+          {isManual ? 'Enter the details for this brew.' : 'Adjust if the actual values differed from planned.'}
+        </p>
+        {isManual && (
+          <div className="mb-3">
+            <label className="text-xs text-brew-400 block mb-1">Total Brew Time</label>
+            <input
+              type="text"
+              value={totalTimeStr}
+              onChange={e => setTotalTimeStr(e.target.value)}
+              placeholder="M:SS (e.g. 3:30)"
+              className="w-full p-3 rounded-xl border border-brew-300 bg-brew-50
+                         text-lg text-brew-800 font-mono text-center
+                         focus:outline-none focus:border-brew-500 focus:ring-2 focus:ring-brew-400 text-base"
+            />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-brew-400 block mb-1">Grind Setting</label>
@@ -1122,17 +1156,19 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                          text-sm text-brew-800 focus:outline-none focus:border-brew-500 text-base"
             />
           </div>
-          <div>
-            <label className="text-xs text-brew-400 block mb-1">Total Time</label>
-            <input
-              type="text"
-              value={totalTimeStr}
-              onChange={e => setTotalTimeStr(e.target.value)}
-              placeholder="3:30"
-              className="w-full p-2.5 rounded-xl border border-brew-200 bg-brew-50
-                         text-sm text-brew-800 font-mono focus:outline-none focus:border-brew-500 text-base"
-            />
-          </div>
+          {!isManual && (
+            <div>
+              <label className="text-xs text-brew-400 block mb-1">Total Time</label>
+              <input
+                type="text"
+                value={totalTimeStr}
+                onChange={e => setTotalTimeStr(e.target.value)}
+                placeholder="3:30"
+                className="w-full p-2.5 rounded-xl border border-brew-200 bg-brew-50
+                           text-sm text-brew-800 font-mono focus:outline-none focus:border-brew-500 text-base"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1433,6 +1469,70 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     setPhase('rate')
   }, [recipe, selectedBean, onBrewSaved])
 
+  // Handle "Log without timer" — skip-timer brew, save immediately, transition to rate
+  const handleLogWithoutTimer = useCallback(() => {
+    const totalDuration = getTotalDuration(recipe.steps)
+
+    const recipeSnapshot = {
+      coffeeGrams: recipe.coffeeGrams,
+      waterGrams: recipe.waterGrams,
+      grindSetting: recipe.grindSetting,
+      waterTemp: recipe.waterTemp,
+      targetTime: recipe.targetTime,
+      targetTimeRange: recipe.targetTimeRange,
+      targetTimeMin: recipe.targetTimeMin,
+      targetTimeMax: recipe.targetTimeMax,
+      steps: structuredClone(recipe.steps),
+      pourTemplateId: recipe.pourTemplateId,
+      method: recipe.method,
+      grinder: recipe.grinder,
+      dripper: recipe.dripper,
+      filterType: recipe.filterType,
+    }
+
+    const brew = {
+      id: uuidv4(),
+      schemaVersion: 2,
+      isManualEntry: true,
+      beanName: selectedBean.name.trim(),
+      roaster: selectedBean.roaster || '',
+      roastDate: selectedBean.roastDate || '',
+      recipeSnapshot,
+      coffeeGrams: recipe.coffeeGrams,
+      waterGrams: recipe.waterGrams,
+      grindSetting: recipe.grindSetting,
+      waterTemp: recipe.waterTemp,
+      targetTime: recipe.targetTime || totalDuration,
+      targetTimeRange: recipe.targetTimeRange || formatTime(recipe.targetTime || totalDuration),
+      targetTimeMin: recipe.targetTimeMin || null,
+      targetTimeMax: recipe.targetTimeMax || null,
+      timeStatus: null,
+      totalTime: null,
+      recipeSteps: recipe.steps,
+      stepResults: null,
+      flavors: [],
+      body: '',
+      rating: null,
+      issues: [],
+      notes: '',
+      nextBrewChanges: '',
+      pourTemplateId: recipe.pourTemplateId || null,
+      method: recipe.method,
+      grinder: recipe.grinder,
+      dripper: recipe.dripper,
+      filterType: recipe.filterType,
+      brewedAt: new Date().toISOString(),
+    }
+
+    const updatedBrews = saveBrew(brew)
+    onBrewSaved(updatedBrews)
+
+    // No active brew persistence — no timer to recover
+    setRatingBrew(brew)
+    setSavedBrewState(null)
+    setPhase('rate')
+  }, [recipe, selectedBean, onBrewSaved])
+
   // Persist active brew state to localStorage
   const persistState = useCallback((brewState) => {
     saveActiveBrew({
@@ -1504,6 +1604,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
           templates={templates}
           equipment={equipment}
           onStartBrew={() => setPhase('brew')}
+          onLogWithoutTimer={handleLogWithoutTimer}
           onBack={() => setPhase('pick')}
           onBeanUpdate={handleBeanUpdate}
         />
