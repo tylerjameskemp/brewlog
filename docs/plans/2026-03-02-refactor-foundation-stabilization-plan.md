@@ -407,7 +407,7 @@ All changes stay within the existing React/props-down architecture. No new state
 
 **Tasks:**
 
-- [ ] **3.1 Add recipeSnapshot to brew creation** (`src/components/BrewScreen.jsx`)
+- [x] **3.1 Add recipeSnapshot to brew creation** (`src/components/BrewScreen.jsx`)
   - When "Finish Brew" is pressed, construct `recipeSnapshot` from current `recipe` state:
     ```javascript
     recipeSnapshot: {
@@ -430,7 +430,7 @@ All changes stay within the existing React/props-down architecture. No new state
   - Top-level fields start as copies of recipe values (same as recipeSnapshot initially)
   - `totalTime` comes from `timer.stop()` (actual elapsed)
 
-- [ ] **3.2 Merge Finish/Commit into single action** (`src/components/BrewScreen.jsx`)
+- [x] **3.2 Merge Finish/Commit into single action** (`src/components/BrewScreen.jsx`)
   - "Finish Brew" button now:
     1. Stops timer
     2. Constructs full brew record (with recipeSnapshot, actuals, stepResults)
@@ -441,7 +441,7 @@ All changes stay within the existing React/props-down architecture. No new state
   - Remove the separate "Commit Brew" button and `PostBrewCommit` sub-component
   - Double-save guard via `savingRef` (preserved from PostBrewCommit)
 
-- [ ] **3.3 Build RateThisBrew sub-component** (`src/components/BrewScreen.jsx`)
+- [x] **3.3 Build RateThisBrew sub-component** (`src/components/BrewScreen.jsx`)
   - Replaces PostBrewCommit
   - Props: `brew` (the saved record), `equipment`, `onComplete`, `onBrewUpdated`
   - Three collapsible sections:
@@ -452,7 +452,7 @@ All changes stay within the existing React/props-down architecture. No new state
   - Also writes `lastBrewChanges` to bean if `nextBrewChanges` is non-empty
   - Auto-save on section collapse or input blur (debounced, not per-keystroke — per documented learning)
 
-- [ ] **3.4 Update active brew persistence for post-brew recovery** (`src/components/BrewScreen.jsx`)
+- [x] **3.4 Update active brew persistence for post-brew recovery** (`src/components/BrewScreen.jsx`)
   - Add `phase` field to active brew state
   - During Phase 2 (timer): `saveActiveBrew({ ..., phase: 'brew' })`
   - On Finish Brew: `saveActiveBrew({ ..., phase: 'rate', brewId: brew.id })`
@@ -462,13 +462,13 @@ All changes stay within the existing React/props-down architecture. No new state
     - If `phase` absent: legacy, treat as 'brew'
   - `clearActiveBrew()` called only on "Done" in RateThisBrew (not on Finish Brew)
 
-- [ ] **3.5 Promote success to formal phase** (`src/components/BrewScreen.jsx`)
+- [x] **3.5 Promote success to formal phase** (`src/components/BrewScreen.jsx`)
   - Phase state machine becomes: `pick → recipe → brew → rate → success`
   - Remove the `committed` naming — `success` is clearer
   - Per documented learning: terminal states must be formal phases, not booleans
   - Success phase shows checkmark + "Start New Brew" / "View in History" (existing UI)
 
-- [ ] **3.6 Update pre-fill to use actual values** (`src/components/BrewScreen.jsx`)
+- [x] **3.6 Update pre-fill to use actual values** (`src/components/BrewScreen.jsx`)
   - `buildRecipeFromBean()` already reads from top-level brew fields
   - After Phase 2 migration, top-level fields are "actuals" (user-corrected)
   - No code change needed here if the unified schema is correct
@@ -477,12 +477,12 @@ All changes stay within the existing React/props-down architecture. No new state
 **Verification:** Start brew → Finish Brew → record appears in History immediately (with no tasting data). Fill in rating on RateThisBrew → Done → record updated in History with tasting data. Close browser during RateThisBrew → reopen → prompted to resume rating (not re-run timer). Run `npm test`.
 
 **Success criteria:**
-- [ ] "Finish Brew" saves to localStorage immediately (no data-loss window)
-- [ ] No separate "Commit Brew" step
-- [ ] Rating screen edits an already-saved brew via updateBrew()
-- [ ] recipeSnapshot captured on every new brew
-- [ ] Crash during rating → recovery resumes at rating screen (not timer)
-- [ ] Pre-fill for returning bean uses corrected actuals
+- [x] "Finish Brew" saves to localStorage immediately (no data-loss window)
+- [x] No separate "Commit Brew" step
+- [x] Rating screen edits an already-saved brew via updateBrew()
+- [x] recipeSnapshot captured on every new brew
+- [x] Crash during rating → recovery resumes at rating screen (not timer)
+- [x] Pre-fill for returning bean uses corrected actuals
 
 ---
 
@@ -492,7 +492,7 @@ All changes stay within the existing React/props-down architecture. No new state
 
 **Tasks:**
 
-- [ ] **4.1 Add equipment section to RecipeAssembly** (`src/components/BrewScreen.jsx`)
+- [x] **4.1 Add equipment section to RecipeAssembly** (`src/components/BrewScreen.jsx`)
   - New collapsible section below step cards
   - **Compact view** (default): single line — "V60 · Fellow Ode · Paper tabbed"
   - **Expanded view**: selectable fields for method, dripper, grinder, filterType
@@ -502,12 +502,12 @@ All changes stay within the existing React/props-down architecture. No new state
   - Changes apply to this brew only — do NOT update `brewlog_equipment`
   - When grinder changes, swap grind input widget (Ode select vs numeric vs text)
 
-- [ ] **4.2 Update brew record creation for per-brew equipment** (`src/components/BrewScreen.jsx`)
+- [x] **4.2 Update brew record creation for per-brew equipment** (`src/components/BrewScreen.jsx`)
   - Source `method`, `grinder`, `dripper`, `filterType` from `recipe` state (not global `equipment` prop)
   - `recipeSnapshot` also captures these from recipe state
   - Global `equipment` prop still used for defaults when building recipe
 
-- [ ] **4.3 Add skip-timer mode** (`src/components/BrewScreen.jsx`)
+- [x] **4.3 Add skip-timer mode** (`src/components/BrewScreen.jsx`)
   - "Log without timer" button in RecipeAssembly (alongside "Brew This")
   - On click: construct brew record from recipe, set `isManualEntry: true`, `stepResults: null`, `timeStatus: null`, `totalTime: null`
   - Call `saveBrew(brew)` immediately
@@ -515,31 +515,31 @@ All changes stay within the existing React/props-down architecture. No new state
   - No step timing report section in RateThisBrew for manual brews
   - No active brew persistence needed (no timer to recover)
 
-- [ ] **4.4 Scope BrewForm to edit-only** (`src/components/BrewForm.jsx`, `src/App.jsx`)
+- [x] **4.4 Scope BrewForm to edit-only** (`src/components/BrewForm.jsx`, `src/App.jsx`)
   - Remove the new-brew creation path from BrewForm (keep edit-brew path only)
   - In App.jsx: remove BrewForm rendering for `view === 'brew'` when `!editingBrew`
   - BrewScreen is now the sole entry point for new brews
   - BrewForm edit mode already updated in Phase 2 to handle unified format
 
-- [ ] **4.5 Add "Revert to template" option** (`src/components/BrewScreen.jsx`)
+- [x] **4.5 Add "Revert to template" option** (`src/components/BrewScreen.jsx`)
   - In RecipeAssembly, when a returning bean has pre-filled from last brew:
   - Show "Revert to template" link/button
   - On click: load steps from the original pour template (via `pourTemplateId` → `getPourTemplates()`)
   - Only reverts steps and pourTemplateId — keeps other recipe fields (dose, grind, temp) from last brew
   - If `pourTemplateId` is null (legacy brews), show pour template picker instead
 
-- [ ] **4.6 Update BrewHistory for per-brew equipment display** (`src/components/BrewHistory.jsx`)
+- [x] **4.6 Update BrewHistory for per-brew equipment display** (`src/components/BrewHistory.jsx`)
   - Show equipment used on each brew in expanded card (method, grinder, dripper)
   - Highlight when equipment differs from previous brew of same bean (auto-diff)
 
 **Verification:** Change dripper in recipe assembly → brew → verify brew record stores per-brew equipment, global equipment unchanged. Log a brew without timer → verify appears in history with `isManualEntry: true`. Start a new brew → verify only BrewScreen renders (not BrewForm). Revert to template → verify only steps change.
 
 **Success criteria:**
-- [ ] Equipment section visible in RecipeAssembly, compact by default
-- [ ] Per-brew equipment stored on brew record, global equipment unaffected
-- [ ] Skip-timer brew appears in history with correct fields
-- [ ] BrewForm only renders for editing existing brews
-- [ ] "Revert to template" replaces steps without affecting other recipe fields
+- [x] Equipment section visible in RecipeAssembly, compact by default
+- [x] Per-brew equipment stored on brew record, global equipment unaffected
+- [x] Skip-timer brew appears in history with correct fields
+- [x] BrewForm only renders for editing existing brews
+- [x] "Revert to template" replaces steps without affecting other recipe fields
 
 ---
 
@@ -593,12 +593,12 @@ All changes stay within the existing React/props-down architecture. No new state
 
 ### Functional Requirements
 
-- [ ] Every new brew stores a `recipeSnapshot` frozen at brew start
-- [ ] "Finish Brew" saves the brew record to localStorage immediately
-- [ ] Rating screen allows correcting grind, total time, and adding tasting notes
-- [ ] Pre-fill for returning beans uses corrected actual values from last brew
-- [ ] Equipment is selectable per-brew in recipe assembly
-- [ ] Skip-timer mode allows logging brews without using the timer
+- [x] Every new brew stores a `recipeSnapshot` frozen at brew start
+- [x] "Finish Brew" saves the brew record to localStorage immediately
+- [x] Rating screen allows correcting grind, total time, and adding tasting notes
+- [x] Pre-fill for returning beans uses corrected actual values from last brew
+- [x] Equipment is selectable per-brew in recipe assembly
+- [x] Skip-timer mode allows logging brews without using the timer
 - [ ] All brews in history display correctly regardless of original creation path
 - [ ] Editing a past brew preserves all fields the user didn't modify
 

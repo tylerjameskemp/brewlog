@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { deleteBrew, getUIPref, setUIPref, normalizeSteps } from '../data/storage'
-import { RATING_SCALE, grindToNumeric } from '../data/defaults'
+import { RATING_SCALE, BREW_METHODS, GRINDERS, grindToNumeric, getMethodName, getGrinderName } from '../data/defaults'
 
 // ============================================================
 // BREW HISTORY — View and compare past brews
@@ -34,7 +34,13 @@ function formatDate(isoString) {
 }
 
 function stepsChanged(a, b) {
-  return JSON.stringify(normalizeSteps(a)) !== JSON.stringify(normalizeSteps(b))
+  const na = normalizeSteps(a), nb = normalizeSteps(b)
+  if (na.length !== nb.length) return true
+  for (let i = 0; i < na.length; i++) {
+    if (na[i].name !== nb[i].name || na[i].waterTo !== nb[i].waterTo ||
+        na[i].time !== nb[i].time || na[i].duration !== nb[i].duration) return true
+  }
+  return false
 }
 
 function compareBrews(brewA, brewB) {
@@ -96,6 +102,9 @@ function compareBrews(brewA, brewB) {
   if (brewA.body !== brewB.body) simpleChanges.push('Body')
   if (brewA.rating !== brewB.rating) simpleChanges.push('Rating')
   if ((brewA.method || '') !== (brewB.method || '')) simpleChanges.push('Method')
+  if ((brewA.grinder || '') !== (brewB.grinder || '')) simpleChanges.push('Grinder')
+  if ((brewA.dripper || '') !== (brewB.dripper || '')) simpleChanges.push('Dripper')
+  if ((brewA.filterType || '') !== (brewB.filterType || '')) simpleChanges.push('Filter')
 
   // Body
   const bodyChanged = (brewA.body || '') !== (brewB.body || '')
@@ -189,41 +198,54 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
     )
   }
 
-  // Compute differences between a brew and the one before it
-  const getDiff = (brew, index) => {
-    const prev = brews[index + 1] // Previous brew (older, next in array)
-    if (!prev) return null
+  // Compute differences between consecutive brews (memoized)
+  const diffsMap = useMemo(() => {
+    const map = {}
+    brews.forEach((brew, index) => {
+      const prev = brews[index + 1]
+      if (!prev) return
 
-    const diffs = []
-    const currGrind = grindToNumeric(brew.grindSetting)
-    const prevGrind = grindToNumeric(prev.grindSetting)
-    if (currGrind != null && prevGrind != null && currGrind !== prevGrind) {
-      const dir = currGrind > prevGrind ? '↑' : '↓'
-      diffs.push(`Grind ${dir} ${prev.grindSetting} → ${brew.grindSetting}`)
-    } else if (String(brew.grindSetting) !== String(prev.grindSetting)) {
-      diffs.push(`Grind: ${prev.grindSetting} → ${brew.grindSetting}`)
-    }
-    if (brew.coffeeGrams !== prev.coffeeGrams) {
-      diffs.push(`Dose: ${prev.coffeeGrams}g → ${brew.coffeeGrams}g`)
-    }
-    if (brew.waterGrams !== prev.waterGrams) {
-      diffs.push(`Water: ${prev.waterGrams}g → ${brew.waterGrams}g`)
-    }
-    if (brew.waterTemp !== prev.waterTemp) {
-      diffs.push(`Temp: ${prev.waterTemp}° → ${brew.waterTemp}°`)
-    }
-    if (stepsChanged(brew.recipeSteps, prev.recipeSteps) || stepsChanged(brew.steps, prev.steps)) {
-      diffs.push('Pour plan changed')
-    }
-    if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
-      diffs.push(`Target: ${formatTime(prev.targetTime) || '—'} → ${formatTime(brew.targetTime) || '—'}`)
-    }
-    if (brew.beanName !== prev.beanName) {
-      diffs.push(`New beans: ${brew.beanName}`)
-    }
+      const diffs = []
+      const currGrind = grindToNumeric(brew.grindSetting)
+      const prevGrind = grindToNumeric(prev.grindSetting)
+      if (currGrind != null && prevGrind != null && currGrind !== prevGrind) {
+        const dir = currGrind > prevGrind ? '↑' : '↓'
+        diffs.push(`Grind ${dir} ${prev.grindSetting} → ${brew.grindSetting}`)
+      } else if (String(brew.grindSetting) !== String(prev.grindSetting)) {
+        diffs.push(`Grind: ${prev.grindSetting} → ${brew.grindSetting}`)
+      }
+      if (brew.coffeeGrams !== prev.coffeeGrams) {
+        diffs.push(`Dose: ${prev.coffeeGrams}g → ${brew.coffeeGrams}g`)
+      }
+      if (brew.waterGrams !== prev.waterGrams) {
+        diffs.push(`Water: ${prev.waterGrams}g → ${brew.waterGrams}g`)
+      }
+      if (brew.waterTemp !== prev.waterTemp) {
+        diffs.push(`Temp: ${prev.waterTemp}° → ${brew.waterTemp}°`)
+      }
+      if (stepsChanged(brew.recipeSteps, prev.recipeSteps) || stepsChanged(brew.steps, prev.steps)) {
+        diffs.push('Pour plan changed')
+      }
+      if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
+        diffs.push(`Target: ${formatTime(prev.targetTime) || '—'} → ${formatTime(brew.targetTime) || '—'}`)
+      }
+      if (brew.beanName !== prev.beanName) {
+        diffs.push(`New beans: ${brew.beanName}`)
+      }
+      if ((brew.method || '') !== (prev.method || '')) {
+        diffs.push(`Method: ${getMethodName(brew.method)}`)
+      }
+      if ((brew.grinder || '') !== (prev.grinder || '')) {
+        diffs.push(`Grinder: ${getGrinderName(brew.grinder)}`)
+      }
+      if ((brew.dripper || '') !== (prev.dripper || '')) {
+        diffs.push(`Dripper: ${brew.dripper}`)
+      }
 
-    return diffs.length > 0 ? diffs : null
-  }
+      if (diffs.length > 0) map[brew.id] = diffs
+    })
+    return map
+  }, [brews])
 
   const handleDelete = (id) => {
     if (window.confirm('Delete this brew?')) {
@@ -466,8 +488,10 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
         const isExpanded = !compareMode && expandedId === brew.id
         const isSelected = selectedIds.includes(brew.id)
         const selectionNumber = isSelected ? selectedIds.indexOf(brew.id) + 1 : null
-        const diff = getDiff(brew, index)
+        const diff = diffsMap[brew.id] || null
         const ratingInfo = RATING_SCALE.find(r => r.value === brew.rating)
+        const actualSteps = isExpanded ? normalizeSteps(brew.steps) : []
+        const recipeSteps = isExpanded ? normalizeSteps(brew.recipeSteps) : []
 
         return (
           <div
@@ -577,6 +601,20 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                       </div>
                     )}
                   </div>
+                  {/* Equipment */}
+                  {(brew.method || brew.grinder || brew.dripper) && (
+                    <div className="mt-1.5 text-xs col-span-2">
+                      <span className="text-brew-500">Equipment:</span>{' '}
+                      <span className="text-brew-700">
+                        {[
+                          getMethodName(brew.method),
+                          getGrinderName(brew.grinder),
+                          brew.dripper,
+                          brew.filterType?.replace('-', ' '),
+                        ].filter(Boolean).join(' \u00b7 ')}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* --- BREW --- */}
@@ -594,11 +632,11 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                       <span className="text-amber-600">Target {formatTime(brew.targetTime)}, actual {formatTime(brew.totalTime)}</span>
                     </div>
                   )}
-                  {normalizeSteps(brew.steps).length > 0 && (
+                  {actualSteps.length > 0 && (
                     <div className="mt-1.5">
                       <span className="text-xs text-brew-500">Actual Pour Steps:</span>
                       <div className="mt-1 space-y-1">
-                        {normalizeSteps(brew.steps).map((step, idx) => {
+                        {actualSteps.map((step, idx) => {
                           const result = brew.stepResults?.[step.id]
                           return (
                             <div key={`${brew.id}-actual-${idx}`} className="text-xs text-brew-700 font-mono">
@@ -616,7 +654,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                       </div>
                     </div>
                   )}
-                  {normalizeSteps(brew.recipeSteps).length > 0 && stepsChanged(brew.recipeSteps, brew.steps) && (
+                  {recipeSteps.length > 0 && stepsChanged(brew.recipeSteps, brew.steps) && (
                     <div className="mt-1 text-xs">
                       <span className="text-amber-600">Actual pour steps differed from recipe plan</span>
                     </div>

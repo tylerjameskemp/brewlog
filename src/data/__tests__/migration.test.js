@@ -197,6 +197,27 @@ describe('migrateToSchemaV2', () => {
     expect(migrateToSchemaV2()).toEqual([])
   })
 
+  it('handles double-corrupt data (both main and backup corrupt)', () => {
+    localStorage.setItem('brewlog_brews', '{corrupt main}')
+    localStorage.setItem('brewlog_brews_backup_v1', '{corrupt backup}')
+    expect(() => migrateToSchemaV2()).not.toThrow()
+    expect(migrateToSchemaV2()).toEqual([])
+    // Backup should not be removed (already consumed/invalid)
+  })
+
+  it('restores from backup when main data is corrupt', () => {
+    const validBrews = [{ id: 'b1', beanName: 'Test', brewedAt: '2026-03-01T00:00:00Z' }]
+    localStorage.setItem('brewlog_brews', '{corrupt main}')
+    localStorage.setItem('brewlog_brews_backup_v1', JSON.stringify(validBrews))
+
+    const result = migrateToSchemaV2()
+    expect(result).toHaveLength(1)
+    expect(result[0].schemaVersion).toBe(2)
+    // Main data restored from backup
+    const restored = JSON.parse(localStorage.getItem('brewlog_brews'))
+    expect(restored[0].id).toBe('b1')
+  })
+
   it('skips null elements in brews array', () => {
     localStorage.setItem('brewlog_brews', JSON.stringify([
       { id: 'b1', beanName: 'Test', brewedAt: '2026-03-01T00:00:00Z' },
@@ -205,7 +226,7 @@ describe('migrateToSchemaV2', () => {
     ]))
     expect(() => migrateToSchemaV2()).not.toThrow()
     const result = getBrews()
-    expect(result).toHaveLength(3) // null preserved, not removed
-    expect(result.filter(b => b?.schemaVersion === 2)).toHaveLength(2)
+    expect(result).toHaveLength(2) // nulls filtered by getBrews()
+    expect(result.every(b => b.schemaVersion === 2)).toBe(true)
   })
 })

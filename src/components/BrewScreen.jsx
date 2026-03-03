@@ -1,25 +1,32 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
-  getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
+  getBrews, getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
   parseTime, parseTimeRange, formatTimeRange, computeTimeStatus,
-  getPourTemplates, saveBrew, saveBean, getBeans, updateBean,
+  getPourTemplates, saveBrew, updateBrew, getBeans, updateBean,
   saveActiveBrew, getActiveBrew, clearActiveBrew,
 } from '../data/storage'
-import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
+import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import useTimer from '../hooks/useTimer'
 import useWakeLock from '../hooks/useWakeLock'
 
 // ============================================================
-// BREW SCREEN — Guided three-phase brewing experience
+// BREW SCREEN — Guided brewing experience
 // ============================================================
-// Phase 0: Bean picker (if no bean pre-selected)
-// Phase 1: Recipe Assembly — review, adjust, select pour template
-// Phase 2: Active Brew — timer, step teleprompter, variance tracking
-// Phase 3: Post-Brew Commit — report, notes, tasting, commit
+// Phase state machine: pick → recipe → brew → rate → success
+// pick:    Bean picker (if no bean pre-selected)
+// recipe:  Recipe Assembly — review, adjust, select pour template
+// brew:    Active Brew — timer, step teleprompter, variance tracking
+// rate:    Rate This Brew — tasting notes, correct actuals, "what to try next"
+// success: Done — start new brew or view history
 
 const ratio = (c, w) => c > 0 ? `1:${(w / c).toFixed(1)}` : '—'
+
+const getTotalDuration = (steps) =>
+  steps.length > 0
+    ? steps[steps.length - 1].time + steps[steps.length - 1].duration
+    : 210
 
 // ─── Swipe Cards ────────────────────────────────────────────
 function SwipeCards({ cards, currentIndex, onSwipe }) {
@@ -81,7 +88,7 @@ function SwipeCards({ cards, currentIndex, onSwipe }) {
 
 // ─── Phase Indicator ────────────────────────────────────────
 function PhaseIndicator({ phase }) {
-  const phases = ['recipe', 'brew', 'commit']
+  const phases = ['recipe', 'brew', 'rate']
   return (
     <div className="flex gap-1.5 px-5 py-3">
       {phases.map((p, i) => (
@@ -156,10 +163,9 @@ function BeanPicker({ beans, onSelect }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onBack, onBeanUpdate, equipment }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onLogWithoutTimer, onBack, onBeanUpdate, equipment }) {
 
   const [cardIndex, setCardIndex] = useState(0)
-  const [changesAccepted, setChangesAccepted] = useState({})
   const [editing, setEditing] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
   const [templatePicked, setTemplatePicked] = useState(() => recipe.steps.length > 0 || !!recipe.pourTemplateId)
@@ -168,8 +174,24 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
     () => recipe.targetTimeRange || formatTime(recipe.targetTime)
   )
 
-  const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
+  const [equipmentOpen, setEquipmentOpen] = useState(false)
+
+  const grinder = GRINDERS.find(g => g.id === recipe.grinder) || GRINDERS[0]
+  const methodObj = BREW_METHODS.find(m => m.id === recipe.method) || BREW_METHODS[0]
   const displayBean = Object.keys(beanOverrides).length > 0 ? { ...bean, ...beanOverrides } : bean
+
+  // Methods that use a separate dripper (pour-over devices)
+  const methodHasDripper = recipe.method === 'v60' || recipe.method === 'chemex'
+
+  const handleGrinderChange = (grinderId) => {
+    const newGrinder = GRINDERS.find(g => g.id === grinderId) || GRINDERS[0]
+    let defaultGrind = ''
+    if (newGrinder.settingType === 'ode') defaultGrind = '6'
+    else if (newGrinder.settingType === 'numeric' || newGrinder.settingType === 'clicks') {
+      defaultGrind = String(Math.round((newGrinder.min + newGrinder.max) / 2))
+    }
+    setRecipe(prev => ({ ...prev, grinder: grinderId, grindSetting: defaultGrind }))
+  }
 
   const handleTargetTimeBlur = () => {
     const range = parseTimeRange(targetTimeInput)
@@ -474,33 +496,8 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               Notes from last brew
             </div>
             {changes.map((c, i) => (
-              <div
-                key={i}
-                className={`flex gap-2.5 items-start ${i < changes.length - 1 ? 'mb-2' : ''} transition-opacity duration-300 motion-reduce:transition-none`}
-                style={{ opacity: changesAccepted[i] === false ? 0.4 : 1 }}
-              >
-                <div className="flex-1 text-sm text-brew-800 leading-relaxed">
-                  {changesAccepted[i] === true && <span className="text-green-600">✓ </span>}
-                  {c}
-                </div>
-                {changesAccepted[i] === undefined && (
-                  <div className="flex gap-1.5 shrink-0">
-                    <button
-                      onClick={() => setChangesAccepted(p => ({ ...p, [i]: true }))}
-                      className="bg-green-600 text-white rounded-md px-2.5 py-1 text-[11px] font-semibold
-                                 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    >
-                      Apply
-                    </button>
-                    <button
-                      onClick={() => setChangesAccepted(p => ({ ...p, [i]: false }))}
-                      className="bg-brew-50 text-brew-400 border border-brew-200 rounded-md px-2.5 py-1
-                                 text-[11px] min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    >
-                      Skip
-                    </button>
-                  </div>
-                )}
+              <div key={i} className={`text-sm text-brew-800 leading-relaxed ${i < changes.length - 1 ? 'mb-1.5' : ''}`}>
+                {c}
               </div>
             ))}
           </div>
@@ -571,6 +568,144 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             </div>
           )}
 
+          {/* Revert to template — shown when returning bean has modified steps */}
+          {(() => {
+            const originalTemplate = recipe.pourTemplateId
+              ? templates.find(t => t.id === recipe.pourTemplateId)
+              : null
+            if (originalTemplate && JSON.stringify(recipe.steps) !== JSON.stringify(originalTemplate.steps)) {
+              return (
+                <div className="px-4 mt-2">
+                  <button
+                    onClick={() => {
+                      setRecipe(prev => ({
+                        ...prev,
+                        steps: structuredClone(originalTemplate.steps),
+                        pourTemplateId: originalTemplate.id,
+                      }))
+                      setSelectedTemplateId(originalTemplate.id)
+                    }}
+                    className="text-xs text-brew-500 hover:text-brew-700 underline min-h-[44px]"
+                  >
+                    Revert steps to {originalTemplate.name}
+                  </button>
+                </div>
+              )
+            }
+            if (!recipe.pourTemplateId && recipe.steps.length > 0) {
+              return (
+                <div className="px-4 mt-2">
+                  <button
+                    onClick={() => setTemplatePicked(false)}
+                    className="text-xs text-brew-500 hover:text-brew-700 underline min-h-[44px]"
+                  >
+                    Choose a pour template
+                  </button>
+                </div>
+              )
+            }
+            return null
+          })()}
+
+          {/* Equipment Section */}
+          <div className="px-4 mt-4">
+            <button
+              onClick={() => setEquipmentOpen(!equipmentOpen)}
+              className="w-full flex items-center justify-between py-2 min-h-[44px]"
+            >
+              <div className="text-[11px] text-brew-400 uppercase tracking-widest">Equipment</div>
+              {!equipmentOpen && (
+                <div className="text-xs text-brew-500">
+                  {methodObj.name} · {grinder.name}{recipe.filterType ? ` · ${recipe.filterType.replace('-', ' ')}` : ''}
+                </div>
+              )}
+              <span className={`text-brew-400 transition-transform text-xs ml-2 ${equipmentOpen ? 'rotate-180' : ''}`}>
+                {'\u25BE'}
+              </span>
+            </button>
+
+            {equipmentOpen && (
+              <div className="space-y-4 pb-2 animate-fade-in motion-reduce:animate-none">
+                {/* Method */}
+                <div>
+                  <div className="text-[11px] text-brew-400 mb-1.5">Method</div>
+                  <div className="flex flex-wrap gap-2">
+                    {BREW_METHODS.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setRecipe(prev => ({ ...prev, method: m.id }))}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all min-h-[44px]
+                          ${recipe.method === m.id
+                            ? 'border-brew-500 bg-brew-50 text-brew-700'
+                            : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                          }`}
+                      >
+                        {m.icon} {m.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dripper — only for pour-over methods */}
+                {methodHasDripper && (
+                  <div>
+                    <div className="text-[11px] text-brew-400 mb-1.5">Dripper</div>
+                    <div className="flex flex-wrap gap-2">
+                      {DRIPPER_MATERIALS.map(mat => (
+                        <button
+                          key={mat}
+                          onClick={() => setRecipe(prev => ({ ...prev, dripper: mat }))}
+                          className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
+                            ${recipe.dripper === mat
+                              ? 'border-brew-500 bg-brew-50 text-brew-700'
+                              : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                            }`}
+                        >
+                          {mat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Grinder */}
+                <div>
+                  <div className="text-[11px] text-brew-400 mb-1.5">Grinder</div>
+                  <select
+                    value={recipe.grinder}
+                    onChange={e => handleGrinderChange(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
+                  >
+                    {GRINDERS.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filter Type */}
+                <div>
+                  <div className="text-[11px] text-brew-400 mb-1.5">Filter</div>
+                  <div className="flex flex-wrap gap-2">
+                    {FILTER_TYPES.map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setRecipe(prev => ({ ...prev, filterType: f }))}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
+                          ${recipe.filterType === f
+                            ? 'border-brew-500 bg-brew-50 text-brew-700'
+                            : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                          }`}
+                      >
+                        {f.replace('-', ' ')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Brew This CTA */}
           <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
                           bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
@@ -582,6 +717,13 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             >
               Brew This
             </button>
+            <button
+              onClick={onLogWithoutTimer}
+              className="w-full py-3 mt-2 text-brew-500 text-sm font-medium
+                         hover:text-brew-700 pointer-events-auto min-h-[44px]"
+            >
+              Log without timer
+            </button>
           </div>
         </>
       )}
@@ -590,7 +732,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
 }
 
 // ─── Phase 2: Active Brew ───────────────────────────────────
-function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistState, savedBrewState }) {
+function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedBrewState }) {
   const timer = useTimer()
   const [tappedSteps, setTappedSteps] = useState(() => savedBrewState?.tappedSteps || {})
   const [skippedSteps, setSkippedSteps] = useState(() => savedBrewState?.skippedSteps || {})
@@ -609,9 +751,7 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const steps = recipe.steps
-  const totalDuration = steps.length > 0
-    ? steps[steps.length - 1].time + steps[steps.length - 1].duration
-    : 210
+  const totalDuration = getTotalDuration(steps)
 
   // Determine current step
   let currentStepIdx = 0
@@ -859,165 +999,190 @@ function ActiveBrew({ recipe, equipment, onFinish, onBrewActiveChange, persistSt
   )
 }
 
-// ─── Phase 3: Post-Brew Commit ──────────────────────────────
-function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBeans, onCommit }) {
-  const [brewNotes, setBrewNotes] = useState('')
-  const [nextBrewChanges, setNextBrewChanges] = useState('')
-  const [flavors, setFlavors] = useState([])
-  const [body, setBody] = useState('')
-  const [rating, setRating] = useState(null)
-  const [issues, setIssues] = useState([])
+// ─── Phase 3: Rate This Brew ────────────────────────────────
+// Brew is already saved to localStorage on "Finish Brew".
+// This screen lets user correct actuals, add tasting notes, and plan next brew.
+// "Done" calls updateBrew() to merge tasting data into the saved record.
+function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
+  const [notes, setNotes] = useState(brew.notes || '')
+  const [nextBrewChanges, setNextBrewChanges] = useState(brew.nextBrewChanges || '')
+  const [flavors, setFlavors] = useState(brew.flavors || [])
+  const [body, setBody] = useState(brew.body || '')
+  const [rating, setRating] = useState(brew.rating ?? null)
+  const [issues, setIssues] = useState(brew.issues || [])
+  const [grindSetting, setGrindSetting] = useState(brew.grindSetting || '')
+  const [totalTimeStr, setTotalTimeStr] = useState(brew.totalTime != null ? formatTime(brew.totalTime) : '')
   const savingRef = useRef(false)
 
-  const steps = recipe.steps
+  const isManual = brew.isManualEntry === true
+  const steps = brew.recipeSteps || []
+  const stepResults = brew.stepResults || {}
 
-  const handleCommit = () => {
+  // Compute time status for display
+  const totalDuration = getTotalDuration(steps)
+  const timeResult = computeTimeStatus(brew.totalTime, brew.targetTimeMin, brew.targetTimeMax, brew.targetTime, totalDuration)
+
+  const handleDone = () => {
     if (savingRef.current) return
     savingRef.current = true
     try {
-      const stepResults = {}
-      steps.forEach(step => {
-        const tappedAt = brewData.tappedSteps[step.id]
-        const skipped = !!brewData.skippedSteps[step.id]
-        stepResults[step.id] = {
-          tappedAt: tappedAt !== undefined ? tappedAt : null,
-          skipped,
-          variance: tappedAt !== undefined ? tappedAt - step.time : null,
-        }
-      })
-
-      const totalDuration = steps.length > 0
-        ? steps[steps.length - 1].time + steps[steps.length - 1].duration
-        : 210
-
-      const timeResult = computeTimeStatus(brewData.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
-
-      const brew = {
-        id: uuidv4(),
-        schemaVersion: 2,
-        isManualEntry: false,
-        beanName: bean.name.trim(),
-        roaster: bean.roaster || '',
-        roastDate: bean.roastDate || '',
-        coffeeGrams: recipe.coffeeGrams,
-        waterGrams: recipe.waterGrams,
-        grindSetting: recipe.grindSetting,
-        waterTemp: recipe.waterTemp,
-        targetTime: recipe.targetTime || totalDuration,
-        targetTimeRange: recipe.targetTimeRange || formatTime(recipe.targetTime || totalDuration),
-        targetTimeMin: recipe.targetTimeMin || null,
-        targetTimeMax: recipe.targetTimeMax || null,
-        timeStatus: timeResult?.status || null,
-        totalTime: brewData.elapsed,
-        recipeSteps: recipe.steps,
-        stepResults,
+      const parsedTime = parseTime(totalTimeStr)
+      const updates = {
         flavors,
         body,
         rating,
         issues,
-        notes: brewNotes,
+        notes,
         nextBrewChanges,
-        pourTemplateId: recipe.pourTemplateId || null,
-        method: equipment?.brewMethod,
-        grinder: equipment?.grinder,
-        dripper: equipment?.dripper,
-        brewedAt: new Date().toISOString(),
+        grindSetting,
+        totalTime: parsedTime ?? brew.totalTime,
       }
 
-      const updatedBrews = saveBrew(brew)
-      onBrewSaved(updatedBrews)
+      // Recompute timeStatus if totalTime was corrected
+      if (parsedTime != null && parsedTime !== brew.totalTime) {
+        const newTimeResult = computeTimeStatus(parsedTime, brew.targetTimeMin, brew.targetTimeMax, brew.targetTime, totalDuration)
+        updates.timeStatus = newTimeResult?.status || null
+      }
 
-      // Side effects: save bean (idempotent), update lastBrewChanges
-      saveBean({
-        id: bean.id || uuidv4(),
-        name: bean.name.trim(),
-        roaster: bean.roaster || '',
-        roastDate: bean.roastDate || '',
-        origin: bean.origin || '',
-        process: bean.process || '',
-        addedAt: bean.addedAt || new Date().toISOString(),
-      })
+      const updatedBrews = updateBrew(brew.id, updates)
+      onBrewUpdated(updatedBrews)
 
-      if (nextBrewChanges.trim() && bean.id) {
+      // Update bean with "what to try next"
+      if (nextBrewChanges.trim() && bean?.id) {
         updateBean(bean.id, { lastBrewChanges: nextBrewChanges.trim() })
+        setBeans(getBeans())
       }
-      setBeans(getBeans())
 
       clearActiveBrew()
-      onCommit()
+      onComplete()
     } finally {
       savingRef.current = false
     }
   }
 
-  const displayTotalDuration = steps.length > 0
-    ? steps[steps.length - 1].time + steps[steps.length - 1].duration
-    : 210
-  const displayTimeResult = computeTimeStatus(brewData.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, displayTotalDuration)
-
   return (
     <div className="px-4 pt-4 pb-28">
       {/* Summary */}
       <div className="text-center mb-6">
-        <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-1">Brew Complete</div>
-        <h1 className="text-2xl font-semibold text-brew-800">Brew Report</h1>
-        <div className="font-mono text-5xl text-brew-500 mt-2 tabular-nums">
-          {formatTime(brewData.elapsed)}
+        <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-1">
+          {isManual ? 'Log Brew' : 'Brew Complete'}
         </div>
-        <div className="text-sm text-brew-400 mt-1">
-          Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
-        </div>
-        {displayTimeResult && (
-          <div className={`text-sm font-semibold mt-1 ${
-            displayTimeResult.status === 'under' ? 'text-amber-500'
-              : displayTimeResult.status === 'over' ? 'text-red-500'
-              : 'text-green-600'
-          }`}>
-            {displayTimeResult.status === 'under' ? `${displayTimeResult.delta}s under target`
-              : displayTimeResult.status === 'over' ? `${displayTimeResult.delta}s over target`
-              : 'On target'}
-          </div>
+        <h1 className="text-2xl font-semibold text-brew-800">Rate This Brew</h1>
+        {isManual && brew.totalTime == null ? (
+          <div className="text-sm text-brew-400 mt-2">Enter your brew time below</div>
+        ) : (
+          <>
+            <div className="font-mono text-5xl text-brew-500 mt-2 tabular-nums">
+              {formatTime(brew.totalTime)}
+            </div>
+            <div className="text-sm text-brew-400 mt-1">
+              Target: {brew.targetTimeRange || formatTime(brew.targetTime)}
+            </div>
+            {timeResult && (
+              <div className={`text-sm font-semibold mt-1 ${
+                timeResult.status === 'under' ? 'text-amber-500'
+                  : timeResult.status === 'over' ? 'text-red-500'
+                  : 'text-green-600'
+              }`}>
+                {timeResult.status === 'under' ? `${timeResult.delta}s under target`
+                  : timeResult.status === 'over' ? `${timeResult.delta}s over target`
+                  : 'On target'}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Step Results */}
-      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
-        <h3 className="text-lg font-semibold text-brew-800 mb-3">Step Timing</h3>
-        {steps.map(step => {
-          const tappedAt = brewData.tappedSteps[step.id]
-          const skipped = brewData.skippedSteps[step.id]
-          const variance = tappedAt !== undefined ? tappedAt - step.time : null
+      {/* Step Results — hidden for manual brews (no timer data) */}
+      {!isManual && steps.length > 0 && (
+        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
+          <h3 className="text-lg font-semibold text-brew-800 mb-3">Step Timing</h3>
+          {steps.map(step => {
+            const result = stepResults[step.id]
+            const tappedAt = result?.tappedAt
+            const skipped = result?.skipped
+            const variance = result?.variance
 
-          return (
-            <div
-              key={step.id}
-              className={`flex justify-between items-center py-2.5 border-b border-brew-50
-                          last:border-0 ${skipped ? 'opacity-40' : ''}`}
-            >
-              <div>
-                <span className={`font-semibold text-sm ${skipped ? 'line-through' : ''} text-brew-800`}>
-                  {step.name}
-                </span>
-                {skipped && <span className="text-[11px] text-red-500 ml-2">Skipped</span>}
-              </div>
-              <div className="text-right">
-                <div className="text-sm tabular-nums text-brew-800">
-                  {skipped ? '—' : tappedAt !== undefined ? formatTime(tappedAt) : formatTime(step.time)}
+            return (
+              <div
+                key={step.id}
+                className={`flex justify-between items-center py-2.5 border-b border-brew-50
+                            last:border-0 ${skipped ? 'opacity-40' : ''}`}
+              >
+                <div>
+                  <span className={`font-semibold text-sm ${skipped ? 'line-through' : ''} text-brew-800`}>
+                    {step.name}
+                  </span>
+                  {skipped && <span className="text-[11px] text-red-500 ml-2">Skipped</span>}
                 </div>
-                {variance !== null && !skipped && (
-                  <div className={`text-[11px] font-semibold ${
-                    Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
-                  }`}>
-                    {variance > 0 ? '+' : ''}{variance}s
+                <div className="text-right">
+                  <div className="text-sm tabular-nums text-brew-800">
+                    {skipped ? '—' : tappedAt != null ? formatTime(tappedAt) : formatTime(step.time)}
                   </div>
-                )}
-                {!skipped && tappedAt === undefined && (
-                  <div className="text-[11px] text-brew-300">as planned</div>
-                )}
+                  {variance != null && !skipped && (
+                    <div className={`text-[11px] font-semibold ${
+                      Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
+                    }`}>
+                      {variance > 0 ? '+' : ''}{variance}s
+                    </div>
+                  )}
+                  {!skipped && tappedAt == null && (
+                    <div className="text-[11px] text-brew-300">as planned</div>
+                  )}
+                </div>
               </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Correct Actuals */}
+      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
+        <h3 className="text-lg font-semibold text-brew-800 mb-1">
+          {isManual ? 'Brew Details' : 'Correct Actuals'}
+        </h3>
+        <p className="text-xs text-brew-400 mb-3">
+          {isManual ? 'Enter the details for this brew.' : 'Adjust if the actual values differed from planned.'}
+        </p>
+        {isManual && (
+          <div className="mb-3">
+            <label className="text-xs text-brew-400 block mb-1">Total Brew Time</label>
+            <input
+              type="text"
+              value={totalTimeStr}
+              onChange={e => setTotalTimeStr(e.target.value)}
+              placeholder="M:SS (e.g. 3:30)"
+              className="w-full p-3 rounded-xl border border-brew-300 bg-brew-50
+                         text-lg text-brew-800 font-mono text-center
+                         focus:outline-none focus:border-brew-500 focus:ring-2 focus:ring-brew-400 text-base"
+            />
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-brew-400 block mb-1">Grind Setting</label>
+            <input
+              type="text"
+              value={grindSetting}
+              onChange={e => setGrindSetting(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-brew-200 bg-brew-50
+                         text-sm text-brew-800 focus:outline-none focus:border-brew-500 text-base"
+            />
+          </div>
+          {!isManual && (
+            <div>
+              <label className="text-xs text-brew-400 block mb-1">Total Time</label>
+              <input
+                type="text"
+                value={totalTimeStr}
+                onChange={e => setTotalTimeStr(e.target.value)}
+                placeholder="3:30"
+                className="w-full p-2.5 rounded-xl border border-brew-200 bg-brew-50
+                           text-sm text-brew-800 font-mono focus:outline-none focus:border-brew-500 text-base"
+              />
             </div>
-          )
-        })}
+          )}
+        </div>
       </div>
 
       {/* Brew Notes */}
@@ -1025,8 +1190,8 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         <h3 className="text-lg font-semibold text-brew-800 mb-1">Brew Notes</h3>
         <p className="text-xs text-brew-400 mb-2.5">What happened during this brew?</p>
         <textarea
-          value={brewNotes}
-          onChange={e => setBrewNotes(e.target.value)}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
           placeholder="Bed looked uneven after bloom, water temp dropped fast..."
           className="w-full min-h-[80px] p-3 rounded-xl border border-brew-200 bg-brew-50
                      text-sm text-brew-800 resize-y focus:outline-none focus:border-brew-500 text-base"
@@ -1119,22 +1284,16 @@ function PostBrewCommit({ recipe, bean, brewData, equipment, onBrewSaved, setBea
         </div>
       </div>
 
-      {/* Tasting Notes Placeholder */}
-      <div className="bg-white rounded-2xl border border-dashed border-brew-200 p-5 text-center mb-4">
-        <h3 className="text-sm font-medium text-brew-400 mb-1">Tasting Notes</h3>
-        <p className="text-xs text-brew-300">Coming soon — taste as the cup cools and log your experience</p>
-      </div>
-
-      {/* Commit Button */}
+      {/* Done Button */}
       <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
                       bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
         <button
-          onClick={handleCommit}
+          onClick={handleDone}
           className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
                      shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
                      pointer-events-auto min-h-[44px]"
         >
-          Commit Brew
+          Done
         </button>
       </div>
     </div>
@@ -1146,7 +1305,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
 
   const [phase, setPhase] = useState(() => initialBean ? 'recipe' : 'pick')
   const [selectedBean, setSelectedBean] = useState(initialBean || null)
-  const [brewData, setBrewData] = useState(null)
+  const [ratingBrew, setRatingBrew] = useState(null)   // Brew record being rated (set on Finish Brew or recovery)
   const [savedBrewState, setSavedBrewState] = useState(null)
 
   const templates = useMemo(() => getPourTemplates(), [])
@@ -1154,36 +1313,41 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   // Build recipe from a bean's last brew, or return defaults
   const buildRecipeFromBean = useCallback((beanName) => {
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
-    if (!beanName) {
-      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: [], pourTemplateId: null }
+    const equipDefaults = {
+      method: equipment?.brewMethod || 'v60',
+      grinder: equipment?.grinder || 'fellow-ode',
+      dripper: equipment?.dripper || 'ceramic',
+      filterType: equipment?.filterType || 'paper-tabbed',
     }
-    const lastBrew = getLastBrewOfBean(beanName)
-
-    // Bean has prior brew — auto-fill from it
-    if (lastBrew) {
-      const steps = lastBrew.recipeSteps
-        ? normalizeSteps(lastBrew.recipeSteps)
-        : templates[0]?.steps || []
-      return {
-        coffeeGrams: lastBrew.coffeeGrams || 15,
-        waterGrams: lastBrew.waterGrams || 240,
-        grindSetting: lastBrew.grindSetting || '',
-        waterTemp: lastBrew.waterTemp || 200,
-        targetTime: lastBrew.targetTime || method.defaultTotalTime,
-        targetTimeRange: lastBrew.targetTimeRange || '',
-        targetTimeMin: lastBrew.targetTimeMin || null,
-        targetTimeMax: lastBrew.targetTimeMax || null,
-        steps,
-        pourTemplateId: lastBrew.pourTemplateId || templates[0]?.id || null,
-      }
-    }
-
-    // No prior brew for this bean — empty steps, user picks template in RecipeAssembly
-    return {
+    const defaults = {
       coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200,
       targetTime: method.defaultTotalTime, targetTimeRange: '',
       targetTimeMin: null, targetTimeMax: null,
-      steps: [], pourTemplateId: null,
+      steps: [], pourTemplateId: null, ...equipDefaults,
+    }
+    if (!beanName) return defaults
+    const lastBrew = getLastBrewOfBean(beanName)
+    if (!lastBrew) return defaults
+
+    // Bean has prior brew — auto-fill from it
+    const steps = lastBrew.recipeSteps
+      ? normalizeSteps(lastBrew.recipeSteps)
+      : templates[0]?.steps || []
+    return {
+      coffeeGrams: lastBrew.coffeeGrams || 15,
+      waterGrams: lastBrew.waterGrams || 240,
+      grindSetting: lastBrew.grindSetting || '',
+      waterTemp: lastBrew.waterTemp || 200,
+      targetTime: lastBrew.targetTime || method.defaultTotalTime,
+      targetTimeRange: lastBrew.targetTimeRange || '',
+      targetTimeMin: lastBrew.targetTimeMin || null,
+      targetTimeMax: lastBrew.targetTimeMax || null,
+      steps,
+      pourTemplateId: lastBrew.pourTemplateId || templates[0]?.id || null,
+      method: lastBrew.method || equipDefaults.method,
+      grinder: lastBrew.grinder || equipDefaults.grinder,
+      dripper: lastBrew.dripper || equipDefaults.dripper,
+      filterType: lastBrew.filterType || equipDefaults.filterType,
     }
   }, [equipment, templates])
 
@@ -1207,13 +1371,13 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
 
   // Report flow state to parent (hides MobileNav during active flow phases)
   useEffect(() => {
-    onFlowChange(phase !== 'pick' && phase !== 'committed')
+    onFlowChange(phase !== 'pick' && phase !== 'success')
   }, [phase, onFlowChange])
 
   // Reset all flow state for a new brew
   const handleStartNewBrew = useCallback(() => {
     setSelectedBean(null)
-    setBrewData(null)
+    setRatingBrew(null)
     setSavedBrewState(null)
     setRecipe(buildRecipeFromBean(null))
     setPhase('pick')
@@ -1229,6 +1393,103 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   }, [selectedBean, setBeans])
 
 
+  // Build a brew record from current recipe + bean state
+  const buildBrewRecord = useCallback((overrides = {}) => {
+    const totalDuration = getTotalDuration(recipe.steps)
+    const recipeSnapshot = {
+      coffeeGrams: recipe.coffeeGrams,
+      waterGrams: recipe.waterGrams,
+      grindSetting: recipe.grindSetting,
+      waterTemp: recipe.waterTemp,
+      targetTime: recipe.targetTime,
+      targetTimeRange: recipe.targetTimeRange,
+      targetTimeMin: recipe.targetTimeMin,
+      targetTimeMax: recipe.targetTimeMax,
+      steps: structuredClone(recipe.steps),
+      pourTemplateId: recipe.pourTemplateId,
+      method: recipe.method,
+      grinder: recipe.grinder,
+      dripper: recipe.dripper,
+      filterType: recipe.filterType,
+    }
+    return {
+      id: uuidv4(),
+      schemaVersion: 2,
+      isManualEntry: false,
+      beanName: selectedBean.name.trim(),
+      roaster: selectedBean.roaster || '',
+      roastDate: selectedBean.roastDate || '',
+      recipeSnapshot,
+      coffeeGrams: recipe.coffeeGrams,
+      waterGrams: recipe.waterGrams,
+      grindSetting: recipe.grindSetting,
+      waterTemp: recipe.waterTemp,
+      targetTime: recipe.targetTime || totalDuration,
+      targetTimeRange: recipe.targetTimeRange || formatTime(recipe.targetTime || totalDuration),
+      targetTimeMin: recipe.targetTimeMin || null,
+      targetTimeMax: recipe.targetTimeMax || null,
+      timeStatus: null,
+      totalTime: null,
+      recipeSteps: recipe.steps,
+      stepResults: null,
+      flavors: [], body: '', rating: null, issues: [], notes: '', nextBrewChanges: '',
+      pourTemplateId: recipe.pourTemplateId || null,
+      method: recipe.method,
+      grinder: recipe.grinder,
+      dripper: recipe.dripper,
+      filterType: recipe.filterType,
+      brewedAt: new Date().toISOString(),
+      ...overrides,
+    }
+  }, [recipe, selectedBean])
+
+  // Handle "Finish Brew" — construct brew record, save immediately, transition to rate
+  const handleFinishBrew = useCallback((data) => {
+    const { elapsed, tappedSteps, skippedSteps } = data
+
+    const stepResults = {}
+    recipe.steps.forEach(step => {
+      const tappedAt = tappedSteps[step.id]
+      stepResults[step.id] = {
+        tappedAt: tappedAt != null ? tappedAt : null,
+        skipped: !!skippedSteps[step.id],
+        variance: tappedAt != null ? tappedAt - step.time : null,
+      }
+    })
+
+    const totalDuration = getTotalDuration(recipe.steps)
+    const timeResult = computeTimeStatus(elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
+
+    const brew = buildBrewRecord({
+      totalTime: elapsed,
+      stepResults,
+      timeStatus: timeResult?.status || null,
+    })
+
+    // Clear active brew BEFORE saving to prevent duplicate-on-crash (053)
+    clearActiveBrew()
+    const updatedBrews = saveBrew(brew)
+    onBrewSaved(updatedBrews)
+
+    // Persist for crash recovery during rating
+    saveActiveBrew({ phase: 'rate', brewId: brew.id, beanName: selectedBean.name, recipe })
+
+    setRatingBrew(brew)
+    setSavedBrewState(null)
+    setPhase('rate')
+  }, [recipe, selectedBean, onBrewSaved, buildBrewRecord])
+
+  // Handle "Log without timer" — skip-timer brew, save immediately, transition to rate
+  const handleLogWithoutTimer = useCallback(() => {
+    const brew = buildBrewRecord({ isManualEntry: true })
+    const updatedBrews = saveBrew(brew)
+    onBrewSaved(updatedBrews)
+
+    setRatingBrew(brew)
+    setSavedBrewState(null)
+    setPhase('rate')
+  }, [buildBrewRecord, onBrewSaved])
+
   // Persist active brew state to localStorage
   const persistState = useCallback((brewState) => {
     saveActiveBrew({
@@ -1243,17 +1504,31 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   useEffect(() => {
     const active = getActiveBrew()
     if (active && active.beanName) {
-      const resume = window.confirm(`Resume brew in progress for ${active.beanName}?`)
-      if (resume) {
+      if (active.phase === 'rate' && active.brewId) {
+        // Recovery into rating screen — brew already saved
+        const brew = getBrews().find(b => b.id === active.brewId)
         const bean = beans.find(b => b.name?.trim().toLowerCase() === active.beanName?.trim().toLowerCase())
-        if (bean) {
+        if (brew && bean) {
           setSelectedBean(bean)
-          setRecipe(active.recipe)
-          setSavedBrewState(active) // Pass to ActiveBrew for timer + step restore
-          setPhase('brew')
+          setRatingBrew(brew)
+          setPhase('rate')
+        } else {
+          clearActiveBrew()
         }
       } else {
-        clearActiveBrew()
+        // Recovery into active brew (timer)
+        const resume = window.confirm(`Resume brew in progress for ${active.beanName}?`)
+        if (resume) {
+          const bean = beans.find(b => b.name?.trim().toLowerCase() === active.beanName?.trim().toLowerCase())
+          if (bean) {
+            setSelectedBean(bean)
+            setRecipe(active.recipe)
+            setSavedBrewState(active)
+            setPhase('brew')
+          }
+        } else {
+          clearActiveBrew()
+        }
       }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1271,7 +1546,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
 
   return (
     <div>
-      {phase !== 'pick' && phase !== 'committed' && <PhaseIndicator phase={phase} />}
+      {phase !== 'pick' && phase !== 'success' && <PhaseIndicator phase={phase} />}
 
       {phase === 'pick' && (
         <BeanPicker beans={beans} onSelect={handleBeanSelect} />
@@ -1286,45 +1561,42 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
           templates={templates}
           equipment={equipment}
           onStartBrew={() => setPhase('brew')}
+          onLogWithoutTimer={handleLogWithoutTimer}
           onBack={() => setPhase('pick')}
           onBeanUpdate={handleBeanUpdate}
-
         />
       )}
 
       {phase === 'brew' && (
         <ActiveBrew
           recipe={recipe}
-          equipment={equipment}
-          onFinish={(data) => { setBrewData(data); setSavedBrewState(null); setPhase('commit') }}
+          onFinish={handleFinishBrew}
           onBrewActiveChange={onBrewActiveChange}
           persistState={persistState}
           savedBrewState={savedBrewState}
         />
       )}
 
-      {phase === 'commit' && brewData && selectedBean && (
-        <PostBrewCommit
-          recipe={recipe}
+      {phase === 'rate' && ratingBrew && selectedBean && (
+        <RateThisBrew
+          brew={ratingBrew}
           bean={selectedBean}
-          brewData={brewData}
-          equipment={equipment}
-          onBrewSaved={onBrewSaved}
+          onComplete={() => setPhase('success')}
+          onBrewUpdated={onBrewSaved}
           setBeans={setBeans}
-          onCommit={() => setPhase('committed')}
         />
       )}
 
-      {phase === 'committed' && (
+      {phase === 'success' && (
         <div className="flex flex-col items-center justify-center p-10 pb-32 text-center
                         animate-fade-in motion-reduce:animate-none min-h-[calc(100vh-3rem)]">
           <div className="w-20 h-20 rounded-full bg-brew-50 flex items-center justify-center
                           text-4xl text-brew-500 mb-5">
             ✓
           </div>
-          <h2 className="text-2xl font-semibold text-brew-800 mb-2">Brew Committed</h2>
+          <h2 className="text-2xl font-semibold text-brew-800 mb-2">Brew Saved</h2>
           <p className="text-sm text-brew-400 leading-relaxed max-w-[260px]">
-            Your brew report is saved. You can edit it anytime from your brew history.
+            Your brew is saved. You can edit it anytime from your brew history.
           </p>
           <div className="flex flex-col gap-3 mt-6 w-full max-w-[260px]">
             <button

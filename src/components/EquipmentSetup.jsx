@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { saveEquipment } from '../data/storage'
-import { BREW_METHODS, GRINDERS } from '../data/defaults'
+import { BREW_METHODS, GRINDERS, DRIPPER_MATERIALS, FILTER_TYPES } from '../data/defaults'
 
 // ============================================================
 // EQUIPMENT SETUP — One-time gear profile (wizard or edit mode)
@@ -146,7 +146,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                       V60 Material
                     </label>
                     <div className="flex gap-2">
-                      {['ceramic', 'plastic', 'metal', 'glass'].map(mat => (
+                      {DRIPPER_MATERIALS.map(mat => (
                         <button
                           key={mat}
                           onClick={() => update('dripper', mat)}
@@ -191,7 +191,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                     Filter Type
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {['paper-tabbed', 'paper-natural', 'metal', 'cloth'].map(filter => (
+                    {FILTER_TYPES.map(filter => (
                       <button
                         key={filter}
                         onClick={() => update('filterType', filter)}

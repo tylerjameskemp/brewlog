@@ -8,7 +8,6 @@ import {
   saveBean,
   deduplicateBeans,
   renameBrewBean,
-  getLastBrew,
   getLastBrewOfBean,
   normalizeSteps,
   migrateBloomToSteps,
@@ -162,18 +161,6 @@ describe('renameBrewBean', () => {
 })
 
 // --- Pre-fill ---
-
-describe('getLastBrew', () => {
-  it('returns the most recent brew', () => {
-    saveBrew({ id: 'old', beanName: 'A', brewedAt: '2026-01-01T00:00:00Z' })
-    saveBrew({ id: 'new', beanName: 'B', brewedAt: '2026-03-01T00:00:00Z' })
-    expect(getLastBrew().id).toBe('new')
-  })
-
-  it('returns null when no brews exist', () => {
-    expect(getLastBrew()).toBeNull()
-  })
-})
 
 describe('getLastBrewOfBean', () => {
   it('returns the most recent brew for a specific bean', () => {
@@ -546,5 +533,142 @@ describe('mergeData', () => {
     saveBrew({ id: 'b1', beanName: 'Keep', brewedAt: '2026-03-01T00:00:00Z' })
     mergeData({})
     expect(getBrews()).toHaveLength(1)
+  })
+})
+
+// --- Phase 3: Rate-phase patterns ---
+
+describe('updateBrew — tasting data merge', () => {
+  it('merges tasting fields into an existing brew without overwriting other fields', () => {
+    saveBrew({
+      id: 'b1',
+      beanName: 'Ethiopia',
+      grindSetting: '6-1',
+      totalTime: 195,
+      timeStatus: 'on-target',
+      stepResults: { '1': { tappedAt: 42, skipped: false, variance: 2 } },
+      recipeSnapshot: { coffeeGrams: 20, waterGrams: 320 },
+      recipeSteps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }],
+      flavors: [],
+      body: '',
+      rating: null,
+      issues: [],
+      notes: '',
+      nextBrewChanges: '',
+      brewedAt: '2026-03-01T10:00:00Z',
+    })
+
+    updateBrew('b1', {
+      flavors: ['chocolate', 'cherry'],
+      body: 'medium',
+      rating: 4,
+      notes: 'Nice and clean',
+      nextBrewChanges: 'Try finer grind',
+    })
+
+    const brew = getBrews()[0]
+    // Tasting data merged
+    expect(brew.flavors).toEqual(['chocolate', 'cherry'])
+    expect(brew.body).toBe('medium')
+    expect(brew.rating).toBe(4)
+    expect(brew.notes).toBe('Nice and clean')
+    expect(brew.nextBrewChanges).toBe('Try finer grind')
+    // Original fields preserved
+    expect(brew.beanName).toBe('Ethiopia')
+    expect(brew.grindSetting).toBe('6-1')
+    expect(brew.totalTime).toBe(195)
+    expect(brew.timeStatus).toBe('on-target')
+    expect(brew.stepResults).toEqual({ '1': { tappedAt: 42, skipped: false, variance: 2 } })
+    expect(brew.recipeSnapshot).toEqual({ coffeeGrams: 20, waterGrams: 320 })
+  })
+
+  it('corrects grindSetting and totalTime without losing tasting data', () => {
+    saveBrew({
+      id: 'b1',
+      grindSetting: '6-1',
+      totalTime: 195,
+      timeStatus: 'on-target',
+      flavors: ['chocolate'],
+      rating: 4,
+      brewedAt: '2026-03-01T10:00:00Z',
+    })
+
+    updateBrew('b1', { grindSetting: '6-2', totalTime: 220, timeStatus: 'over' })
+
+    const brew = getBrews()[0]
+    expect(brew.grindSetting).toBe('6-2')
+    expect(brew.totalTime).toBe(220)
+    expect(brew.timeStatus).toBe('over')
+    // Tasting data still present
+    expect(brew.flavors).toEqual(['chocolate'])
+    expect(brew.rating).toBe(4)
+  })
+})
+
+describe('computeTimeStatus — recomputation on correction', () => {
+  it('changes status when corrected totalTime moves from on-target to over', () => {
+    const original = computeTimeStatus(200, 180, 210, null, null)
+    expect(original.status).toBe('on-target')
+
+    const corrected = computeTimeStatus(250, 180, 210, null, null)
+    expect(corrected.status).toBe('over')
+    expect(corrected.delta).toBe(40)
+  })
+
+  it('changes status when corrected totalTime moves from over to on-target', () => {
+    const original = computeTimeStatus(250, 180, 210, null, null)
+    expect(original.status).toBe('over')
+
+    const corrected = computeTimeStatus(195, 180, 210, null, null)
+    expect(corrected.status).toBe('on-target')
+  })
+})
+
+describe('active brew — rate-phase persistence and recovery', () => {
+  it('persists and retrieves rate-phase active brew with brewId', () => {
+    saveActiveBrew({ phase: 'rate', brewId: 'brew-123', beanName: 'Ethiopia' })
+    const active = getActiveBrew()
+    expect(active.phase).toBe('rate')
+    expect(active.brewId).toBe('brew-123')
+    expect(active.beanName).toBe('Ethiopia')
+  })
+
+  it('finds saved brew by ID during rate-phase recovery', () => {
+    saveBrew({ id: 'brew-123', beanName: 'Ethiopia', rating: null, brewedAt: '2026-03-01T10:00:00Z' })
+    saveBrew({ id: 'brew-456', beanName: 'Colombia', rating: 3, brewedAt: '2026-03-02T10:00:00Z' })
+    saveActiveBrew({ phase: 'rate', brewId: 'brew-123', beanName: 'Ethiopia' })
+
+    const active = getActiveBrew()
+    const brew = getBrews().find(b => b.id === active.brewId)
+    expect(brew).toBeDefined()
+    expect(brew.id).toBe('brew-123')
+    expect(brew.beanName).toBe('Ethiopia')
+  })
+
+  it('returns undefined when brew ID no longer exists (e.g. data replaced)', () => {
+    saveBrew({ id: 'other-brew', beanName: 'Colombia', brewedAt: '2026-03-01T10:00:00Z' })
+    saveActiveBrew({ phase: 'rate', brewId: 'deleted-brew', beanName: 'Ethiopia' })
+
+    const active = getActiveBrew()
+    const brew = getBrews().find(b => b.id === active.brewId)
+    expect(brew).toBeUndefined()
+  })
+
+  it('clearActiveBrew removes rate-phase state', () => {
+    saveActiveBrew({ phase: 'rate', brewId: 'brew-123', beanName: 'Ethiopia' })
+    clearActiveBrew()
+    expect(getActiveBrew()).toBeNull()
+  })
+
+  it('distinguishes rate-phase from brew-phase active brew', () => {
+    saveActiveBrew({ phase: 'brew', beanName: 'Ethiopia', timerState: { startedAt: 100 } })
+    const active = getActiveBrew()
+    expect(active.phase).toBe('brew')
+    expect(active.brewId).toBeUndefined()
+
+    saveActiveBrew({ phase: 'rate', brewId: 'brew-123', beanName: 'Ethiopia' })
+    const active2 = getActiveBrew()
+    expect(active2.phase).toBe('rate')
+    expect(active2.brewId).toBe('brew-123')
   })
 })

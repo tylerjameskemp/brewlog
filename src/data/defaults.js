@@ -60,6 +60,15 @@ export const GRINDERS = [
   { id: 'custom', name: 'Other', settingType: 'text', min: null, max: null },
 ]
 
+// --- DRIPPER MATERIALS ---
+export const DRIPPER_MATERIALS = ['ceramic', 'plastic', 'metal', 'glass']
+
+// --- FILTER TYPES ---
+export const FILTER_TYPES = ['paper-tabbed', 'paper-natural', 'metal', 'cloth']
+
+export const getMethodName = (id) => BREW_METHODS.find(m => m.id === id)?.name || id
+export const getGrinderName = (id) => GRINDERS.find(g => g.id === id)?.name || id
+
 // --- FELLOW ODE GRIND POSITIONS ---
 // 31 positions: 1, 1-1, 1-2, 2, 2-1, 2-2, ..., 10, 10-1, 10-2, 11
 // Two micro-clicks between each main number.
