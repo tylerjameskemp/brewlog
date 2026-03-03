@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { deleteBrew, getUIPref, setUIPref } from '../data/storage'
+import { deleteBrew, getUIPref, setUIPref, normalizeSteps } from '../data/storage'
 import { RATING_SCALE, grindToNumeric } from '../data/defaults'
 
 // ============================================================
@@ -31,10 +31,6 @@ function formatDate(isoString) {
     hour: 'numeric',
     minute: '2-digit',
   })
-}
-
-function normalizeSteps(steps) {
-  return Array.isArray(steps) ? steps : []
 }
 
 function stepsChanged(a, b) {
@@ -602,12 +598,21 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                     <div className="mt-1.5">
                       <span className="text-xs text-brew-500">Actual Pour Steps:</span>
                       <div className="mt-1 space-y-1">
-                        {normalizeSteps(brew.steps).map((step, idx) => (
-                          <div key={`${brew.id}-actual-${idx}`} className="text-xs text-brew-700 font-mono">
-                            {step.startTime != null ? formatTime(step.startTime) : '—'} · {step.label || `Step ${idx + 1}`}
-                            {step.targetWater != null ? ` · ${step.targetWater}g` : ''}
-                          </div>
-                        ))}
+                        {normalizeSteps(brew.steps).map((step, idx) => {
+                          const result = brew.stepResults?.[step.id]
+                          return (
+                            <div key={`${brew.id}-actual-${idx}`} className="text-xs text-brew-700 font-mono">
+                              {step.time != null ? formatTime(step.time) : '—'} · {step.name || `Step ${idx + 1}`}
+                              {step.waterTo != null ? ` · ${step.waterTo}g` : ''}
+                              {result?.tappedAt != null && (
+                                <span className="text-brew-400"> (tapped {formatTime(result.tappedAt)})</span>
+                              )}
+                              {result?.skipped && (
+                                <span className="text-amber-500"> skipped</span>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}

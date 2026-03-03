@@ -3,7 +3,7 @@ import { useState } from 'react'
 // ============================================================
 // STEP EDITOR — Inline pour step editor for brew recipes
 // ============================================================
-// Each step captures: label, start time, target water, technique note.
+// Each step captures: name, time (seconds), waterTo (grams), technique note.
 // Used in both Recipe phase (planning) and Brew phase (copy-on-write).
 // Modeled after FlavorPicker's prop interface: steps + onChange.
 
@@ -19,15 +19,15 @@ function formatTimeDisplay(seconds) {
 function StepRow({ step, index, onChange, onRemove, disabled }) {
   return (
     <div className="flex flex-col gap-2 p-3 bg-brew-50/50 rounded-xl border border-brew-100">
-      {/* Row 1: Label, Time, Water, Remove */}
+      {/* Row 1: Name, Time, Water, Remove */}
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-semibold text-brew-400 uppercase w-5 flex-shrink-0">
           {index + 1}
         </span>
         <input
           type="text"
-          value={step.label}
-          onChange={(e) => onChange({ ...step, label: e.target.value })}
+          value={step.name || ''}
+          onChange={(e) => onChange({ ...step, name: e.target.value })}
           placeholder="e.g., Bloom, First pour"
           disabled={disabled}
           className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-brew-200 text-sm text-brew-800
@@ -37,8 +37,8 @@ function StepRow({ step, index, onChange, onRemove, disabled }) {
         <div className="flex items-center gap-1 flex-shrink-0">
           <input
             type="number"
-            value={step.startTime ?? ''}
-            onChange={(e) => onChange({ ...step, startTime: e.target.value === '' ? null : Number(e.target.value) })}
+            value={step.time ?? ''}
+            onChange={(e) => onChange({ ...step, time: e.target.value === '' ? null : Number(e.target.value) })}
             placeholder="0"
             disabled={disabled}
             className="w-16 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
@@ -50,8 +50,8 @@ function StepRow({ step, index, onChange, onRemove, disabled }) {
         <div className="flex items-center gap-1 flex-shrink-0">
           <input
             type="number"
-            value={step.targetWater ?? ''}
-            onChange={(e) => onChange({ ...step, targetWater: e.target.value === '' ? null : Number(e.target.value) })}
+            value={step.waterTo ?? ''}
+            onChange={(e) => onChange({ ...step, waterTo: e.target.value === '' ? null : Number(e.target.value) })}
             placeholder="—"
             disabled={disabled}
             className="w-16 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
@@ -74,9 +74,9 @@ function StepRow({ step, index, onChange, onRemove, disabled }) {
       </div>
 
       {/* Time display hint */}
-      {step.startTime != null && step.startTime !== '' && (
+      {step.time != null && step.time !== '' && (
         <div className="ml-7 text-[10px] text-brew-400 -mt-1">
-          {formatTimeDisplay(step.startTime)}
+          {formatTimeDisplay(step.time)}
         </div>
       )}
 
@@ -111,11 +111,13 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
   const handleAdd = () => {
     // Default new step: guess start time from last step
     const lastStep = steps[steps.length - 1]
-    const nextTime = lastStep?.startTime != null ? lastStep.startTime + 40 : 0
+    const nextTime = lastStep?.time != null ? lastStep.time + 40 : 0
     onChange([...steps, {
-      label: '',
-      startTime: nextTime,
-      targetWater: null,
+      id: (steps.length > 0 ? Math.max(...steps.map(s => s.id || 0)) : 0) + 1,
+      name: '',
+      time: nextTime,
+      waterTo: null,
+      duration: null,
       note: '',
     }])
   }
@@ -134,7 +136,7 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
 
       {steps.map((step, index) => (
         <StepRow
-          key={index}
+          key={step.id || index}
           step={step}
           index={index}
           onChange={(updated) => handleStepChange(index, updated)}

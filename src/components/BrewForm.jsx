@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { saveBrew, updateBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans, formatTime, parseTimeRange, formatTimeRange } from '../data/storage'
+import { saveBrew, updateBrew, getLastBrew, getLastBrewOfBean, saveBean, getBeans, formatTime, parseTimeRange, formatTimeRange, normalizeSteps } from '../data/storage'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import StepEditor from './StepEditor'
@@ -18,18 +18,12 @@ import StepEditor from './StepEditor'
 
 export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete }) {
   const getRecipeSteps = (brew) => {
-    if (Array.isArray(brew?.recipeSteps) && brew.recipeSteps.length > 0) return brew.recipeSteps
-    if (brew?.bloomTime || brew?.bloomWater) {
-      return [{ label: 'Bloom', startTime: 0, targetWater: brew.bloomWater || null, note: '' }]
-    }
+    if (Array.isArray(brew?.recipeSteps) && brew.recipeSteps.length > 0) return normalizeSteps(brew.recipeSteps)
     return []
   }
 
   const getActualSteps = (brew) => {
-    if (Array.isArray(brew?.steps) && brew.steps.length > 0) return brew.steps
-    if (brew?.actualBloomTime || brew?.actualBloomWater || brew?.bloomWater) {
-      return [{ label: 'Bloom', startTime: 0, targetWater: brew.actualBloomWater || brew.bloomWater || null, note: '' }]
-    }
+    if (Array.isArray(brew?.steps) && brew.steps.length > 0) return normalizeSteps(brew.steps)
     return []
   }
 
@@ -210,6 +204,8 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     }
 
     // Edit mode — update existing brew and navigate back
+    // Preserve fields the form doesn't manage (per documented learning:
+    // edit-form-overwrites-fields-it-doesnt-manage)
     if (isEditing) {
       const updatedBrews = updateBrew(editBrew.id, {
         ...form,
@@ -218,6 +214,12 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         totalTime: form.totalTime || form.targetTime || undefined,
         recipeSteps: finalRecipeSteps,
         steps: finalSteps,
+        // Preserve schema V2 fields the form doesn't manage
+        stepResults: editBrew.stepResults,
+        timeStatus: editBrew.timeStatus,
+        schemaVersion: editBrew.schemaVersion,
+        pourTemplateId: editBrew.pourTemplateId,
+        nextBrewChanges: editBrew.nextBrewChanges,
       })
       if (trimmedName) {
         saveBean({ name: trimmedName, roaster: form.roaster, roastDate: form.roastDate })
@@ -241,6 +243,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       grinder: equipment?.grinder,
       dripper: equipment?.dripper,
       brewedAt: new Date().toISOString(),
+      schemaVersion: 2,
     }
 
     const updatedBrews = saveBrew(brew)
