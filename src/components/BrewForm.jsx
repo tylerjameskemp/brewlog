@@ -3,6 +3,7 @@ import { updateBrew, saveBean, getBeans, formatTime, parseTimeRange, formatTimeR
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import StepEditor from './StepEditor'
+import Collapsible from './Collapsible'
 
 // ============================================================
 // BREW FORM — Edit-only brew form
@@ -518,16 +519,11 @@ function Section({ title, defaultOpen = false, children }) {
           {'\u25BE'}
         </span>
       </button>
-      <div
-        aria-hidden={!open}
-        className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
-          open ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
+      <Collapsible open={open}>
         {open && <div className="px-5 pb-5">
           {children}
         </div>}
-      </div>
+      </Collapsible>
     </div>
   )
 }

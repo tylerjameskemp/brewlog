@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { deleteBrew, getUIPref, setUIPref, normalizeSteps, formatTime } from '../data/storage'
 import { RATING_SCALE, BREW_METHODS, GRINDERS, grindNotationToNumeric, getMethodName, getGrinderName } from '../data/defaults'
+import Collapsible from './Collapsible'
+import EmptyState from './EmptyState'
 
 // ============================================================
 // BREW HISTORY — View and compare past brews
@@ -172,13 +174,11 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
 
   if (brews.length === 0) {
     return (
-      <div className="mt-12 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
-        <div className="text-4xl mb-3">📋</div>
-        <p className="text-lg font-medium text-brew-700">No brews logged yet</p>
-        <p className="text-sm mt-2 text-brew-400 max-w-xs mx-auto">
-          Your brew history will show up here with details on what you changed between sessions.
-        </p>
-        {onNavigate && (
+      <EmptyState
+        emoji="📋"
+        title="No brews logged yet"
+        description="Your brew history will show up here with details on what you changed between sessions."
+        action={onNavigate && (
           <button
             onClick={() => onNavigate('brew')}
             className="mt-5 px-6 py-3 bg-brew-600 text-white rounded-xl font-medium
@@ -187,7 +187,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
             Log Your First Brew
           </button>
         )}
-      </div>
+      />
     )
   }
 
@@ -567,12 +567,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
             )}
 
             {/* Expanded detail */}
-            <div
-              aria-hidden={!isExpanded}
-              className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out motion-reduce:transition-none ${
-                isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
-              }`}
-            >
+            <Collapsible open={isExpanded}>
               {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
                 {/* --- RECIPE --- */}
                 <div className="mt-3">
@@ -736,7 +731,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                   </button>
                 </div>
               </div>}
-            </div>
+            </Collapsible>
           </div>
         )
       })}

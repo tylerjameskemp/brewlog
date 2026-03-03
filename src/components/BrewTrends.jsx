@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { grindNotationToNumeric } from '../data/defaults'
 import { formatTime, normalizeName } from '../data/storage'
+import EmptyState from './EmptyState'
 
 function formatChartDate(isoString) {
   const d = new Date(isoString)
@@ -93,18 +94,14 @@ export default function BrewTrends({ brews, beans }) {
           )}
         </div>
 
-        <div className="mt-8 text-center text-brew-400 animate-fade-in-up motion-reduce:animate-none">
-          <div className="text-4xl mb-3">📈</div>
-          <p className="text-lg font-medium text-brew-700">
-            {selectedBean ? `Trends for ${selectedBean}` : 'Brew Trends'}
-          </p>
-          <p className="text-sm mt-2 max-w-xs mx-auto">
-            {selectedBean
-              ? `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} with ${selectedBean} to see trend charts.`
-              : `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} to unlock trend charts for your rating, grind setting, and brew time.`
-            }
-          </p>
-        </div>
+        <EmptyState
+          emoji="📈"
+          title={selectedBean ? `Trends for ${selectedBean}` : 'Brew Trends'}
+          description={selectedBean
+            ? `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} with ${selectedBean} to see trend charts.`
+            : `Log ${remaining} more brew${remaining !== 1 ? 's' : ''} to unlock trend charts for your rating, grind setting, and brew time.`
+          }
+        />
       </div>
     )
   }
