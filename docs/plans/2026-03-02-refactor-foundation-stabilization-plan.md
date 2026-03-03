@@ -334,7 +334,7 @@ All changes stay within the existing React/props-down architecture. No new state
 
 **Tasks:**
 
-- [ ] **2.1 Write migration function** (`src/data/storage.js`)
+- [x] **2.1 Write migration function** (`src/data/storage.js`)
   - New function: `migrateToSchemaV2()`
   - Follow existing migration pattern: idempotent check → in-place mutation → batch write
   - Idempotency guard: skip brews where `schemaVersion >= 2`
@@ -358,12 +358,12 @@ All changes stay within the existing React/props-down architecture. No new state
     - Remove `brewScreenVersion` field (superseded by `schemaVersion`)
   - **Pre-migration backup:** Store copy of raw brews JSON in `brewlog_brews_backup_v1` localStorage key before mutating. This is cheap insurance — can be cleared after user confirms app works.
 
-- [ ] **2.2 Consolidate normalizeSteps** (`src/data/storage.js`, `src/components/BrewHistory.jsx`)
+- [x] **2.2 Consolidate normalizeSteps** (`src/data/storage.js`, `src/components/BrewHistory.jsx`)
   - Remove the local `normalizeSteps()` in BrewHistory.jsx (line 36-38) that only does array validation
   - Import `normalizeSteps` from storage.js wherever needed
   - Add array validation to the canonical `normalizeSteps()` (handle null/undefined input)
 
-- [ ] **2.3 Update BrewHistory to render unified format** (`src/components/BrewHistory.jsx`)
+- [x] **2.3 Update BrewHistory to render unified format** (`src/components/BrewHistory.jsx`)
   - Update expanded card to read `step.name` instead of `step.label`
   - Update expanded card to read `step.waterTo` instead of `step.targetWater`
   - Update expanded card to read `step.time` instead of `step.startTime`
@@ -371,17 +371,17 @@ All changes stay within the existing React/props-down architecture. No new state
   - Update `stepsChanged` comparison to use new field names
   - Handle brews with `stepResults: null` gracefully (legacy/manual brews)
 
-- [ ] **2.4 Update BrewForm edit mode** (`src/components/BrewForm.jsx`)
+- [x] **2.4 Update BrewForm edit mode** (`src/components/BrewForm.jsx`)
   - When editing a unified-format brew, preserve `recipeSnapshot`, `stepResults`, `timeStatus`, `schemaVersion`, `isManualEntry`, `pourTemplateId`, `nextBrewChanges` — all fields the form doesn't manage
   - Use refs to track which fields user actually modified (per documented learning: edit-form-overwrites-fields-it-doesnt-manage)
   - Update StepEditor to read/write new step format (`name` not `label`, `waterTo` not `targetWater`, `time` not `startTime`)
   - On save: merge user changes with preserved original fields, don't spread entire form
 
-- [ ] **2.5 Wire migration into app init** (`src/App.jsx`)
+- [x] **2.5 Wire migration into app init** (`src/App.jsx`)
   - Add `migrateToSchemaV2()` call in the brews lazy initializer, after existing migrations
   - Order: `migrateGrindSettings()` → `seedDefaultPourTemplates()` → `migrateBloomToSteps()` → `migrateToSchemaV2()`
 
-- [ ] **2.6 Write migration tests** (`src/data/__tests__/migration.test.js`)
+- [x] **2.6 Write migration tests** (`src/data/__tests__/migration.test.js`)
   - Test: BrewForm-only brew → unified format (steps converted, bloom mapped, null fields set)
   - Test: BrewScreen brew → unified format (notes fixed, version updated)
   - Test: Already-migrated brew → unchanged (idempotency)
@@ -392,12 +392,12 @@ All changes stay within the existing React/props-down architecture. No new state
 **Verification:** All existing brews render correctly in History. Edit a legacy brew → save → no data loss. Edit a BrewScreen brew → save → stepResults preserved. `npm test` passes all migration tests.
 
 **Success criteria:**
-- [ ] All brews have `schemaVersion: 2` after app load
-- [ ] BrewHistory displays both legacy and BrewScreen brews with correct step data
-- [ ] Editing a BrewScreen brew via BrewForm preserves stepResults, timeStatus, nextBrewChanges
-- [ ] StepEditor reads/writes new step format
-- [ ] Migration is idempotent (running twice produces same result)
-- [ ] Backup exists in `brewlog_brews_backup_v1`
+- [x] All brews have `schemaVersion: 2` after app load
+- [x] BrewHistory displays both legacy and BrewScreen brews with correct step data
+- [x] Editing a BrewScreen brew via BrewForm preserves stepResults, timeStatus, nextBrewChanges
+- [x] StepEditor reads/writes new step format
+- [x] Migration is idempotent (running twice produces same result)
+- [x] Backup exists in `brewlog_brews_backup_v1`
 
 ---
 

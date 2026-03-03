@@ -226,6 +226,49 @@ export function migrateGrindSettings() {
   return brews
 }
 
+export function migrateToSchemaV2() {
+  // Unify all brews to schema version 2.
+  // Idempotent — skips brews where schemaVersion >= 2.
+  const raw = localStorage.getItem(STORAGE_KEYS.BREWS)
+  if (!raw) return getBrews()
+  const brews = JSON.parse(raw)
+
+  // Pre-migration backup (only once — don't overwrite an existing backup)
+  if (!localStorage.getItem('brewlog_brews_backup_v1')) {
+    localStorage.setItem('brewlog_brews_backup_v1', raw)
+  }
+
+  let changed = false
+  brews.forEach(b => {
+    if (b.schemaVersion >= 2) return // already migrated
+
+    if (b.brewScreenVersion === 1) {
+      // BrewScreen brews — steps already in new format
+      b.isManualEntry = false
+      b.recipeSnapshot = b.recipeSnapshot ?? null
+      b.schemaVersion = 2
+      delete b.brewScreenVersion
+    } else {
+      // Legacy BrewForm brews — convert steps to new format
+      b.recipeSteps = normalizeSteps(b.recipeSteps)
+      b.steps = normalizeSteps(b.steps)
+      b.stepResults = null
+      b.timeStatus = null
+      b.nextBrewChanges = null
+      b.pourTemplateId = null
+      b.isManualEntry = true
+      b.recipeSnapshot = null
+      b.schemaVersion = 2
+    }
+    changed = true
+  })
+
+  if (changed) {
+    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+  }
+  return getBrews()
+}
+
 // --- POUR TEMPLATES ---
 
 export function getPourTemplates() {

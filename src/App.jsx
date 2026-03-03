@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getBrews, getEquipment, getBeans, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, seedDefaultPourTemplates } from './data/storage'
+import { getBrews, getEquipment, getBeans, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, seedDefaultPourTemplates } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
@@ -28,7 +28,7 @@ function App() {
   // Think of these as variables that React watches for changes.
 
   const [view, setViewRaw] = useState('brew')           // Which screen to show
-  const [brews, setBrews] = useState(() => { migrateGrindSettings(); seedDefaultPourTemplates(); return migrateBloomToSteps() })
+  const [brews, setBrews] = useState(() => { migrateGrindSettings(); seedDefaultPourTemplates(); migrateBloomToSteps(); return migrateToSchemaV2() })
   const [equipment, setEquipment] = useState(() => getEquipment())    // User's gear profile
   const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal
