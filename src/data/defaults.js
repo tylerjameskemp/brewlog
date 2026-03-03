@@ -72,18 +72,19 @@ export const getGrinderName = (id) => GRINDERS.find(g => g.id === id)?.name || i
 // --- FELLOW ODE GRIND POSITIONS ---
 // 31 positions: 1, 1-1, 1-2, 2, 2-1, 2-2, ..., 10, 10-1, 10-2, 11
 // Two micro-clicks between each main number.
-export const FELLOW_ODE_POSITIONS = []
-for (let i = 1; i <= 10; i++) {
-  FELLOW_ODE_POSITIONS.push(String(i))
-  FELLOW_ODE_POSITIONS.push(`${i}-1`)
-  FELLOW_ODE_POSITIONS.push(`${i}-2`)
-}
-FELLOW_ODE_POSITIONS.push('11')
+export const FELLOW_ODE_POSITIONS = Object.freeze((() => {
+  const pos = []
+  for (let i = 1; i <= 10; i++) {
+    pos.push(String(i), `${i}-1`, `${i}-2`)
+  }
+  pos.push('11')
+  return pos
+})())
 
 // Convert grind notation to numeric value for charting
 // "6" → 6.0, "6-1" → 6.33, "6-2" → 6.67
 // Also handles plain numbers (pass through)
-export function grindToNumeric(value) {
+export function grindNotationToNumeric(value) {
   if (value == null) return null
   if (typeof value === 'number') return value
   const str = String(value).trim()
