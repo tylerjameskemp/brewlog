@@ -43,6 +43,11 @@ function _invalidateBrewsCache() {
   _brewsCacheRaw = null
 }
 
+function _setBrewsCache(brews, raw) {
+  _brewsCache = brews
+  _brewsCacheRaw = raw
+}
+
 export function getBrews() {
   // Read from localStorage, parse the JSON string back into an array
   const data = localStorage.getItem(STORAGE_KEYS.BREWS)
@@ -63,42 +68,45 @@ export function getBrews() {
 
 export function saveBrew(brew) {
   _invalidateBrewsCache()
-  // Get existing brews, add the new one at the beginning, save back
   const brews = getBrews()
-  brews.unshift(brew) // unshift = add to front (newest first)
-  if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
+  brews.push(brew)
+  brews.sort((a, b) => (b?.brewedAt || '').localeCompare(a?.brewedAt || ''))
+  const raw = JSON.stringify(brews)
+  if (!safeSetItem(STORAGE_KEYS.BREWS, raw)) {
     _invalidateBrewsCache()
     return getBrews()
   }
-  _invalidateBrewsCache()
-  return getBrews()
+  _setBrewsCache(brews, raw)
+  return [...brews]
 }
 
 export function updateBrew(id, updates) {
   _invalidateBrewsCache()
-  // Find a brew by ID and update its properties
   const brews = getBrews()
   const index = brews.findIndex(b => b.id === id)
   if (index !== -1) {
     brews[index] = { ...brews[index], ...updates }
-    if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
+    const raw = JSON.stringify(brews)
+    if (!safeSetItem(STORAGE_KEYS.BREWS, raw)) {
       _invalidateBrewsCache()
       return getBrews()
     }
+    _setBrewsCache(brews, raw)
+    return [...brews]
   }
-  _invalidateBrewsCache()
-  return getBrews()
+  return [...brews]
 }
 
 export function deleteBrew(id) {
   _invalidateBrewsCache()
   const brews = getBrews().filter(b => b.id !== id)
-  if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
+  const raw = JSON.stringify(brews)
+  if (!safeSetItem(STORAGE_KEYS.BREWS, raw)) {
     _invalidateBrewsCache()
     return getBrews()
   }
-  _invalidateBrewsCache()
-  return getBrews()
+  _setBrewsCache(brews, raw)
+  return [...brews]
 }
 
 // --- EQUIPMENT PROFILE ---
@@ -193,13 +201,14 @@ export function renameBrewBean(oldName, newName) {
     }
   })
   if (changed) {
-    if (!safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))) {
+    const raw = JSON.stringify(brews)
+    if (!safeSetItem(STORAGE_KEYS.BREWS, raw)) {
       _invalidateBrewsCache()
       return getBrews()
     }
+    _setBrewsCache(brews, raw)
   }
-  _invalidateBrewsCache()
-  return getBrews()
+  return [...brews]
 }
 
 // --- UI PREFERENCES ---
