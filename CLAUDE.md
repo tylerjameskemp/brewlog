@@ -136,15 +136,15 @@ pick → recipe → brew → rate → success
 **Per-keystroke storage writes:** Never call storage functions in `onChange` handlers. Buffer in local state, persist on blur or action button. See `docs/solutions/performance/per-keystroke-localstorage-writes-cause-render-cascade.md`.
 
 ## Bugs & Lessons Learned
-21 documented solutions in `docs/solutions/` across 6 categories:
-- **logic-errors/** (7): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence
+22 documented solutions in `docs/solutions/` across 6 categories:
+- **logic-errors/** (8): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence, cache mutation breaks sort invariant
 - **react-patterns/** (10): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow
 - **performance/** (1): per-keystroke localStorage writes
 - **state-management/** (1): lazy init state goes stale on prop change
 - **test-failures/** (1): Node 22 localStorage shadows browser mock
 - **ui-bugs/** (1): paired input blur race
 
-Full tracking: `todos/` (60 items, 52 complete, 8 pending P3s). Plans: `docs/plans/`. Solutions: `docs/solutions/`.
+Full tracking: `todos/` (74 items, all complete). Plans: `docs/plans/`. Solutions: `docs/solutions/`.
 
 ## Commands
 - `npm install` — Install dependencies
