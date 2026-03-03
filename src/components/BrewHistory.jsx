@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { deleteBrew, getUIPref, setUIPref, normalizeSteps } from '../data/storage'
-import { RATING_SCALE, grindToNumeric } from '../data/defaults'
+import { RATING_SCALE, BREW_METHODS, GRINDERS, grindToNumeric } from '../data/defaults'
 
 // ============================================================
 // BREW HISTORY — View and compare past brews
@@ -96,6 +96,9 @@ function compareBrews(brewA, brewB) {
   if (brewA.body !== brewB.body) simpleChanges.push('Body')
   if (brewA.rating !== brewB.rating) simpleChanges.push('Rating')
   if ((brewA.method || '') !== (brewB.method || '')) simpleChanges.push('Method')
+  if ((brewA.grinder || '') !== (brewB.grinder || '')) simpleChanges.push('Grinder')
+  if ((brewA.dripper || '') !== (brewB.dripper || '')) simpleChanges.push('Dripper')
+  if ((brewA.filterType || '') !== (brewB.filterType || '')) simpleChanges.push('Filter')
 
   // Body
   const bodyChanged = (brewA.body || '') !== (brewB.body || '')
@@ -220,6 +223,17 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
     }
     if (brew.beanName !== prev.beanName) {
       diffs.push(`New beans: ${brew.beanName}`)
+    }
+    if ((brew.method || '') !== (prev.method || '')) {
+      const name = BREW_METHODS.find(m => m.id === brew.method)?.name || brew.method
+      diffs.push(`Method: ${name}`)
+    }
+    if ((brew.grinder || '') !== (prev.grinder || '')) {
+      const name = GRINDERS.find(g => g.id === brew.grinder)?.name || brew.grinder
+      diffs.push(`Grinder: ${name}`)
+    }
+    if ((brew.dripper || '') !== (prev.dripper || '')) {
+      diffs.push(`Dripper: ${brew.dripper}`)
     }
 
     return diffs.length > 0 ? diffs : null
@@ -577,6 +591,20 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                       </div>
                     )}
                   </div>
+                  {/* Equipment */}
+                  {(brew.method || brew.grinder || brew.dripper) && (
+                    <div className="mt-1.5 text-xs col-span-2">
+                      <span className="text-brew-500">Equipment:</span>{' '}
+                      <span className="text-brew-700">
+                        {[
+                          BREW_METHODS.find(m => m.id === brew.method)?.name || brew.method,
+                          GRINDERS.find(g => g.id === brew.grinder)?.name || brew.grinder,
+                          brew.dripper,
+                          brew.filterType?.replace('-', ' '),
+                        ].filter(Boolean).join(' \u00b7 ')}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* --- BREW --- */}
