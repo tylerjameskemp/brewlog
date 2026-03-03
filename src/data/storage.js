@@ -54,7 +54,11 @@ export function saveBrew(brew) {
   // Get existing brews, add the new one at the beginning, save back
   const brews = getBrews()
   brews.unshift(brew) // unshift = add to front (newest first)
-  localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+  try {
+    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+  } catch (e) {
+    console.warn('Failed to save brew (storage quota?):', e)
+  }
   return brews
 }
 
@@ -65,7 +69,11 @@ export function updateBrew(id, updates) {
   const index = brews.findIndex(b => b.id === id)
   if (index !== -1) {
     brews[index] = { ...brews[index], ...updates }
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    try {
+      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    } catch (e) {
+      console.warn('Failed to update brew (storage quota?):', e)
+    }
   }
   return brews
 }
@@ -73,7 +81,11 @@ export function updateBrew(id, updates) {
 export function deleteBrew(id) {
   _invalidateBrewsCache()
   const brews = getBrews().filter(b => b.id !== id)
-  localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+  try {
+    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+  } catch (e) {
+    console.warn('Failed to delete brew (storage quota?):', e)
+  }
   return brews
 }
 
@@ -169,7 +181,11 @@ export function renameBrewBean(oldName, newName) {
     }
   })
   if (changed) {
-    localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    try {
+      localStorage.setItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    } catch (e) {
+      console.warn('Failed to rename brew bean (storage quota?):', e)
+    }
   }
   return brews
 }
