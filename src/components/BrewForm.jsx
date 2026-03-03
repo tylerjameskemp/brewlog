@@ -53,7 +53,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       // Tasting
       flavors: editBrew?.flavors || [],
       body: editBrew?.body || '',
-      rating: editBrew?.rating || 0,
+      rating: editBrew?.rating ?? null,
       issues: editBrew?.issues || [],
 
       // Notes
