@@ -6,7 +6,7 @@ import {
   getPourTemplates, saveBrew, updateBrew, getBeans, updateBean,
   saveActiveBrew, getActiveBrew, clearActiveBrew,
 } from '../data/storage'
-import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
+import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import useTimer from '../hooks/useTimer'
 import useWakeLock from '../hooks/useWakeLock'
@@ -175,8 +175,24 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
     () => recipe.targetTimeRange || formatTime(recipe.targetTime)
   )
 
-  const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
+  const [equipmentOpen, setEquipmentOpen] = useState(false)
+
+  const grinder = GRINDERS.find(g => g.id === recipe.grinder) || GRINDERS[0]
+  const methodObj = BREW_METHODS.find(m => m.id === recipe.method) || BREW_METHODS[0]
   const displayBean = Object.keys(beanOverrides).length > 0 ? { ...bean, ...beanOverrides } : bean
+
+  // Methods that use a separate dripper (pour-over devices)
+  const methodHasDripper = recipe.method === 'v60' || recipe.method === 'chemex'
+
+  const handleGrinderChange = (grinderId) => {
+    const newGrinder = GRINDERS.find(g => g.id === grinderId) || GRINDERS[0]
+    let defaultGrind = ''
+    if (newGrinder.settingType === 'ode') defaultGrind = '6'
+    else if (newGrinder.settingType === 'numeric' || newGrinder.settingType === 'clicks') {
+      defaultGrind = String(Math.round((newGrinder.min + newGrinder.max) / 2))
+    }
+    setRecipe(prev => ({ ...prev, grinder: grinderId, grindSetting: defaultGrind }))
+  }
 
   const handleTargetTimeBlur = () => {
     const range = parseTimeRange(targetTimeInput)
@@ -577,6 +593,105 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               </div>
             </div>
           )}
+
+          {/* Equipment Section */}
+          <div className="px-4 mt-4">
+            <button
+              onClick={() => setEquipmentOpen(!equipmentOpen)}
+              className="w-full flex items-center justify-between py-2 min-h-[44px]"
+            >
+              <div className="text-[11px] text-brew-400 uppercase tracking-widest">Equipment</div>
+              {!equipmentOpen && (
+                <div className="text-xs text-brew-500">
+                  {methodObj.name} · {grinder.name}{recipe.filterType ? ` · ${recipe.filterType.replace('-', ' ')}` : ''}
+                </div>
+              )}
+              <span className={`text-brew-400 transition-transform text-xs ml-2 ${equipmentOpen ? 'rotate-180' : ''}`}>
+                {'\u25BE'}
+              </span>
+            </button>
+
+            {equipmentOpen && (
+              <div className="space-y-4 pb-2 animate-fade-in motion-reduce:animate-none">
+                {/* Method */}
+                <div>
+                  <div className="text-[11px] text-brew-400 mb-1.5">Method</div>
+                  <div className="flex flex-wrap gap-2">
+                    {BREW_METHODS.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setRecipe(prev => ({ ...prev, method: m.id }))}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all min-h-[44px]
+                          ${recipe.method === m.id
+                            ? 'border-brew-500 bg-brew-50 text-brew-700'
+                            : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                          }`}
+                      >
+                        {m.icon} {m.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dripper — only for pour-over methods */}
+                {methodHasDripper && (
+                  <div>
+                    <div className="text-[11px] text-brew-400 mb-1.5">Dripper</div>
+                    <div className="flex flex-wrap gap-2">
+                      {DRIPPER_MATERIALS.map(mat => (
+                        <button
+                          key={mat}
+                          onClick={() => setRecipe(prev => ({ ...prev, dripper: mat }))}
+                          className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
+                            ${recipe.dripper === mat
+                              ? 'border-brew-500 bg-brew-50 text-brew-700'
+                              : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                            }`}
+                        >
+                          {mat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Grinder */}
+                <div>
+                  <div className="text-[11px] text-brew-400 mb-1.5">Grinder</div>
+                  <select
+                    value={recipe.grinder}
+                    onChange={e => handleGrinderChange(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
+                  >
+                    {GRINDERS.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filter Type */}
+                <div>
+                  <div className="text-[11px] text-brew-400 mb-1.5">Filter</div>
+                  <div className="flex flex-wrap gap-2">
+                    {FILTER_TYPES.map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setRecipe(prev => ({ ...prev, filterType: f }))}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
+                          ${recipe.filterType === f
+                            ? 'border-brew-500 bg-brew-50 text-brew-700'
+                            : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                          }`}
+                      >
+                        {f.replace('-', ' ')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Brew This CTA */}
           <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
@@ -1149,8 +1264,14 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
   // Build recipe from a bean's last brew, or return defaults
   const buildRecipeFromBean = useCallback((beanName) => {
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
+    const equipDefaults = {
+      method: equipment?.brewMethod || 'v60',
+      grinder: equipment?.grinder || 'fellow-ode',
+      dripper: equipment?.dripper || 'ceramic',
+      filterType: equipment?.filterType || 'paper-tabbed',
+    }
     if (!beanName) {
-      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: [], pourTemplateId: null }
+      return { coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200, targetTime: 210, targetTimeRange: '', targetTimeMin: null, targetTimeMax: null, steps: [], pourTemplateId: null, ...equipDefaults }
     }
     const lastBrew = getLastBrewOfBean(beanName)
 
@@ -1170,6 +1291,10 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
         targetTimeMax: lastBrew.targetTimeMax || null,
         steps,
         pourTemplateId: lastBrew.pourTemplateId || templates[0]?.id || null,
+        method: lastBrew.method || equipDefaults.method,
+        grinder: lastBrew.grinder || equipDefaults.grinder,
+        dripper: lastBrew.dripper || equipDefaults.dripper,
+        filterType: lastBrew.filterType || equipDefaults.filterType,
       }
     }
 
@@ -1178,7 +1303,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200,
       targetTime: method.defaultTotalTime, targetTimeRange: '',
       targetTimeMin: null, targetTimeMax: null,
-      steps: [], pourTemplateId: null,
+      steps: [], pourTemplateId: null, ...equipDefaults,
     }
   }, [equipment, templates])
 
