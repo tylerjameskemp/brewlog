@@ -198,12 +198,22 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
     )
   }
 
-  // Compute differences between consecutive brews (memoized)
+  // Compute differences between same-bean brews (memoized)
   const diffsMap = useMemo(() => {
+    // Build same-bean previous-brew lookup (brews sorted newest-first)
+    const lastSeenByBean = {}
+    const prevByBean = {}
+    for (const brew of brews) {
+      if (lastSeenByBean[brew.beanName]) {
+        prevByBean[brew.id] = lastSeenByBean[brew.beanName]
+      }
+      lastSeenByBean[brew.beanName] = brew
+    }
+
     const map = {}
-    brews.forEach((brew, index) => {
-      const prev = brews[index + 1]
-      if (!prev) return
+    for (const brew of brews) {
+      const prev = prevByBean[brew.id]
+      if (!prev) continue
 
       const diffs = []
       const currGrind = grindToNumeric(brew.grindSetting)
@@ -229,9 +239,6 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
       if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
         diffs.push(`Target: ${formatTime(prev.targetTime) || '—'} → ${formatTime(brew.targetTime) || '—'}`)
       }
-      if (brew.beanName !== prev.beanName) {
-        diffs.push(`New beans: ${brew.beanName}`)
-      }
       if ((brew.method || '') !== (prev.method || '')) {
         diffs.push(`Method: ${getMethodName(brew.method)}`)
       }
@@ -243,7 +250,7 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
       }
 
       if (diffs.length > 0) map[brew.id] = diffs
-    })
+    }
     return map
   }, [brews])
 
