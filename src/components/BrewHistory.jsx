@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { deleteBrew, getUIPref, setUIPref, normalizeSteps } from '../data/storage'
-import { RATING_SCALE, BREW_METHODS, GRINDERS, grindToNumeric } from '../data/defaults'
+import { RATING_SCALE, BREW_METHODS, GRINDERS, grindToNumeric, getMethodName, getGrinderName } from '../data/defaults'
 
 // ============================================================
 // BREW HISTORY — View and compare past brews
@@ -225,12 +225,10 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
       diffs.push(`New beans: ${brew.beanName}`)
     }
     if ((brew.method || '') !== (prev.method || '')) {
-      const name = BREW_METHODS.find(m => m.id === brew.method)?.name || brew.method
-      diffs.push(`Method: ${name}`)
+      diffs.push(`Method: ${getMethodName(brew.method)}`)
     }
     if ((brew.grinder || '') !== (prev.grinder || '')) {
-      const name = GRINDERS.find(g => g.id === brew.grinder)?.name || brew.grinder
-      diffs.push(`Grinder: ${name}`)
+      diffs.push(`Grinder: ${getGrinderName(brew.grinder)}`)
     }
     if ((brew.dripper || '') !== (prev.dripper || '')) {
       diffs.push(`Dripper: ${brew.dripper}`)
@@ -597,8 +595,8 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                       <span className="text-brew-500">Equipment:</span>{' '}
                       <span className="text-brew-700">
                         {[
-                          BREW_METHODS.find(m => m.id === brew.method)?.name || brew.method,
-                          GRINDERS.find(g => g.id === brew.grinder)?.name || brew.grinder,
+                          getMethodName(brew.method),
+                          getGrinderName(brew.grinder),
                           brew.dripper,
                           brew.filterType?.replace('-', ' '),
                         ].filter(Boolean).join(' \u00b7 ')}
