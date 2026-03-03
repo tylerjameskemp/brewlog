@@ -16,6 +16,13 @@ import {
   getActiveBrew,
   saveActiveBrew,
   clearActiveBrew,
+  computeTimeStatus,
+  exportData,
+  importData,
+  mergeData,
+  getEquipment,
+  saveEquipment,
+  getPourTemplates,
 } from '../storage'
 
 // --- Brew CRUD ---
@@ -357,5 +364,187 @@ describe('active brew persistence', () => {
 
   it('returns null when no active brew exists', () => {
     expect(getActiveBrew()).toBeNull()
+  })
+})
+
+// --- computeTimeStatus ---
+
+describe('computeTimeStatus', () => {
+  it('returns on-target when elapsed is within range', () => {
+    const result = computeTimeStatus(200, 180, 210, null, null)
+    expect(result).toEqual({ status: 'on-target', delta: 0 })
+  })
+
+  it('returns under when elapsed is below min', () => {
+    const result = computeTimeStatus(100, 180, 210, null, null)
+    expect(result).toEqual({ status: 'under', delta: 80 })
+  })
+
+  it('returns over when elapsed exceeds max', () => {
+    const result = computeTimeStatus(250, 180, 210, null, null)
+    expect(result).toEqual({ status: 'over', delta: 40 })
+  })
+
+  it('applies 10s tolerance when min equals max (single target)', () => {
+    // Single target of 210. Tolerance = 10s, so 200-220 is on-target.
+    expect(computeTimeStatus(200, 210, 210, null, null)).toEqual({ status: 'on-target', delta: 0 })
+    expect(computeTimeStatus(220, 210, 210, null, null)).toEqual({ status: 'on-target', delta: 0 })
+    expect(computeTimeStatus(199, 210, 210, null, null)).toEqual({ status: 'under', delta: 11 })
+    expect(computeTimeStatus(221, 210, 210, null, null)).toEqual({ status: 'over', delta: 11 })
+  })
+
+  it('falls back to targetTime when min/max are null', () => {
+    const result = computeTimeStatus(200, null, null, 210, null)
+    expect(result).toEqual({ status: 'on-target', delta: 0 })
+  })
+
+  it('falls back to fallbackDuration when all targets are null', () => {
+    const result = computeTimeStatus(300, null, null, null, 210)
+    expect(result).toEqual({ status: 'over', delta: 90 })
+  })
+
+  it('returns null when no target values exist', () => {
+    expect(computeTimeStatus(200, null, null, null, null)).toBeNull()
+  })
+})
+
+// --- Export / Import / Merge ---
+
+describe('exportData', () => {
+  it('exports all entity types', () => {
+    saveBrew({ id: 'b1', beanName: 'Test', brewedAt: '2026-03-01T00:00:00Z' })
+    saveBean({ id: 'bean1', name: 'Test Bean' })
+    saveEquipment({ brewMethod: 'v60', grinder: 'fellow-ode' })
+
+    const data = exportData()
+    expect(data.brews).toHaveLength(1)
+    expect(data.beans).toHaveLength(1)
+    expect(data.equipment).toEqual({ brewMethod: 'v60', grinder: 'fellow-ode' })
+    expect(data.pourTemplates).toEqual([])
+    expect(data.exportedAt).toBeDefined()
+  })
+
+  it('returns empty collections when no data exists', () => {
+    const data = exportData()
+    expect(data.brews).toEqual([])
+    expect(data.beans).toEqual([])
+    expect(data.equipment).toBeNull()
+    expect(data.pourTemplates).toEqual([])
+  })
+})
+
+describe('importData', () => {
+  it('replaces brews when present in payload', () => {
+    saveBrew({ id: 'local', beanName: 'Local', brewedAt: '2026-03-01T00:00:00Z' })
+
+    importData({
+      brews: [{ id: 'imported', beanName: 'Imported', brewedAt: '2026-03-02T00:00:00Z' }],
+    })
+
+    const brews = getBrews()
+    expect(brews).toHaveLength(1)
+    expect(brews[0].id).toBe('imported')
+  })
+
+  it('only touches keys present in the payload', () => {
+    saveBrew({ id: 'b1', beanName: 'Keep', brewedAt: '2026-03-01T00:00:00Z' })
+    saveBean({ id: 'bean1', name: 'Keep Bean' })
+
+    importData({ beans: [{ id: 'new', name: 'New Bean' }] })
+
+    // Brews untouched — key not in payload
+    expect(getBrews()).toHaveLength(1)
+    expect(getBrews()[0].id).toBe('b1')
+    // Beans replaced
+    expect(getBeans()).toHaveLength(1)
+    expect(getBeans()[0].id).toBe('new')
+  })
+
+  it('removes equipment when payload has null equipment', () => {
+    saveEquipment({ brewMethod: 'v60' })
+    importData({ equipment: null })
+    expect(getEquipment()).toBeNull()
+  })
+})
+
+describe('mergeData', () => {
+  it('adds new brews without removing existing ones', () => {
+    saveBrew({ id: 'local', beanName: 'Local', brewedAt: '2026-03-01T00:00:00Z' })
+
+    mergeData({
+      brews: [
+        { id: 'imported', beanName: 'Imported', brewedAt: '2026-03-02T00:00:00Z' },
+      ],
+    })
+
+    const brews = getBrews()
+    expect(brews).toHaveLength(2)
+    expect(brews.map(b => b.id)).toContain('local')
+    expect(brews.map(b => b.id)).toContain('imported')
+  })
+
+  it('skips brews with duplicate IDs (local wins)', () => {
+    saveBrew({ id: 'b1', beanName: 'Local Version', brewedAt: '2026-03-01T00:00:00Z' })
+
+    mergeData({
+      brews: [{ id: 'b1', beanName: 'Imported Version', brewedAt: '2026-03-01T00:00:00Z' }],
+    })
+
+    const brews = getBrews()
+    expect(brews).toHaveLength(1)
+    expect(brews[0].beanName).toBe('Local Version')
+  })
+
+  it('skips beans with duplicate names (case-insensitive)', () => {
+    saveBean({ id: 'local', name: 'Heart Colombia' })
+
+    mergeData({
+      beans: [
+        { id: 'imported', name: 'heart colombia' },
+        { id: 'new', name: 'Onyx Ethiopia' },
+      ],
+    })
+
+    const beans = getBeans()
+    expect(beans).toHaveLength(2)
+    expect(beans.map(b => b.name)).toContain('Heart Colombia')
+    expect(beans.map(b => b.name)).toContain('Onyx Ethiopia')
+  })
+
+  it('only imports equipment if local has none', () => {
+    saveEquipment({ brewMethod: 'v60' })
+
+    mergeData({ equipment: { brewMethod: 'chemex' } })
+
+    expect(getEquipment().brewMethod).toBe('v60') // local wins
+  })
+
+  it('imports equipment when local has none', () => {
+    mergeData({ equipment: { brewMethod: 'chemex' } })
+    expect(getEquipment().brewMethod).toBe('chemex')
+  })
+
+  it('merges pour templates by ID', () => {
+    localStorage.setItem('brewlog_pour_templates', JSON.stringify([
+      { id: 'tmpl1', name: 'Local Template' },
+    ]))
+
+    mergeData({
+      pourTemplates: [
+        { id: 'tmpl1', name: 'Imported Duplicate' },
+        { id: 'tmpl2', name: 'New Template' },
+      ],
+    })
+
+    const templates = getPourTemplates()
+    expect(templates).toHaveLength(2)
+    expect(templates.find(t => t.id === 'tmpl1').name).toBe('Local Template')
+    expect(templates.find(t => t.id === 'tmpl2').name).toBe('New Template')
+  })
+
+  it('is a no-op for empty or missing data', () => {
+    saveBrew({ id: 'b1', beanName: 'Keep', brewedAt: '2026-03-01T00:00:00Z' })
+    mergeData({})
+    expect(getBrews()).toHaveLength(1)
   })
 })
