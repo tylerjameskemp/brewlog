@@ -128,6 +128,11 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       schemaVersion: editBrew.schemaVersion,
       pourTemplateId: editBrew.pourTemplateId,
       nextBrewChanges: editBrew.nextBrewChanges,
+      recipeSnapshot: editBrew.recipeSnapshot,
+      method: editBrew.method,
+      grinder: editBrew.grinder,
+      dripper: editBrew.dripper,
+      filterType: editBrew.filterType,
     })
     if (trimmedName) {
       saveBean({ name: trimmedName, roaster: form.roaster, roastDate: form.roastDate })
