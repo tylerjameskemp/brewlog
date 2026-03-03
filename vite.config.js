@@ -6,4 +6,9 @@ import react from '@vitejs/plugin-react'
 // refreshes the browser when you make changes
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'happy-dom',
+    globals: true,
+    setupFiles: ['./src/test/setup.js'],
+  },
 })
