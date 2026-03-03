@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { saveBean, updateBean, deleteBean, renameBrewBean } from '../data/storage'
+import { saveBean, updateBean, deleteBean, renameBrewBean, formatTime, normalizeName } from '../data/storage'
 import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE } from '../data/defaults'
 
 // ============================================================
@@ -20,7 +20,7 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
   const brewCounts = useMemo(() => {
     const counts = new Map()
     brews.forEach(b => {
-      const key = b.beanName?.trim().toLowerCase() || ''
+      const key = normalizeName(b.beanName)
       counts.set(key, (counts.get(key) || 0) + 1)
     })
     return counts
@@ -31,8 +31,8 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
     if (!expandedBeanId) return []
     const expandedBean = beans.find(b => b.id === expandedBeanId)
     if (!expandedBean) return []
-    const key = expandedBean.name.trim().toLowerCase()
-    return brews.filter(b => b.beanName?.trim().toLowerCase() === key)
+    const key = normalizeName(expandedBean.name)
+    return brews.filter(b => normalizeName(b.beanName) === key)
   }, [brews, beans, expandedBeanId])
 
   const formatDate = (dateStr) => {
@@ -50,13 +50,6 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
       hour: 'numeric',
       minute: '2-digit',
     })
-  }
-
-  const formatTime = (seconds) => {
-    if (!seconds) return '—'
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
   }
 
   const handleOpenAdd = () => {
@@ -130,7 +123,7 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
       <div className="space-y-3">
         {beans.map(bean => {
           const isExpanded = expandedBeanId === bean.id
-          const key = bean.name.trim().toLowerCase()
+          const key = normalizeName(bean.name)
           const count = brewCounts.get(key) || 0
           const beanBrews = isExpanded ? expandedBeanBrews : []
           const meta = [bean.roaster, bean.origin, bean.process].filter(Boolean).join(' · ')
@@ -387,7 +380,7 @@ function BeanFormModal({ bean, beans, onSave, onClose }) {
 
     // Check for duplicate names (excluding current bean if editing)
     const isDuplicate = beans.some(b =>
-      b.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+      normalizeName(b.name) === normalizeName(trimmedName) &&
       (!bean || b.id !== bean.id)
     )
 

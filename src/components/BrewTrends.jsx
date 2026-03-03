@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { grindNotationToNumeric } from '../data/defaults'
+import { formatTime, normalizeName } from '../data/storage'
 
 // ============================================================
 // BREW TRENDS -- Visual charts showing brewing patterns over time
@@ -16,11 +17,11 @@ export default function BrewTrends({ brews, beans }) {
   const beanOptions = useMemo(() => {
     const nameSet = new Map()
     beans.forEach(b => {
-      if (b.name?.trim()) nameSet.set(b.name.trim().toLowerCase(), b.name.trim())
+      if (b.name?.trim()) nameSet.set(normalizeName(b.name), b.name.trim())
     })
     brews.forEach(b => {
       if (b.beanName?.trim()) {
-        const key = b.beanName.trim().toLowerCase()
+        const key = normalizeName(b.beanName)
         if (!nameSet.has(key)) nameSet.set(key, b.beanName.trim())
       }
     })
@@ -29,7 +30,7 @@ export default function BrewTrends({ brews, beans }) {
 
   // Filter brews by selected bean
   const filteredBrews = selectedBean
-    ? brews.filter(b => b.beanName?.trim().toLowerCase() === selectedBean.trim().toLowerCase())
+    ? brews.filter(b => normalizeName(b.beanName) === normalizeName(selectedBean))
     : brews
 
   // Compute stats for the filtered bean
@@ -106,12 +107,6 @@ export default function BrewTrends({ brews, beans }) {
   const formatDate = (isoString) => {
     const d = new Date(isoString)
     return `${d.getMonth() + 1}/${d.getDate()}`
-  }
-
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
   }
 
   // Take last 20 (stored newest-first), reverse for chronological order

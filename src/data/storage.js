@@ -33,6 +33,12 @@ function safeSetItem(key, value) {
   }
 }
 
+// --- NAME NORMALIZATION ---
+
+export function normalizeName(name) {
+  return (name || '').trim().toLowerCase()
+}
+
 // --- BREW LOGS ---
 
 let _brewsCache = null
@@ -138,8 +144,8 @@ export function getBeans() {
 
 export function saveBean(bean) {
   const beans = getBeans()
-  const normalized = bean.name?.trim().toLowerCase()
-  if (normalized && beans.some(b => b.name?.trim().toLowerCase() === normalized)) {
+  const normalized = normalizeName(bean.name)
+  if (normalized && beans.some(b => normalizeName(b.name) === normalized)) {
     return beans // Already exists, skip
   }
   beans.unshift(bean)
@@ -155,10 +161,10 @@ export function updateBean(id, updates) {
   beans[index] = { ...beans[index], ...updates }
 
   // If name changed, remove any other bean with the same normalized name (merge)
-  const newName = updates.name?.trim().toLowerCase()
+  const newName = normalizeName(updates.name)
   if (newName) {
     const deduped = beans.filter(b =>
-      b.id === id || b.name?.trim().toLowerCase() !== newName
+      b.id === id || normalizeName(b.name) !== newName
     )
     safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
     return deduped
@@ -178,7 +184,7 @@ export function deduplicateBeans() {
   const beans = getBeans()
   const seen = new Map()
   const deduped = beans.filter(b => {
-    const key = b.name?.trim().toLowerCase()
+    const key = normalizeName(b.name)
     if (!key || seen.has(key)) return false
     seen.set(key, true)
     return true
@@ -193,9 +199,9 @@ export function renameBrewBean(oldName, newName) {
   _invalidateBrewsCache()
   const brews = getBrews()
   let changed = false
-  const oldNorm = oldName.trim().toLowerCase()
+  const oldNorm = normalizeName(oldName)
   brews.forEach(b => {
-    if (b.beanName?.trim().toLowerCase() === oldNorm) {
+    if (normalizeName(b.beanName) === oldNorm) {
       b.beanName = newName.trim()
       changed = true
     }
@@ -492,10 +498,10 @@ export function computeTimeStatus(elapsed, targetTimeMin, targetTimeMax, targetT
 export function getLastBrewOfBean(beanName) {
   // Returns the most recent brew for a specific bean — used for "dial-in" pre-fill
   if (!beanName) return null
-  const normalized = beanName.trim().toLowerCase()
+  const normalized = normalizeName(beanName)
   if (!normalized) return null
   const brews = getBrews() // already sorted by brewedAt descending
-  return brews.find(b => b.beanName?.trim().toLowerCase() === normalized) || null
+  return brews.find(b => normalizeName(b.beanName) === normalized) || null
 }
 
 export function exportData() {
@@ -549,9 +555,9 @@ export function mergeData(data) {
   if (data.beans && Array.isArray(data.beans)) {
     const existing = getBeans()
     const existingIds = new Set(existing.map(b => b.id))
-    const existingNames = new Set(existing.map(b => b.name?.trim().toLowerCase()))
+    const existingNames = new Set(existing.map(b => normalizeName(b.name)))
     const newBeans = data.beans.filter(b =>
-      !existingIds.has(b.id) && !existingNames.has(b.name?.trim().toLowerCase())
+      !existingIds.has(b.id) && !existingNames.has(normalizeName(b.name))
     )
     if (newBeans.length > 0) {
       safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify([...existing, ...newBeans]))

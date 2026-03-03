@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { deleteBrew, getUIPref, setUIPref, normalizeSteps } from '../data/storage'
+import { deleteBrew, getUIPref, setUIPref, normalizeSteps, formatTime } from '../data/storage'
 import { RATING_SCALE, BREW_METHODS, GRINDERS, grindNotationToNumeric, getMethodName, getGrinderName } from '../data/defaults'
 
 // ============================================================
@@ -14,13 +14,6 @@ import { RATING_SCALE, BREW_METHODS, GRINDERS, grindNotationToNumeric, getMethod
 // comparison with differences highlighted in amber.
 
 // --- Comparison helpers (pure functions) ---
-
-function formatTime(seconds) {
-  if (seconds == null) return '—'
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 function formatDate(isoString) {
   const d = new Date(isoString)

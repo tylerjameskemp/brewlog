@@ -4,7 +4,7 @@ import {
   getBrews, getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
   parseTime, parseTimeRange, formatTimeRange, computeTimeStatus,
   getPourTemplates, saveBrew, updateBrew, getBeans, updateBean,
-  saveActiveBrew, getActiveBrew, clearActiveBrew,
+  saveActiveBrew, getActiveBrew, clearActiveBrew, normalizeName,
 } from '../data/storage'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
@@ -108,7 +108,7 @@ function BeanPicker({ beans, onSelect }) {
   const [search, setSearch] = useState('')
 
   const filtered = beans.filter(b => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeName(search)
     if (!q) return true
     return (b.name?.toLowerCase().includes(q) || b.roaster?.toLowerCase().includes(q))
   })
@@ -1510,7 +1510,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       if (active.phase === 'rate' && active.brewId) {
         // Recovery into rating screen — brew already saved
         const brew = getBrews().find(b => b.id === active.brewId)
-        const bean = beans.find(b => b.name?.trim().toLowerCase() === active.beanName?.trim().toLowerCase())
+        const bean = beans.find(b => normalizeName(b.name) === normalizeName(active.beanName))
         if (brew && bean) {
           setSelectedBean(bean)
           setRatingBrew(brew)
@@ -1522,7 +1522,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
         // Recovery into active brew (timer)
         const resume = window.confirm(`Resume brew in progress for ${active.beanName}?`)
         if (resume) {
-          const bean = beans.find(b => b.name?.trim().toLowerCase() === active.beanName?.trim().toLowerCase())
+          const bean = beans.find(b => normalizeName(b.name) === normalizeName(active.beanName))
           if (bean) {
             setSelectedBean(bean)
             setRecipe(active.recipe)
