@@ -8,7 +8,6 @@ import {
   saveBean,
   deduplicateBeans,
   renameBrewBean,
-  getLastBrew,
   getLastBrewOfBean,
   normalizeSteps,
   migrateBloomToSteps,
@@ -162,18 +161,6 @@ describe('renameBrewBean', () => {
 })
 
 // --- Pre-fill ---
-
-describe('getLastBrew', () => {
-  it('returns the most recent brew', () => {
-    saveBrew({ id: 'old', beanName: 'A', brewedAt: '2026-01-01T00:00:00Z' })
-    saveBrew({ id: 'new', beanName: 'B', brewedAt: '2026-03-01T00:00:00Z' })
-    expect(getLastBrew().id).toBe('new')
-  })
-
-  it('returns null when no brews exist', () => {
-    expect(getLastBrew()).toBeNull()
-  })
-})
 
 describe('getLastBrewOfBean', () => {
   it('returns the most recent brew for a specific bean', () => {
