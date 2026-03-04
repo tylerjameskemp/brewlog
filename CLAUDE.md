@@ -52,7 +52,7 @@ All brews use one canonical format (`schemaVersion: 2`). Legacy brews are migrat
 ```
 
 ### Recipe
-Reusable recipe entity linked to a bean by UUID (`beanId`). Soft-deleted via `archivedAt` when parent bean is deleted. Field list defined by `RECIPE_FIELDS` constant in storage.js. Created automatically when a brew is saved via `linkRecipeToBrew()`.
+Reusable recipe entity linked to a bean by UUID (`beanId`). Soft-deleted via `archivedAt` when parent bean is deleted. Field list defined by `RECIPE_FIELDS` constant in storage.js. Created automatically when a brew is saved via `linkRecipeToBrew()`. `notes` is intentionally NOT in `RECIPE_FIELDS` — it's metadata, not a brew parameter.
 ```json
 { "id": "uuid", "beanId": "uuid", "name": "string (method display name)",
   "coffeeGrams": 15, "waterGrams": 250, "grindSetting": "string",
@@ -61,6 +61,7 @@ Reusable recipe entity linked to a bean by UUID (`beanId`). Soft-deleted via `ar
   "steps": [{ "id": 1, "name": "Bloom", "waterTo": 42, "time": 0, "duration": 40 }],
   "pourTemplateId": "string", "method": "string", "grinder": "string",
   "dripper": "string", "filterType": "string",
+  "notes": "string (optional, max 500 chars, not in RECIPE_FIELDS)",
   "lastUsedAt": "ISO timestamp", "createdAt": "ISO timestamp",
   "updatedAt": "ISO timestamp", "archivedAt": "ISO timestamp|null",
   "version": 1 }
