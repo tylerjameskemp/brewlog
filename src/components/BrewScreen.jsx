@@ -6,6 +6,7 @@ import {
   computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
   updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
   normalizeName, getRecipes, getRecipesForBean, saveRecipe, updateRecipe,
+  RECIPE_FIELDS, recipeEntityToFormState, formStateToRecipeFields,
 } from '../data/storage'
 import { getMethodName } from '../data/defaults'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
@@ -777,9 +778,10 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
           {selectedRecipeId && onSaveToRecipe && (() => {
             const loaded = beanRecipes.find(r => r.id === selectedRecipeId)
             if (!loaded) return null
-            const differs = ['coffeeGrams', 'waterGrams', 'grindSetting', 'waterTemp',
-              'targetTime', 'targetTimeRange', 'method', 'grinder', 'dripper', 'filterType',
-            ].some(f => recipe[f] !== loaded[f])
+            const differs = RECIPE_FIELDS.some(f => {
+              if (f === 'steps') return JSON.stringify(recipe[f]) !== JSON.stringify(loaded[f] || [])
+              return recipe[f] !== loaded[f]
+            })
             if (!differs) return null
             return (
               <div className="px-4 mt-3">
@@ -1433,22 +1435,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     const sorted = [...beanRecipes].sort((a, b) => (b?.lastUsedAt || '').localeCompare(a?.lastUsedAt || ''))
     const selected = sorted[0]
     return {
-      recipe: {
-        coffeeGrams: selected.coffeeGrams ?? 15,
-        waterGrams: selected.waterGrams ?? 240,
-        grindSetting: selected.grindSetting ?? '',
-        waterTemp: selected.waterTemp ?? 200,
-        targetTime: selected.targetTime ?? defaults.targetTime,
-        targetTimeRange: selected.targetTimeRange ?? '',
-        targetTimeMin: selected.targetTimeMin ?? null,
-        targetTimeMax: selected.targetTimeMax ?? null,
-        steps: selected.steps ? normalizeSteps(selected.steps) : [],
-        pourTemplateId: selected.pourTemplateId ?? null,
-        method: selected.method ?? defaults.method,
-        grinder: selected.grinder ?? defaults.grinder,
-        dripper: selected.dripper ?? defaults.dripper,
-        filterType: selected.filterType ?? defaults.filterType,
-      },
+      recipe: recipeEntityToFormState(selected, defaults),
       recipeId: selected.id,
     }
   }, [recipes, getRecipeDefaults])
@@ -1507,22 +1494,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   // Build a brew record from current recipe + bean state
   const buildBrewRecord = useCallback((overrides = {}) => {
     const totalDuration = getTotalDuration(recipe.steps)
-    const recipeSnapshot = {
-      coffeeGrams: recipe.coffeeGrams,
-      waterGrams: recipe.waterGrams,
-      grindSetting: recipe.grindSetting,
-      waterTemp: recipe.waterTemp,
-      targetTime: recipe.targetTime,
-      targetTimeRange: recipe.targetTimeRange,
-      targetTimeMin: recipe.targetTimeMin,
-      targetTimeMax: recipe.targetTimeMax,
-      steps: structuredClone(recipe.steps),
-      pourTemplateId: recipe.pourTemplateId,
-      method: recipe.method,
-      grinder: recipe.grinder,
-      dripper: recipe.dripper,
-      filterType: recipe.filterType,
-    }
+    const recipeSnapshot = formStateToRecipeFields(recipe)
     return {
       id: uuidv4(),
       schemaVersion: 2,
@@ -1566,22 +1538,10 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
       const newRecipe = saveRecipe({
         beanId: selectedBean.id,
         name: getMethodName(recipe.method),
-        method: recipe.method,
-        grinder: recipe.grinder,
-        dripper: recipe.dripper,
-        filterType: recipe.filterType,
-        coffeeGrams: recipe.coffeeGrams,
-        waterGrams: recipe.waterGrams,
-        grindSetting: recipe.grindSetting,
-        waterTemp: recipe.waterTemp,
-        targetTime: recipe.targetTime,
-        targetTimeRange: recipe.targetTimeRange,
-        targetTimeMin: recipe.targetTimeMin,
-        targetTimeMax: recipe.targetTimeMax,
-        steps: structuredClone(recipe.steps),
-        pourTemplateId: recipe.pourTemplateId,
+        ...formStateToRecipeFields(recipe),
         lastUsedAt: now,
       })
+      if (!newRecipe) return null // write failed — skip recipe linking
       setSelectedRecipeId(newRecipe.id)
       setRecipes(getRecipes())
       return newRecipe.id
@@ -1730,41 +1690,11 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
             } else {
               // Select an existing recipe
               setSelectedRecipeId(recipeEntity.id)
-              setRecipe({
-                coffeeGrams: recipeEntity.coffeeGrams ?? 15,
-                waterGrams: recipeEntity.waterGrams ?? 240,
-                grindSetting: recipeEntity.grindSetting ?? '',
-                waterTemp: recipeEntity.waterTemp ?? 200,
-                targetTime: recipeEntity.targetTime ?? getRecipeDefaults().targetTime,
-                targetTimeRange: recipeEntity.targetTimeRange ?? '',
-                targetTimeMin: recipeEntity.targetTimeMin ?? null,
-                targetTimeMax: recipeEntity.targetTimeMax ?? null,
-                steps: recipeEntity.steps ? normalizeSteps(recipeEntity.steps) : [],
-                pourTemplateId: recipeEntity.pourTemplateId ?? null,
-                method: recipeEntity.method ?? getRecipeDefaults().method,
-                grinder: recipeEntity.grinder ?? getRecipeDefaults().grinder,
-                dripper: recipeEntity.dripper ?? getRecipeDefaults().dripper,
-                filterType: recipeEntity.filterType ?? getRecipeDefaults().filterType,
-              })
+              setRecipe(recipeEntityToFormState(recipeEntity, getRecipeDefaults()))
             }
           }}
           onSaveToRecipe={(recipeId) => {
-            updateRecipe(recipeId, {
-              coffeeGrams: recipe.coffeeGrams,
-              waterGrams: recipe.waterGrams,
-              grindSetting: recipe.grindSetting,
-              waterTemp: recipe.waterTemp,
-              targetTime: recipe.targetTime,
-              targetTimeRange: recipe.targetTimeRange,
-              targetTimeMin: recipe.targetTimeMin,
-              targetTimeMax: recipe.targetTimeMax,
-              steps: structuredClone(recipe.steps),
-              pourTemplateId: recipe.pourTemplateId,
-              method: recipe.method,
-              grinder: recipe.grinder,
-              dripper: recipe.dripper,
-              filterType: recipe.filterType,
-            })
+            updateRecipe(recipeId, formStateToRecipeFields(recipe))
             setRecipes(getRecipes())
           }}
           onStartBrew={() => setPhase('brew')}

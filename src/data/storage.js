@@ -176,7 +176,7 @@ export function updateBean(id, updates) {
 }
 
 export function deleteBean(id) {
-  archiveRecipesForBean(id)
+  if (!archiveRecipesForBean(id)) return getBeans() // abort if recipe archival failed
   const beans = getBeans().filter(b => b.id !== id)
   safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
@@ -198,6 +198,33 @@ export function deduplicateBeans() {
 }
 
 // --- RECIPES ---
+
+// Shared field list for recipe <-> form state mapping
+export const RECIPE_FIELDS = [
+  'coffeeGrams', 'waterGrams', 'grindSetting', 'waterTemp',
+  'targetTime', 'targetTimeRange', 'targetTimeMin', 'targetTimeMax',
+  'steps', 'pourTemplateId', 'method', 'grinder', 'dripper', 'filterType',
+]
+
+export function recipeEntityToFormState(entity, defaults) {
+  const form = {}
+  for (const f of RECIPE_FIELDS) {
+    if (f === 'steps') {
+      form[f] = entity[f] ? normalizeSteps(entity[f]) : []
+    } else {
+      form[f] = entity[f] ?? defaults[f]
+    }
+  }
+  return form
+}
+
+export function formStateToRecipeFields(formState) {
+  const fields = {}
+  for (const f of RECIPE_FIELDS) {
+    fields[f] = f === 'steps' ? structuredClone(formState[f]) : formState[f]
+  }
+  return fields
+}
 
 function _getAllRecipes() {
   try {
@@ -231,7 +258,7 @@ export function getRecipeForBeanAndMethod(beanId, method) {
 export function saveRecipe(recipe) {
   if (!recipe.beanId || !recipe.method) {
     console.warn('saveRecipe: beanId and method are required')
-    return _getAllRecipes()
+    return null
   }
   const now = new Date().toISOString()
   const newRecipe = {
@@ -245,7 +272,7 @@ export function saveRecipe(recipe) {
   }
   const all = _getAllRecipes()
   all.push(newRecipe)
-  safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))
+  if (!safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))) return null
   return newRecipe
 }
 
@@ -256,10 +283,13 @@ export function updateRecipe(id, updates) {
   all[index] = {
     ...all[index],
     ...updates,
+    id: all[index].id,
+    beanId: all[index].beanId,
+    createdAt: all[index].createdAt,
     version: (all[index].version || 1) + 1,
     updatedAt: new Date().toISOString(),
   }
-  safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))
+  if (!safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))) return null
   return all[index]
 }
 
@@ -268,7 +298,7 @@ export function archiveRecipe(id) {
 }
 
 export function archiveRecipesForBean(beanId) {
-  if (!beanId) return
+  if (!beanId) return false
   const all = _getAllRecipes()
   let changed = false
   const now = new Date().toISOString()
@@ -279,8 +309,9 @@ export function archiveRecipesForBean(beanId) {
     }
   })
   if (changed) {
-    safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))
+    return safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))
   }
+  return true
 }
 
 export function renameBrewBean(oldName, newName) {
