@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { normalizeSteps } from '../data/storage'
 
 // ============================================================
-// STEP EDITOR — Inline pour step editor for brew recipes
+// STEP EDITOR — Timeline-based pour step editor for brew recipes
 // ============================================================
 // Each step captures: name, time (seconds), duration (seconds), waterTo (grams), technique note.
 // Used in RecipeAssembly (planning), BrewForm (editing actuals), and anywhere steps are edited.
@@ -63,14 +63,126 @@ function DiffTag({ children }) {
   )
 }
 
-function StepRow({ step, index, onChange, onRemove, disabled, cascadeTime, diff }) {
+// ─── Smart Time Input ──────────────────────────────────────
+// Displays MM:SS when not focused, shows raw seconds when editing.
+// Commits on blur only — never fires onChange during typing.
+function TimeInput({ value, onChange, disabled, placeholder, label }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+
+  const display = formatTimeDisplay(value)
+
+  const handleFocus = () => {
+    setEditing(true)
+    setDraft(value != null ? String(value) : '')
+  }
+
+  const handleBlur = () => {
+    setEditing(false)
+    const parsed = parseInt(draft, 10)
+    if (!isNaN(parsed) && parsed >= 0) {
+      onChange(parsed)
+    }
+    // else: revert — display snaps back to formatted canonical value
+  }
+
   return (
-    <div className={`flex flex-col gap-2 p-3 rounded-xl border ${
-      diff?.isAdded ? 'bg-green-50/50 border-green-200' : 'bg-brew-50/50 border-brew-100'
+    <div className="flex items-center gap-1">
+      {label && <span className="text-[10px] text-brew-400">{label}</span>}
+      <input
+        type="text"
+        inputMode="numeric"
+        value={editing ? draft : display}
+        onChange={(e) => setDraft(e.target.value)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        disabled={disabled}
+        placeholder={placeholder || '0'}
+        className="w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-base font-mono text-brew-800 text-center
+                   placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
+                   disabled:bg-brew-50 disabled:text-brew-500"
+      />
+    </div>
+  )
+}
+
+// ─── Collapsed One-Liner ───────────────────────────────────
+// Shows: timeRange · name · pour to Xg
+function StepOneLiner({ step, index, diff, onClick, disabled }) {
+  const startTime = step.time || 0
+  const endTime = step.duration != null ? startTime + step.duration : null
+  const timeRange = `${formatTimeDisplay(startTime)} → ${endTime != null ? formatTimeDisplay(endTime) : ''}`
+  const name = step.name || `Step ${index + 1}`
+  const water = step.waterTo != null ? `pour to ${step.waterTo}g` : null
+
+  const borderClass = diff?.isAdded
+    ? 'border-l-2 border-green-400'
+    : diff?.fields ? 'border-l-2 border-amber-400'
+    : ''
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-full text-left px-3 py-2.5 rounded-lg bg-brew-50/50
+                  border border-brew-100 ${borderClass}
+                  flex items-center gap-2 min-h-[44px]
+                  hover:bg-brew-50 transition-colors
+                  disabled:hover:bg-brew-50/50 disabled:cursor-default`}
+    >
+      {/* Timeline dot */}
+      <span className="w-2 h-2 rounded-full bg-brew-300 flex-shrink-0" />
+      {/* Content */}
+      <span className="text-sm text-brew-700 truncate flex-1 min-w-0">
+        <span className="font-mono text-brew-500">{timeRange}</span>
+        <span className="text-brew-300 mx-1">&middot;</span>
+        <span className="font-medium">{name}</span>
+        {water && (
+          <>
+            <span className="text-brew-300 mx-1">&middot;</span>
+            <span className="text-brew-400">{water}</span>
+          </>
+        )}
+      </span>
+      {diff?.isAdded && (
+        <span className="text-[9px] text-green-600 font-medium bg-green-100 px-1.5 py-0.5 rounded flex-shrink-0">
+          added
+        </span>
+      )}
+      {/* Expand chevron */}
+      {!disabled && (
+        <span className={`text-brew-400 transition-transform text-xs flex-shrink-0`}>
+          &#x25BE;
+        </span>
+      )}
+    </button>
+  )
+}
+
+// ─── Expanded Step Card ────────────────────────────────────
+// Full editing view with time range, water target, note, split/remove
+function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
+                        disabled, cascadeTime, diff }) {
+
+  const handleEndTimeChange = (endSeconds) => {
+    const startTime = step.time || 0
+    const newDuration = Math.max(0, endSeconds - startTime)
+    onChange({ ...step, duration: newDuration })
+  }
+
+  const handleStartTimeChange = (startSeconds) => {
+    onChange({ ...step, time: startSeconds })
+  }
+
+  return (
+    <div className={`p-3 rounded-xl border bg-white shadow-sm
+                    animate-fade-in motion-reduce:animate-none ${
+      diff?.isAdded ? 'border-green-200' : 'border-brew-200'
     }`}>
-      {/* Row 1: Name, Duration, Time, Water, Remove */}
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold text-brew-400 uppercase w-5 flex-shrink-0">
+      {/* Header: step number + name + collapse/remove buttons */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-2 h-2 rounded-full bg-brew-500 flex-shrink-0" />
+        <span className="text-[10px] font-semibold text-brew-400 uppercase w-4 flex-shrink-0">
           {index + 1}
         </span>
         <div className="flex-1 min-w-0">
@@ -80,7 +192,7 @@ function StepRow({ step, index, onChange, onRemove, disabled, cascadeTime, diff 
             onChange={(e) => onChange({ ...step, name: e.target.value })}
             placeholder="e.g., Bloom, First pour"
             disabled={disabled}
-            className="w-full px-2 py-1.5 rounded-lg border border-brew-200 text-sm text-brew-800
+            className="w-full px-2 py-1.5 rounded-lg border border-brew-200 text-base text-brew-800
                        placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
                        disabled:bg-brew-50 disabled:text-brew-500"
           />
@@ -93,6 +205,14 @@ function StepRow({ step, index, onChange, onRemove, disabled, cascadeTime, diff 
             added
           </span>
         )}
+        <button
+          onClick={onCollapse}
+          className="text-brew-400 hover:text-brew-600 transition-colors p-1 flex-shrink-0 min-h-[44px] min-w-[44px]
+                     flex items-center justify-center"
+          aria-label="Collapse step"
+        >
+          <span className="text-xs rotate-180">&#x25BE;</span>
+        </button>
         {!disabled && (
           <button
             onClick={onRemove}
@@ -106,102 +226,106 @@ function StepRow({ step, index, onChange, onRemove, disabled, cascadeTime, diff 
         )}
       </div>
 
-      {/* Row 2: Duration + Time + Water */}
-      <div className="ml-7 flex items-center gap-3 flex-wrap">
-        {/* Duration */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <input
-            type="number"
-            value={step.duration ?? ''}
-            onChange={(e) => onChange({ ...step, duration: e.target.value === '' ? null : Number(e.target.value) })}
-            placeholder="40"
-            disabled={disabled}
-            className="w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
-                       placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                       disabled:bg-brew-50 disabled:text-brew-500"
-          />
-          <span className="text-[10px] text-brew-400">sec</span>
-          {diff?.fields?.duration != null && (
-            <DiffTag>planned: {diff.fields.duration ?? '—'}s</DiffTag>
-          )}
-        </div>
-
-        {/* Time (start time) */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {cascadeTime ? (
-            <span className="w-14 px-2 py-1.5 text-sm font-mono text-brew-500 text-center">
-              {formatTimeDisplay(step.time)}
-            </span>
-          ) : (
-            <input
-              type="number"
-              value={step.time ?? ''}
-              onChange={(e) => onChange({ ...step, time: e.target.value === '' ? null : Number(e.target.value) })}
-              placeholder="0"
-              disabled={disabled}
-              className="w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
-                         placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                         disabled:bg-brew-50 disabled:text-brew-500"
-            />
-          )}
-          <span className="text-[10px] text-brew-400">@</span>
-          {diff?.fields?.time != null && !cascadeTime && (
-            <DiffTag>planned: {formatTimeDisplay(diff.fields.time)}</DiffTag>
-          )}
-        </div>
-
-        {/* Water */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <input
-            type="number"
-            value={step.waterTo ?? ''}
-            onChange={(e) => onChange({ ...step, waterTo: e.target.value === '' ? null : Number(e.target.value) })}
-            placeholder="—"
-            disabled={disabled}
-            className="w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
-                       placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                       disabled:bg-brew-50 disabled:text-brew-500"
-          />
-          <span className="text-[10px] text-brew-400">g</span>
-          {diff?.fields?.waterTo != null && (
-            <DiffTag>planned: {diff.fields.waterTo ?? '—'}g</DiffTag>
-          )}
-        </div>
+      {/* Time range row: from → to (duration) */}
+      <div className="ml-8 flex items-center gap-2 mb-2 flex-wrap">
+        <TimeInput
+          label="from"
+          value={step.time}
+          onChange={handleStartTimeChange}
+          disabled={disabled || cascadeTime}
+          placeholder="0"
+        />
+        <span className="text-brew-300 text-sm">&rarr;</span>
+        <TimeInput
+          label="to"
+          value={(step.time || 0) + (step.duration || 0)}
+          onChange={handleEndTimeChange}
+          disabled={disabled}
+          placeholder="40"
+        />
+        <span className="text-[10px] text-brew-400 ml-1">
+          ({step.duration || 0}s)
+        </span>
+        {diff?.fields?.duration != null && (
+          <DiffTag>planned: {diff.fields.duration ?? '\u2014'}s</DiffTag>
+        )}
+        {diff?.fields?.time != null && !cascadeTime && (
+          <DiffTag>planned: {formatTimeDisplay(diff.fields.time)}</DiffTag>
+        )}
       </div>
 
-      {/* Row 3: Note */}
-      <div className="ml-7">
+      {/* Water target row */}
+      <div className="ml-8 flex items-center gap-2 mb-2">
+        <span className="text-[10px] text-brew-400">pour to</span>
+        <input
+          type="number"
+          value={step.waterTo ?? ''}
+          onChange={(e) => onChange({ ...step, waterTo: e.target.value === '' ? null : Number(e.target.value) })}
+          placeholder="\u2014"
+          disabled={disabled}
+          className="w-16 px-2 py-1.5 rounded-lg border border-brew-200 text-base font-mono text-brew-800 text-center
+                     placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
+                     disabled:bg-brew-50 disabled:text-brew-500"
+        />
+        <span className="text-[10px] text-brew-400">g</span>
+        {diff?.fields?.waterTo != null && (
+          <DiffTag>planned: {diff.fields.waterTo ?? '\u2014'}g</DiffTag>
+        )}
+      </div>
+
+      {/* Technique note */}
+      <div className="ml-8 mb-2">
         <input
           type="text"
           value={step.note || ''}
           onChange={(e) => onChange({ ...step, note: e.target.value })}
           placeholder="Technique note (optional)"
           disabled={disabled}
-          className="w-full px-2 py-1.5 rounded-lg border border-brew-100 text-xs text-brew-700
+          className="w-full px-2 py-1.5 rounded-lg border border-brew-100 text-base text-brew-700
                      placeholder:text-brew-300 focus:outline-none focus:ring-1 focus:ring-brew-300
                      disabled:bg-brew-50 disabled:text-brew-500"
         />
       </div>
+
+      {/* Split button — only in planning context (cascadeTime) */}
+      {!disabled && cascadeTime && (step.duration || 0) > 0 && (
+        <div className="ml-8">
+          <button
+            onClick={onSplit}
+            className="text-[10px] text-brew-400 hover:text-brew-600 transition-colors py-1"
+          >
+            Split step
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
-// Removed step row — shown in diff mode for steps in plan but not in actuals
-function RemovedStepRow({ step }) {
+// ─── Removed Step (one-liner for diff mode) ────────────────
+function RemovedStepOneLiner({ step }) {
+  const startTime = step.time || 0
+  const endTime = step.duration != null ? startTime + step.duration : null
+  const timeRange = `${formatTimeDisplay(startTime)} → ${endTime != null ? formatTimeDisplay(endTime) : ''}`
+  const name = step.name || `Step #${step.id}`
+
   return (
-    <div className="flex flex-col gap-1 p-3 bg-red-50/30 rounded-xl border border-red-200/50 opacity-60">
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold text-red-300 uppercase w-5 flex-shrink-0">
-          {'\u2212'}
-        </span>
-        <span className="text-sm text-red-400 line-through flex-1">{step.name || `Step #${step.id}`}</span>
-        <span className="text-[9px] text-red-400 font-medium bg-red-100 px-1.5 py-0.5 rounded">
-          removed
-        </span>
-      </div>
-      <div className="ml-7 text-[10px] text-red-300">
-        {step.duration ? `${step.duration}s` : ''}{step.waterTo ? ` · ${step.waterTo}g` : ''}
-      </div>
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50/30 border border-red-200/50 opacity-60 min-h-[44px]">
+      <span className="w-2 h-2 rounded-full bg-red-300 flex-shrink-0" />
+      <span className="text-sm text-red-400 line-through truncate flex-1 min-w-0">
+        <span className="font-mono">{timeRange}</span>
+        <span className="mx-1">&middot;</span>
+        <span>{name}</span>
+        {step.waterTo != null && (
+          <>
+            <span className="mx-1">&middot;</span>
+            <span>{step.waterTo}g</span>
+          </>
+        )}
+      </span>
+      <span className="text-[9px] text-red-400 font-medium bg-red-100 px-1.5 py-0.5 rounded flex-shrink-0">
+        removed
+      </span>
     </div>
   )
 }
@@ -216,10 +340,16 @@ function recascade(steps) {
 }
 
 export default function StepEditor({ steps = [], onChange, disabled = false, hint, cascadeTime = false, plannedSteps }) {
+  const [expandedStepId, setExpandedStepId] = useState(null)
+
   const diffData = useMemo(
     () => plannedSteps ? buildDiffMap(steps, plannedSteps) : null,
     [steps, plannedSteps]
   )
+
+  const handleToggle = (stepId) => {
+    setExpandedStepId(prev => prev === stepId ? null : stepId)
+  }
 
   const handleStepChange = (index, updatedStep) => {
     const newSteps = [...steps]
@@ -232,24 +362,47 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
     const newSteps = steps.filter((_, i) => i !== index)
     if (cascadeTime) recascade(newSteps)
     onChange(newSteps)
+    // If the removed step was expanded, collapse
+    if (steps[index] && expandedStepId === steps[index].id) {
+      setExpandedStepId(null)
+    }
+  }
+
+  const handleSplit = (index) => {
+    const step = steps[index]
+    const d1 = Math.floor((step.duration || 0) / 2)
+    const d2 = (step.duration || 0) - d1
+    const newId = Math.max(...steps.map(s => s.id || 0), 0) + 1
+    const name = step.name || `Step ${index + 1}`
+
+    const newSteps = [...steps]
+    newSteps.splice(index, 1,
+      { ...step, duration: d1, name: `${name} (1)` },
+      { id: newId, name: `${name} (2)`, time: (step.time || 0) + d1,
+        duration: d2, waterTo: null, note: '' }
+    )
+    if (cascadeTime) recascade(newSteps)
+    onChange(newSteps)
+    setExpandedStepId(newId) // auto-expand the new second half
   }
 
   const handleAdd = () => {
-    // Default new step: guess start time from last step
     const lastStep = steps[steps.length - 1]
     const nextTime = lastStep ? (lastStep.time || 0) + (lastStep.duration || 40) : 0
+    const newId = (steps.length > 0 ? Math.max(...steps.map(s => s.id || 0)) : 0) + 1
     onChange([...steps, {
-      id: (steps.length > 0 ? Math.max(...steps.map(s => s.id || 0)) : 0) + 1,
+      id: newId,
       name: '',
       time: nextTime,
       duration: 40,
       waterTo: null,
       note: '',
     }])
+    setExpandedStepId(newId) // auto-expand new step
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {hint && (
         <p className="text-[10px] text-brew-400 mb-1">{hint}</p>
       )}
@@ -260,23 +413,49 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
         </p>
       )}
 
-      {steps.map((step, index) => (
-        <StepRow
-          key={step.id || index}
-          step={step}
-          index={index}
-          onChange={(updated) => handleStepChange(index, updated)}
-          onRemove={() => handleRemove(index)}
-          disabled={disabled}
-          cascadeTime={cascadeTime}
-          diff={diffData?.stepDiffs?.get(step.id)}
-        />
-      ))}
+      {/* Timeline container */}
+      <div className="relative">
+        {/* Vertical timeline line */}
+        {steps.length > 1 && (
+          <div className="absolute left-[7px] top-4 bottom-4 w-px bg-brew-200" />
+        )}
 
-      {/* Removed steps from plan */}
-      {diffData?.removed?.map((step, i) => (
-        <RemovedStepRow key={`removed-${step.id}`} step={step} />
-      ))}
+        <div className="space-y-1.5">
+          {steps.map((step, index) => {
+            const isExpanded = expandedStepId === step.id
+            const diff = diffData?.stepDiffs?.get(step.id)
+
+            return isExpanded && !disabled ? (
+              <StepExpanded
+                key={step.id}
+                step={step}
+                index={index}
+                onChange={(updated) => handleStepChange(index, updated)}
+                onRemove={() => handleRemove(index)}
+                onSplit={() => handleSplit(index)}
+                onCollapse={() => setExpandedStepId(null)}
+                disabled={disabled}
+                cascadeTime={cascadeTime}
+                diff={diff}
+              />
+            ) : (
+              <StepOneLiner
+                key={step.id}
+                step={step}
+                index={index}
+                diff={diff}
+                onClick={() => !disabled && handleToggle(step.id)}
+                disabled={disabled}
+              />
+            )
+          })}
+
+          {/* Removed steps from plan (diff mode) */}
+          {diffData?.removed?.map((step) => (
+            <RemovedStepOneLiner key={`removed-${step.id}`} step={step} />
+          ))}
+        </div>
+      </div>
 
       {!disabled && (
         <button
