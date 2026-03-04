@@ -596,6 +596,19 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
         </div>
       )}
 
+      {/* Recipe notes (read-only) */}
+      {selectedRecipeId && (() => {
+        const currentRecipe = beanRecipes.find(r => r.id === selectedRecipeId)
+        if (!currentRecipe?.notes) return null
+        return (
+          <div className="px-4 mt-2">
+            <div className="text-xs text-brew-500 italic leading-relaxed">
+              {currentRecipe.notes}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Changes from last brew */}
       {changes.length > 0 && (
         <div className="px-4 mt-3">
