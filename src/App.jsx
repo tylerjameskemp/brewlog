@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getBrews, getEquipment, getBeans, getRecipes, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, migrateExtractRecipes, seedDefaultPourTemplates } from './data/storage'
+import { getBrews, getEquipment, getBeans, getRecipes, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, migrateExtractRecipes, seedDefaultPourTemplates, updateRecipe, saveRecipe, getRecipesForBean, generateRecipeCopyName } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
@@ -147,6 +147,20 @@ function App() {
               onEditComplete={() => {
                 setEditingBrew(null)
                 setView('history')
+              }}
+              recipes={recipes}
+              onUpdateRecipe={(recipeId, fields) => {
+                updateRecipe(recipeId, fields)
+                setRecipes(getRecipes())
+              }}
+              onSaveAsNewRecipe={(recipeId, fields) => {
+                const original = recipes.find(r => r.id === recipeId)
+                if (original) {
+                  const existingForBean = getRecipesForBean(original.beanId)
+                  const newName = generateRecipeCopyName(original.name, existingForBean)
+                  saveRecipe({ ...original, id: undefined, name: newName, ...fields })
+                  setRecipes(getRecipes())
+                }
               }}
             />
           )}
