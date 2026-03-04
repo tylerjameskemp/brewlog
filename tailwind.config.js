@@ -40,11 +40,16 @@ export default {
           '0%': { opacity: '0', transform: 'scale(0.95)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
+        'pulse-dot': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.6', transform: 'scale(1.3)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 300ms ease-out',
         'fade-in-up': 'fade-in-up 300ms ease-out',
         'scale-in': 'scale-in 200ms ease-out',
+        'pulse-dot': 'pulse-dot 2s ease-in-out infinite',
       },
     },
   },

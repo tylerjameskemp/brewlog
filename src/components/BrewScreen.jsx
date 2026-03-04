@@ -989,6 +989,17 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
           </div>
         </div>
 
+        {/* Recipe reference strip */}
+        <div className="flex items-center justify-center gap-2 px-4 py-1 text-xs text-brew-400 font-mono truncate">
+          {[
+            recipe.coffeeGrams && `${recipe.coffeeGrams}g`,
+            recipe.grindSetting,
+            recipe.waterGrams && `${recipe.waterGrams}g target`,
+          ].filter(Boolean).map((part, i, arr) => (
+            <span key={i}>{part}{i < arr.length - 1 ? ' \u00b7 ' : ''}</span>
+          ))}
+        </div>
+
         {/* Controls — fixed height container prevents layout shift */}
         <div className="flex flex-col items-center justify-center h-24">
           {!hasStarted && (
@@ -1026,99 +1037,175 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
         </div>
       </div>
 
-      {/* Step Teleprompter */}
-      <div ref={stepsContainerRef} className="flex-1 px-4 pb-36 overflow-y-auto">
-        {steps.map((step, i) => {
-          const isCurrent = i === currentStepIdx && hasStarted
-          const skipped = skippedSteps[step.id]
-          const isPast = hasStarted && (timer.elapsed >= step.time + step.duration || skipped)
-          const isFuture = !isCurrent && !isPast
-          const isNext = isFuture && i === currentStepIdx + 1 && hasStarted
-          const tappedAt = tappedSteps[step.id]
-          const variance = tappedAt !== undefined ? tappedAt - step.time : null
+      {/* Step Teleprompter — Timeline */}
+      <div ref={stepsContainerRef} className="flex-1 overflow-y-auto">
+        <div className="relative px-4 pb-36">
+          {/* Vertical timeline line */}
+          {steps.length > 1 && (
+            <div className="absolute left-[19px] top-0 bottom-0 w-0.5 bg-brew-100" />
+          )}
 
-          // Past steps (not skipped) collapse to a compact single line
-          if (isPast && !skipped) {
+          {steps.map((step, i) => {
+            const skipped = skippedSteps[step.id]
+            const isCurrent = i === currentStepIdx && hasStarted && !skipped
+            const isPast = hasStarted && !skipped && timer.elapsed >= step.time + step.duration
+            const isFuture = !isCurrent && !isPast && !skipped
+            const isNext = isFuture && i === currentStepIdx + 1 && hasStarted
+            const tappedAt = tappedSteps[step.id]
+            const variance = tappedAt !== undefined ? tappedAt - step.time : null
+            const stepEndTime = (step.time || 0) + (step.duration || 0)
+            const timeRange = `${formatTime(step.time)} → ${formatTime(stepEndTime)}`
+
+            // Skipped steps — minimal dot marker
+            if (skipped) {
+              return (
+                <div
+                  key={step.id}
+                  ref={el => (stepRefs.current[step.id] = el)}
+                  className="flex items-center gap-2 py-1.5 pl-1 mb-0.5 opacity-40"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full border border-gray-300 flex-shrink-0" />
+                  <span className="text-sm text-gray-300 line-through truncate">{step.name}</span>
+                </div>
+              )
+            }
+
+            // Past steps — compact one-liner with green checkmark dot
+            if (isPast) {
+              return (
+                <div
+                  key={step.id}
+                  ref={el => (stepRefs.current[step.id] = el)}
+                  className="flex items-center gap-2 py-2 pl-1 mb-0.5 rounded-lg
+                             animate-fade-in motion-reduce:animate-none"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-400 truncate flex-1 min-w-0">
+                    <span className="font-mono">{timeRange}</span>
+                    <span className="mx-1">&middot;</span>
+                    <span>{step.name}</span>
+                    {step.waterTo != null && (
+                      <>
+                        <span className="mx-1">&middot;</span>
+                        <span>{step.waterTo}g</span>
+                      </>
+                    )}
+                  </span>
+                  <span className="text-xs tabular-nums text-gray-300 flex-shrink-0">
+                    {tappedAt !== undefined ? formatTime(tappedAt) : ''}
+                  </span>
+                </div>
+              )
+            }
+
+            // Current step — expanded card with progress bar
+            if (isCurrent) {
+              const stepElapsed = Math.max(0, timer.elapsed - (step.time || 0))
+              const stepProgress = step.duration > 0
+                ? Math.min(stepElapsed / step.duration, 1)
+                : 0
+
+              return (
+                <div
+                  key={step.id}
+                  ref={el => (stepRefs.current[step.id] = el)}
+                  onClick={() => timer.running && handleTapStep(step)}
+                  className={`relative flex gap-2 pl-1 py-3 mb-1.5 min-h-[44px]
+                             ${timer.running ? 'cursor-pointer' : ''}`}
+                >
+                  {/* Pulsing timeline dot */}
+                  <span className="w-2.5 h-2.5 rounded-full bg-brew-500 flex-shrink-0 mt-1
+                                   animate-pulse-dot motion-reduce:animate-none" />
+
+                  {/* Card content */}
+                  <div className="flex-1 p-3 rounded-lg bg-amber-50 border-l-4 border-l-brew-600
+                                  text-brew-900 shadow-sm relative">
+                    {/* Skip button */}
+                    {timer.running && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleSkipStep(step) }}
+                        className="absolute top-1 right-1 text-base px-2 py-1 leading-none
+                                   min-h-[44px] min-w-[44px] flex items-center justify-center text-brew-300"
+                        aria-label={`Skip ${step.name}`}
+                      >
+                        &#x2715;
+                      </button>
+                    )}
+
+                    <div className="flex justify-between items-center pr-8">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-sm font-bold">{step.name}</span>
+                        {step.waterTo != null && (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md text-brew-500 bg-brew-50">
+                            &rarr; {step.waterTo}g
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-xs font-mono text-brew-500 mt-1">{timeRange}</div>
+
+                    {step.note && (
+                      <div className="text-sm mt-1.5 opacity-80 leading-snug">{step.note}</div>
+                    )}
+
+                    {/* Mini progress bar */}
+                    {step.duration > 0 && (
+                      <div className="mt-2 h-1 bg-brew-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-brew-500 transition-[width] duration-1000 linear"
+                          style={{ width: `${stepProgress * 100}%` }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Variance indicator */}
+                    {variance !== null && (
+                      <div className={`mt-1.5 text-[11px] font-semibold ${
+                        Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
+                      }`}>
+                        Tapped at {formatTime(tappedAt)} ({variance > 0 ? '+' : ''}{variance}s)
+                      </div>
+                    )}
+
+                    {/* Tap prompt */}
+                    {timer.running && tappedAt === undefined && (
+                      <div className="mt-2 text-[11px] text-brew-400">
+                        Tap when you start this step
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
+            // Future steps — compact one-liner, dimmed
             return (
               <div
                 key={step.id}
                 ref={el => (stepRefs.current[step.id] = el)}
-                className="py-2 px-3 mb-1 rounded-lg bg-gray-50 animate-fade-in
-                           motion-reduce:animate-none"
+                onClick={() => timer.running && handleTapStep(step)}
+                className={`flex items-center gap-2 py-2 pl-1 mb-0.5 min-h-[44px]
+                           transition-opacity duration-300 motion-reduce:transition-none
+                           ${isNext ? 'opacity-70' : 'opacity-40'}
+                           ${timer.running ? 'cursor-pointer' : ''}`}
               >
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-500 text-xs">✓</span>
-                    <span className="text-sm text-gray-400">{step.name}</span>
-                  </div>
-                  <span className="text-xs tabular-nums text-gray-300">
-                    {tappedAt !== undefined ? formatTime(tappedAt) : formatTime(step.time)}
-                  </span>
-                </div>
+                <span className="w-2.5 h-2.5 rounded-full border-2 border-brew-200 flex-shrink-0" />
+                <span className="text-sm text-brew-600 truncate flex-1 min-w-0">
+                  <span className="font-mono text-brew-400">{timeRange}</span>
+                  <span className="text-brew-200 mx-1">&middot;</span>
+                  <span className="font-medium">{step.name}</span>
+                  {step.waterTo != null && (
+                    <>
+                      <span className="text-brew-200 mx-1">&middot;</span>
+                      <span className="text-brew-400">{step.waterTo}g</span>
+                    </>
+                  )}
+                </span>
               </div>
             )
-          }
-
-          return (
-            <div
-              key={step.id}
-              ref={el => (stepRefs.current[step.id] = el)}
-              onClick={() => timer.running && !isPast && !skipped && handleTapStep(step)}
-              className={`p-3 mb-1.5 rounded-lg relative transition-[background-color,color,opacity,border-color,box-shadow] duration-400 min-h-[44px]
-                          motion-reduce:transition-none ${
-                skipped
-                  ? 'bg-gray-50 text-gray-300 line-through opacity-40'
-                  : isCurrent
-                    ? 'bg-amber-50 border-l-4 border-l-brew-600 text-brew-900 shadow-sm'
-                    : 'bg-white border border-gray-100'
-              } ${hasStarted && isFuture ? (isNext ? 'opacity-70' : 'opacity-40') : ''
-              } ${timer.running && !isPast && !skipped ? 'cursor-pointer' : ''
-              }`}
-            >
-              {/* Skip button */}
-              {timer.running && !isPast && !skipped && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleSkipStep(step) }}
-                  className="absolute top-1 right-1 text-base px-2 py-1 leading-none
-                              min-h-[44px] min-w-[44px] flex items-center justify-center text-brew-300"
-                  aria-label={`Skip ${step.name}`}
-                >
-                  ✕
-                </button>
-              )}
-
-              <div className="flex justify-between items-center pr-8">
-                <div className="flex items-center gap-2.5">
-                  <span className={`text-sm ${isCurrent ? 'font-bold' : 'font-semibold'}`}>{step.name}</span>
-                  {step.waterTo != null && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-md text-brew-500 bg-brew-50">
-                      → {step.waterTo}g
-                    </span>
-                  )}
-                </div>
-                <span className="text-sm tabular-nums">{formatTime(step.time)}</span>
-              </div>
-
-              <div className="text-sm mt-1.5 opacity-80 leading-snug">{step.note}</div>
-
-              {/* Variance indicator */}
-              {variance !== null && !skipped && (
-                <div className={`mt-1.5 text-[11px] font-semibold ${
-                  Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
-                }`}>
-                  Tapped at {formatTime(tappedAt)} ({variance > 0 ? '+' : ''}{variance}s)
-                </div>
-              )}
-
-              {/* Tap prompt — only while running (user can't tap during pause) */}
-              {isCurrent && timer.running && tappedAt === undefined && !skipped && (
-                <div className="mt-2 text-[11px] text-brew-400">
-                  Tap when you start this step
-                </div>
-              )}
-            </div>
-          )
-        })}
+          })}
+        </div>
       </div>
 
       {/* Finish Brew — fixed relative to viewport (works because parent has no transform/filter/will-change) */}
