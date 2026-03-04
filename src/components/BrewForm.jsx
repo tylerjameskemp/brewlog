@@ -130,6 +130,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       pourTemplateId: editBrew.pourTemplateId,
       nextBrewChanges: editBrew.nextBrewChanges,
       recipeSnapshot: editBrew.recipeSnapshot,
+      recipeId: editBrew.recipeId,
       method: editBrew.method,
       grinder: editBrew.grinder,
       dripper: editBrew.dripper,
