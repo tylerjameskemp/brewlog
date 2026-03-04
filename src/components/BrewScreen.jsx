@@ -1401,6 +1401,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   const [ratingBrew, setRatingBrew] = useState(null)   // Brew record being rated (set on Finish Brew or recovery)
   const [savedBrewState, setSavedBrewState] = useState(null)
   const [selectedRecipeId, setSelectedRecipeId] = useState(null) // Tracks which recipe entity is active
+  const savingRef = useRef(false) // Double-tap guard for brew save
 
   const templates = useMemo(() => getPourTemplates(), [])
 
@@ -1478,6 +1479,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     setSavedBrewState(null)
     setSelectedRecipeId(null)
     setRecipe(getRecipeDefaults())
+    savingRef.current = false
     setPhase('pick')
   }, [getRecipeDefaults])
 
@@ -1551,6 +1553,8 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
 
   // Handle "Finish Brew" — construct brew record, save immediately, transition to rate
   const handleFinishBrew = useCallback((data) => {
+    if (savingRef.current) return
+    savingRef.current = true
     const { elapsed, tappedSteps, skippedSteps } = data
 
     const stepResults = {}
@@ -1591,6 +1595,8 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
 
   // Handle "Log without timer" — skip-timer brew, save immediately, transition to rate
   const handleLogWithoutTimer = useCallback(() => {
+    if (savingRef.current) return
+    savingRef.current = true
     const brew = buildBrewRecord({ isManualEntry: true })
 
     // Link recipe (create if needed) and stamp recipeId on brew
