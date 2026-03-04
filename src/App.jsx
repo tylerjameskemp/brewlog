@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getBrews, getEquipment, getBeans, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, seedDefaultPourTemplates } from './data/storage'
+import { getBrews, getEquipment, getBeans, getRecipes, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, migrateExtractRecipes, seedDefaultPourTemplates } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
@@ -28,9 +28,10 @@ function App() {
   // Think of these as variables that React watches for changes.
 
   const [view, setViewRaw] = useState('brew')           // Which screen to show
-  const [brews, setBrews] = useState(() => { migrateGrindSettings(); seedDefaultPourTemplates(); migrateBloomToSteps(); return migrateToSchemaV2() })
+  const [brews, setBrews] = useState(() => { migrateGrindSettings(); seedDefaultPourTemplates(); migrateBloomToSteps(); migrateToSchemaV2(); migrateExtractRecipes(); return getBrews() })
   const [equipment, setEquipment] = useState(() => getEquipment())    // User's gear profile
   const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
+  const [recipes, setRecipes] = useState(() => getRecipes())          // Recipe library
   const [showSetup, setShowSetup] = useState(false)   // Equipment setup modal
   const [showSettings, setShowSettings] = useState(false) // Settings dropdown
   const [editingBrew, setEditingBrew] = useState(null)    // Brew being edited (null = new brew mode)
@@ -85,9 +86,11 @@ function App() {
             onEquipmentClick={() => setShowSetup(true)}
             onImportComplete={() => {
               migrateToSchemaV2()
+              migrateExtractRecipes()
               setBrews(getBrews())
               setEquipment(getEquipment())
               setBeans(deduplicateBeans())
+              setRecipes(getRecipes())
             }}
             onClose={() => setShowSettings(false)}
           />
@@ -122,6 +125,8 @@ function App() {
               equipment={equipment}
               beans={beans}
               setBeans={setBeans}
+              recipes={recipes}
+              setRecipes={setRecipes}
               initialBean={brewingBean}
               onBrewSaved={(updatedBrews) => {
                 setBrews(updatedBrews)
@@ -130,7 +135,6 @@ function App() {
               onBrewActiveChange={setIsBrewActive}
               onNavigate={setView}
               onFlowChange={setBrewFlowActive}
-
             />
           )}
           {view === 'brew' && !needsSetup && editingBrew && (
@@ -163,6 +167,7 @@ function App() {
           {view === 'history' && (
             <BrewHistory
               brews={brews}
+              recipes={recipes}
               onBrewsChange={setBrews}
               onNavigate={setView}
               onEditBrew={(brew) => {
