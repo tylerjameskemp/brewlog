@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
-  getBrews, getLastBrewOfBean, getChangesForBean, normalizeSteps, formatTime,
-  parseTime, parseTimeRange, formatTimeRange, computeTimeStatus,
-  getPourTemplates, saveBrew, updateBrew, getBeans, updateBean,
-  saveActiveBrew, getActiveBrew, clearActiveBrew, normalizeName,
+  getBrews, getLastBrewOfBean, getChangesForBean, getChangesForRecipe,
+  normalizeSteps, formatTime, parseTime, parseTimeRange, formatTimeRange,
+  computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
+  updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
+  normalizeName, getRecipes, getRecipesForBean, saveRecipe, updateRecipe,
 } from '../data/storage'
+import { getMethodName } from '../data/defaults'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import useTimer from '../hooks/useTimer'
@@ -163,11 +165,12 @@ function BeanPicker({ beans, onSelect }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onLogWithoutTimer, onBack, onBeanUpdate, equipment }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onLogWithoutTimer, onBack, onBeanUpdate, equipment, beanRecipes, selectedRecipeId, onRecipeSelect, onSaveToRecipe }) {
 
   const [cardIndex, setCardIndex] = useState(0)
   const [editing, setEditing] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
+  const [showRecipePicker, setShowRecipePicker] = useState(false)
   const [templatePicked, setTemplatePicked] = useState(() => recipe.steps.length > 0 || !!recipe.pourTemplateId)
   const [beanOverrides, setBeanOverrides] = useState({})
   const [targetTimeInput, setTargetTimeInput] = useState(
@@ -492,6 +495,63 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
         </div>
       </div>
 
+      {/* Recipe Indicator */}
+      {beanRecipes.length > 0 && (
+        <div className="px-4 mt-3">
+          <button
+            onClick={() => beanRecipes.length > 1 ? setShowRecipePicker(!showRecipePicker) : null}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                        border transition-all min-h-[32px] ${
+              beanRecipes.length > 1
+                ? 'border-brew-300 bg-brew-50 text-brew-600 hover:border-brew-400 cursor-pointer'
+                : 'border-brew-200 bg-brew-50/50 text-brew-500 cursor-default'
+            }`}
+          >
+            <span>{beanRecipes.find(r => r.id === selectedRecipeId)?.name || 'Recipe'}</span>
+            {beanRecipes.length > 1 && (
+              <span className={`transition-transform ${showRecipePicker ? 'rotate-180' : ''}`}>{'\u25BE'}</span>
+            )}
+          </button>
+
+          {/* Recipe Picker Dropdown */}
+          {showRecipePicker && (
+            <div className="mt-2 bg-white border border-brew-200 rounded-xl shadow-sm overflow-hidden
+                            animate-fade-in motion-reduce:animate-none">
+              {beanRecipes.map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    onRecipeSelect(r)
+                    setShowRecipePicker(false)
+                  }}
+                  className={`w-full text-left px-4 py-3 text-sm border-b border-brew-100 last:border-b-0
+                              transition-colors min-h-[44px] ${
+                    r.id === selectedRecipeId
+                      ? 'bg-brew-50 text-brew-700 font-medium'
+                      : 'text-brew-600 hover:bg-brew-50'
+                  }`}
+                >
+                  <div className="font-medium">{r.name}</div>
+                  <div className="text-xs text-brew-400 mt-0.5">
+                    {r.coffeeGrams}g / {r.waterGrams}g · grind {r.grindSetting || '—'}
+                  </div>
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  onRecipeSelect(null) // null = new recipe
+                  setShowRecipePicker(false)
+                }}
+                className="w-full text-left px-4 py-3 text-sm text-brew-500 hover:bg-brew-50
+                           border-t border-brew-100 min-h-[44px]"
+              >
+                + New Recipe
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Changes from last brew */}
       {changes.length > 0 && (
         <div className="px-4 mt-3">
@@ -712,6 +772,27 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               </div>
             )}
           </div>
+
+          {/* Save to Recipe — shown when form values differ from loaded recipe */}
+          {selectedRecipeId && onSaveToRecipe && (() => {
+            const loaded = beanRecipes.find(r => r.id === selectedRecipeId)
+            if (!loaded) return null
+            const differs = ['coffeeGrams', 'waterGrams', 'grindSetting', 'waterTemp',
+              'targetTime', 'targetTimeRange', 'method', 'grinder', 'dripper', 'filterType',
+            ].some(f => recipe[f] !== loaded[f])
+            if (!differs) return null
+            return (
+              <div className="px-4 mt-3">
+                <button
+                  onClick={() => onSaveToRecipe(selectedRecipeId)}
+                  className="w-full py-2.5 text-sm font-medium text-brew-600 border border-brew-300
+                             rounded-xl hover:bg-brew-50 active:scale-[0.99] transition-all min-h-[44px]"
+                >
+                  Save changes to recipe
+                </button>
+              </div>
+            )
+          })()}
 
           {/* Brew This CTA */}
           <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
@@ -1311,73 +1392,92 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
 }
 
 // ─── Main BrewScreen Component ──────────────────────────────
-export default function BrewScreen({ equipment, beans, setBeans, initialBean, onBrewSaved, onBrewActiveChange, onNavigate, onFlowChange }) {
+export default function BrewScreen({ equipment, beans, setBeans, recipes, setRecipes, initialBean, onBrewSaved, onBrewActiveChange, onNavigate, onFlowChange }) {
 
   const [phase, setPhase] = useState(() => initialBean ? 'recipe' : 'pick')
   const [selectedBean, setSelectedBean] = useState(initialBean || null)
   const [ratingBrew, setRatingBrew] = useState(null)   // Brew record being rated (set on Finish Brew or recovery)
   const [savedBrewState, setSavedBrewState] = useState(null)
+  const [selectedRecipeId, setSelectedRecipeId] = useState(null) // Tracks which recipe entity is active
 
   const templates = useMemo(() => getPourTemplates(), [])
 
-  // Build recipe from a bean's last brew, or return defaults
-  const buildRecipeFromBean = useCallback((beanName) => {
+  // Build recipe defaults from equipment profile
+  const getRecipeDefaults = useCallback(() => {
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
-    const equipDefaults = {
+    return {
+      coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200,
+      targetTime: method.defaultTotalTime, targetTimeRange: '',
+      targetTimeMin: null, targetTimeMax: null,
+      steps: [], pourTemplateId: null,
       method: equipment?.brewMethod || 'v60',
       grinder: equipment?.grinder || 'fellow-ode',
       dripper: equipment?.dripper || 'ceramic',
       filterType: equipment?.filterType || 'paper-tabbed',
     }
-    const defaults = {
-      coffeeGrams: 15, waterGrams: 240, grindSetting: '', waterTemp: 200,
-      targetTime: method.defaultTotalTime, targetTimeRange: '',
-      targetTimeMin: null, targetTimeMax: null,
-      steps: [], pourTemplateId: null, ...equipDefaults,
-    }
-    if (!beanName) return defaults
-    const lastBrew = getLastBrewOfBean(beanName)
-    if (!lastBrew) return defaults
+  }, [equipment])
 
-    // Bean has prior brew — auto-fill from it
-    const steps = lastBrew.recipeSteps
-      ? normalizeSteps(lastBrew.recipeSteps)
-      : templates[0]?.steps || []
+  // Build recipe form state from a recipe entity or defaults
+  const buildRecipeFromEntity = useCallback((beanId) => {
+    const defaults = getRecipeDefaults()
+    if (!beanId) return { recipe: defaults, recipeId: null }
+
+    // Look up recipes for this bean, sorted by lastUsedAt (most recent first)
+    const beanRecipes = (recipes || []).filter(r => r.beanId === beanId)
+    if (beanRecipes.length === 0) {
+      // No recipe entity — fall back to last brew for backward compat during transition
+      return { recipe: defaults, recipeId: null }
+    }
+
+    // Auto-select the most recently used recipe
+    const sorted = [...beanRecipes].sort((a, b) => (b?.lastUsedAt || '').localeCompare(a?.lastUsedAt || ''))
+    const selected = sorted[0]
     return {
-      coffeeGrams: lastBrew.coffeeGrams ?? 15,
-      waterGrams: lastBrew.waterGrams ?? 240,
-      grindSetting: lastBrew.grindSetting ?? '',
-      waterTemp: lastBrew.waterTemp ?? 200,
-      targetTime: lastBrew.targetTime ?? method.defaultTotalTime,
-      targetTimeRange: lastBrew.targetTimeRange ?? '',
-      targetTimeMin: lastBrew.targetTimeMin ?? null,
-      targetTimeMax: lastBrew.targetTimeMax ?? null,
-      steps,
-      pourTemplateId: lastBrew.pourTemplateId ?? templates[0]?.id ?? null,
-      method: lastBrew.method ?? equipDefaults.method,
-      grinder: lastBrew.grinder ?? equipDefaults.grinder,
-      dripper: lastBrew.dripper ?? equipDefaults.dripper,
-      filterType: lastBrew.filterType ?? equipDefaults.filterType,
+      recipe: {
+        coffeeGrams: selected.coffeeGrams ?? 15,
+        waterGrams: selected.waterGrams ?? 240,
+        grindSetting: selected.grindSetting ?? '',
+        waterTemp: selected.waterTemp ?? 200,
+        targetTime: selected.targetTime ?? defaults.targetTime,
+        targetTimeRange: selected.targetTimeRange ?? '',
+        targetTimeMin: selected.targetTimeMin ?? null,
+        targetTimeMax: selected.targetTimeMax ?? null,
+        steps: selected.steps ? normalizeSteps(selected.steps) : [],
+        pourTemplateId: selected.pourTemplateId ?? null,
+        method: selected.method ?? defaults.method,
+        grinder: selected.grinder ?? defaults.grinder,
+        dripper: selected.dripper ?? defaults.dripper,
+        filterType: selected.filterType ?? defaults.filterType,
+      },
+      recipeId: selected.id,
     }
-  }, [equipment, templates])
+  }, [recipes, getRecipeDefaults])
 
-  // Recipe state — initialized lazily from last brew of selected bean
-  const [recipe, setRecipe] = useState(() => buildRecipeFromBean(selectedBean?.name))
+  // Recipe state — initialized lazily from recipe entity or defaults
+  const [recipe, setRecipe] = useState(() => {
+    const { recipe: r, recipeId } = buildRecipeFromEntity(selectedBean?.id)
+    if (recipeId) setSelectedRecipeId(recipeId)
+    return r
+  })
 
-  // Changes from last brew — reactive to bean selection
+  // Changes from last brew — scoped to recipe when available, else bean-level
   const changes = useMemo(() => {
     if (!selectedBean) return []
-    const changesStr = getChangesForBean(selectedBean.name)
+    const changesStr = selectedRecipeId
+      ? getChangesForRecipe(selectedRecipeId)
+      : getChangesForBean(selectedBean.name)
     if (!changesStr) return []
     return changesStr.split('\n').filter(s => s.trim())
-  }, [selectedBean])
+  }, [selectedBean, selectedRecipeId])
 
-  // When bean is selected from picker, reinitialize recipe
+  // When bean is selected from picker, reinitialize recipe from entity
   const handleBeanSelect = useCallback((bean) => {
     setSelectedBean(bean)
-    setRecipe(buildRecipeFromBean(bean.name))
+    const { recipe: r, recipeId } = buildRecipeFromEntity(bean.id)
+    setRecipe(r)
+    setSelectedRecipeId(recipeId)
     setPhase('recipe')
-  }, [buildRecipeFromBean])
+  }, [buildRecipeFromEntity])
 
   // Report flow state to parent (hides MobileNav during active flow phases)
   useEffect(() => {
@@ -1389,9 +1489,10 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
     setSelectedBean(null)
     setRatingBrew(null)
     setSavedBrewState(null)
-    setRecipe(buildRecipeFromBean(null))
+    setSelectedRecipeId(null)
+    setRecipe(getRecipeDefaults())
     setPhase('pick')
-  }, [buildRecipeFromBean])
+  }, [getRecipeDefaults])
 
   // Update bean fields — batched, called once when editing completes
   const handleBeanUpdate = useCallback((overrides) => {
@@ -1426,6 +1527,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       id: uuidv4(),
       schemaVersion: 2,
       isManualEntry: false,
+      recipeId: selectedRecipeId || null,
       beanName: selectedBean.name.trim(),
       roaster: selectedBean.roaster || '',
       roastDate: selectedBean.roastDate || '',
@@ -1448,7 +1550,44 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       brewedAt: new Date().toISOString(),
       ...overrides,
     }
-  }, [recipe, selectedBean])
+  }, [recipe, selectedBean, selectedRecipeId])
+
+  // Auto-create or update recipe on brew save
+  const linkRecipeToBrew = useCallback((brew) => {
+    const now = new Date().toISOString()
+    if (selectedRecipeId) {
+      // Existing recipe — update lastUsedAt
+      updateRecipe(selectedRecipeId, { lastUsedAt: now })
+      setRecipes(getRecipes())
+      return selectedRecipeId
+    }
+    // No existing recipe — auto-create from current recipe state
+    if (selectedBean?.id) {
+      const newRecipe = saveRecipe({
+        beanId: selectedBean.id,
+        name: getMethodName(recipe.method),
+        method: recipe.method,
+        grinder: recipe.grinder,
+        dripper: recipe.dripper,
+        filterType: recipe.filterType,
+        coffeeGrams: recipe.coffeeGrams,
+        waterGrams: recipe.waterGrams,
+        grindSetting: recipe.grindSetting,
+        waterTemp: recipe.waterTemp,
+        targetTime: recipe.targetTime,
+        targetTimeRange: recipe.targetTimeRange,
+        targetTimeMin: recipe.targetTimeMin,
+        targetTimeMax: recipe.targetTimeMax,
+        steps: structuredClone(recipe.steps),
+        pourTemplateId: recipe.pourTemplateId,
+        lastUsedAt: now,
+      })
+      setSelectedRecipeId(newRecipe.id)
+      setRecipes(getRecipes())
+      return newRecipe.id
+    }
+    return null
+  }, [selectedRecipeId, selectedBean, recipe, setRecipes])
 
   // Handle "Finish Brew" — construct brew record, save immediately, transition to rate
   const handleFinishBrew = useCallback((data) => {
@@ -1473,32 +1612,41 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       timeStatus: timeResult?.status || null,
     })
 
+    // Link recipe (create if needed) and stamp recipeId on brew
+    const recipeId = linkRecipeToBrew(brew)
+    if (recipeId) brew.recipeId = recipeId
+
     // Clear active brew BEFORE saving to prevent duplicate-on-crash (053)
     clearActiveBrew()
     const updatedBrews = saveBrew(brew)
     onBrewSaved(updatedBrews)
 
     // Persist for crash recovery during rating
-    saveActiveBrew({ phase: 'rate', brewId: brew.id, beanName: selectedBean.name, recipe })
+    saveActiveBrew({ phase: 'rate', brewId: brew.id, beanName: selectedBean.name, recipeId, recipe })
 
     setRatingBrew(brew)
     setSavedBrewState(null)
     setPhase('rate')
-  }, [recipe, selectedBean, onBrewSaved, buildBrewRecord])
+  }, [recipe, selectedBean, onBrewSaved, buildBrewRecord, linkRecipeToBrew])
 
   // Handle "Log without timer" — skip-timer brew, save immediately, transition to rate
   const handleLogWithoutTimer = useCallback(() => {
     const brew = buildBrewRecord({ isManualEntry: true })
+
+    // Link recipe (create if needed) and stamp recipeId on brew
+    const recipeId = linkRecipeToBrew(brew)
+    if (recipeId) brew.recipeId = recipeId
+
     const updatedBrews = saveBrew(brew)
     onBrewSaved(updatedBrews)
 
     // Persist for crash recovery during rating (parity with handleFinishBrew)
-    saveActiveBrew({ phase: 'rate', brewId: brew.id, beanName: selectedBean.name, recipe })
+    saveActiveBrew({ phase: 'rate', brewId: brew.id, beanName: selectedBean.name, recipeId, recipe })
 
     setRatingBrew(brew)
     setSavedBrewState(null)
     setPhase('rate')
-  }, [buildBrewRecord, onBrewSaved, selectedBean, recipe])
+  }, [buildBrewRecord, onBrewSaved, selectedBean, recipe, linkRecipeToBrew])
 
   // Persist active brew state to localStorage
   const persistState = useCallback((brewState) => {
@@ -1506,9 +1654,10 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
       ...brewState,
       beanId: selectedBean?.id,
       beanName: selectedBean?.name,
+      recipeId: selectedRecipeId,
       recipe,
     })
-  }, [selectedBean, recipe])
+  }, [selectedBean, selectedRecipeId, recipe])
 
   // Check for in-progress brew on mount
   useEffect(() => {
@@ -1533,6 +1682,7 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
           if (bean) {
             setSelectedBean(bean)
             setRecipe(active.recipe)
+            if (active.recipeId) setSelectedRecipeId(active.recipeId)
             setSavedBrewState(active)
             setPhase('brew')
           }
@@ -1570,6 +1720,53 @@ export default function BrewScreen({ equipment, beans, setBeans, initialBean, on
           changes={changes}
           templates={templates}
           equipment={equipment}
+          beanRecipes={(recipes || []).filter(r => r.beanId === selectedBean.id)}
+          selectedRecipeId={selectedRecipeId}
+          onRecipeSelect={(recipeEntity) => {
+            if (recipeEntity === null) {
+              // "+ New Recipe" — reset to defaults
+              setSelectedRecipeId(null)
+              setRecipe(getRecipeDefaults())
+            } else {
+              // Select an existing recipe
+              setSelectedRecipeId(recipeEntity.id)
+              setRecipe({
+                coffeeGrams: recipeEntity.coffeeGrams ?? 15,
+                waterGrams: recipeEntity.waterGrams ?? 240,
+                grindSetting: recipeEntity.grindSetting ?? '',
+                waterTemp: recipeEntity.waterTemp ?? 200,
+                targetTime: recipeEntity.targetTime ?? getRecipeDefaults().targetTime,
+                targetTimeRange: recipeEntity.targetTimeRange ?? '',
+                targetTimeMin: recipeEntity.targetTimeMin ?? null,
+                targetTimeMax: recipeEntity.targetTimeMax ?? null,
+                steps: recipeEntity.steps ? normalizeSteps(recipeEntity.steps) : [],
+                pourTemplateId: recipeEntity.pourTemplateId ?? null,
+                method: recipeEntity.method ?? getRecipeDefaults().method,
+                grinder: recipeEntity.grinder ?? getRecipeDefaults().grinder,
+                dripper: recipeEntity.dripper ?? getRecipeDefaults().dripper,
+                filterType: recipeEntity.filterType ?? getRecipeDefaults().filterType,
+              })
+            }
+          }}
+          onSaveToRecipe={(recipeId) => {
+            updateRecipe(recipeId, {
+              coffeeGrams: recipe.coffeeGrams,
+              waterGrams: recipe.waterGrams,
+              grindSetting: recipe.grindSetting,
+              waterTemp: recipe.waterTemp,
+              targetTime: recipe.targetTime,
+              targetTimeRange: recipe.targetTimeRange,
+              targetTimeMin: recipe.targetTimeMin,
+              targetTimeMax: recipe.targetTimeMax,
+              steps: structuredClone(recipe.steps),
+              pourTemplateId: recipe.pourTemplateId,
+              method: recipe.method,
+              grinder: recipe.grinder,
+              dripper: recipe.dripper,
+              filterType: recipe.filterType,
+            })
+            setRecipes(getRecipes())
+          }}
           onStartBrew={() => setPhase('brew')}
           onLogWithoutTimer={handleLogWithoutTimer}
           onBack={() => setPhase('pick')}
