@@ -111,6 +111,11 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
         // Filter out records missing a valid id
         if (data.brews) data.brews = data.brews.filter(b => b && typeof b.id === 'string')
         if (data.beans) data.beans = data.beans.filter(b => b && typeof b.id === 'string')
+        if (data.recipes && !Array.isArray(data.recipes)) {
+          setFeedback({ type: 'error', message: 'Invalid file: "recipes" must be an array' })
+          return
+        }
+        if (data.recipes) data.recipes = data.recipes.filter(r => r && typeof r.id === 'string')
 
         setImportState(data)
       } catch {

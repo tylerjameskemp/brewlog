@@ -166,7 +166,7 @@ function TagComparison({ label, shared, uniqueA, uniqueB, changed, sharedClass, 
 
 // --- Main component ---
 
-export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBrew }) {
+export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate, onEditBrew }) {
   const [expandedId, setExpandedId] = useState(null)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
@@ -608,6 +608,13 @@ export default function BrewHistory({ brews, onBrewsChange, onNavigate, onEditBr
                           brew.filterType?.replace('-', ' '),
                         ].filter(Boolean).join(' \u00b7 ')}
                       </span>
+                    </div>
+                  )}
+                  {/* Recipe name */}
+                  {brew.recipeId && recipes?.find(r => r.id === brew.recipeId) && (
+                    <div className="mt-1 text-xs col-span-2">
+                      <span className="text-brew-500">Recipe:</span>{' '}
+                      <span className="text-brew-700">{recipes.find(r => r.id === brew.recipeId).name}</span>
                     </div>
                   )}
                 </div>
