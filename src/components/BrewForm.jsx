@@ -22,9 +22,7 @@ import Collapsible from './Collapsible'
 export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete, recipes, onUpdateRecipe, onSaveAsNewRecipe }) {
   const getActualSteps = (brew) => {
     if (Array.isArray(brew?.steps) && brew.steps.length > 0) return normalizeSteps(brew.steps)
-    // Fall back to recipeSnapshot steps or legacy recipeSteps
     if (Array.isArray(brew?.recipeSnapshot?.steps) && brew.recipeSnapshot.steps.length > 0) return normalizeSteps(brew.recipeSnapshot.steps)
-    if (Array.isArray(brew?.recipeSteps) && brew.recipeSteps.length > 0) return normalizeSteps(brew.recipeSteps)
     return []
   }
 
@@ -76,19 +74,12 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
   )
 
   const [saved, setSaved] = useState(false)
-  const [recipePrompt, setRecipePrompt] = useState(null) // 'pending' | null
+  const [showRecipePrompt, setShowRecipePrompt] = useState(false)
   const savingRef = useRef(false)
-  const stepsModifiedRef = useRef(false)
 
   // Helper to update form fields
   const update = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
-    setSaved(false)
-  }
-
-  // Bean name change handler — in edit mode, just update the name
-  const handleBeanNameChange = (newName) => {
-    setForm(prev => ({ ...prev, beanName: newName }))
     setSaved(false)
   }
 
@@ -97,20 +88,6 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     ? (form.waterGrams / form.coffeeGrams).toFixed(1)
     : '—'
 
-  // Check if steps differ from plan (for recipe update prompt)
-  const stepsChangedFromPlan = () => {
-    if (!plannedSteps || plannedSteps.length === 0) return false
-    const actual = normalizeSteps(form.steps)
-    if (actual.length !== plannedSteps.length) return true
-    for (let i = 0; i < actual.length; i++) {
-      if (actual[i].name !== plannedSteps[i].name ||
-          actual[i].waterTo !== plannedSteps[i].waterTo ||
-          actual[i].time !== plannedSteps[i].time ||
-          actual[i].duration !== plannedSteps[i].duration) return true
-    }
-    return false
-  }
-
   // Save the brew (guarded against double-tap)
   const handleSave = () => {
     if (savingRef.current) return
@@ -118,8 +95,9 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
     const trimmedName = form.beanName.trim()
 
-    // Resolve steps: preserve original data unless user actively modified
-    const finalSteps = stepsModifiedRef.current ? form.steps : editBrew.steps
+    // Structural comparison: did steps actually change from original?
+    const stepsChanged = JSON.stringify(form.steps) !== JSON.stringify(getActualSteps(editBrew))
+    const finalSteps = stepsChanged ? form.steps : editBrew.steps
 
     // Update existing brew
     // Preserve fields the form doesn't manage (per documented learning:
@@ -153,8 +131,9 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
     // Check if steps differ from plan and we have a valid recipe to update
     const hasRecipe = editBrew.recipeId && recipes?.find(r => r.id === editBrew.recipeId && !r.archivedAt)
-    if (stepsModifiedRef.current && hasRecipe && stepsChangedFromPlan()) {
-      setRecipePrompt('pending')
+    const planChanged = stepsChanged && plannedSteps && JSON.stringify(form.steps) !== JSON.stringify(plannedSteps)
+    if (hasRecipe && planChanged) {
+      setShowRecipePrompt(true)
     } else {
       onEditComplete()
     }
@@ -167,7 +146,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       onSaveAsNewRecipe?.(editBrew.recipeId, { steps: form.steps })
     }
     // 'keep' = dismiss
-    setRecipePrompt(null)
+    setShowRecipePrompt(false)
     onEditComplete()
   }
 
@@ -197,7 +176,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
             <input
               type="text"
               value={form.beanName}
-              onChange={(e) => handleBeanNameChange(e.target.value)}
+              onChange={(e) => update('beanName', e.target.value)}
               placeholder="e.g., Heart Columbia Javier Omar"
               list="bean-suggestions"
               maxLength={100}
@@ -399,7 +378,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         <Section title="Pour Steps" defaultOpen>
           <StepEditor
             steps={form.steps}
-            onChange={(steps) => { stepsModifiedRef.current = true; update('steps', steps) }}
+            onChange={(steps) => update('steps', steps)}
             plannedSteps={plannedSteps}
             hint="Modify anything that went differently from your plan."
           />
@@ -514,7 +493,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       </button>
 
       {/* Recipe update prompt — shown after save when steps differ from plan */}
-      {recipePrompt === 'pending' && (
+      {showRecipePrompt && (
         <div className="px-4 py-4 bg-amber-50 border border-amber-200 rounded-xl animate-fade-in motion-reduce:animate-none">
           <p className="text-sm text-amber-700 font-medium mb-3">
             Your steps differed from the original plan. Update the recipe?

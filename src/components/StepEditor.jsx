@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { normalizeSteps } from '../data/storage'
 
 // ============================================================
@@ -187,14 +187,14 @@ function StepRow({ step, index, onChange, onRemove, disabled, cascadeTime, diff 
 }
 
 // Removed step row — shown in diff mode for steps in plan but not in actuals
-function RemovedStepRow({ step, index }) {
+function RemovedStepRow({ step }) {
   return (
     <div className="flex flex-col gap-1 p-3 bg-red-50/30 rounded-xl border border-red-200/50 opacity-60">
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-semibold text-red-300 uppercase w-5 flex-shrink-0">
           {'\u2212'}
         </span>
-        <span className="text-sm text-red-400 line-through flex-1">{step.name || `Step ${index + 1}`}</span>
+        <span className="text-sm text-red-400 line-through flex-1">{step.name || `Step #${step.id}`}</span>
         <span className="text-[9px] text-red-400 font-medium bg-red-100 px-1.5 py-0.5 rounded">
           removed
         </span>
@@ -206,33 +206,31 @@ function RemovedStepRow({ step, index }) {
   )
 }
 
+// Recalculate start times from step durations (step 0 keeps its time)
+function recascade(steps) {
+  for (let i = 1; i < steps.length; i++) {
+    const prevEnd = (steps[i - 1].time || 0) + (steps[i - 1].duration || 0)
+    steps[i] = { ...steps[i], time: prevEnd }
+  }
+  return steps
+}
+
 export default function StepEditor({ steps = [], onChange, disabled = false, hint, cascadeTime = false, plannedSteps }) {
-  const diffData = plannedSteps ? buildDiffMap(steps, plannedSteps) : null
+  const diffData = useMemo(
+    () => plannedSteps ? buildDiffMap(steps, plannedSteps) : null,
+    [steps, plannedSteps]
+  )
 
   const handleStepChange = (index, updatedStep) => {
     const newSteps = [...steps]
     newSteps[index] = updatedStep
-
-    // Cascade start times when duration changes
-    if (cascadeTime && updatedStep.duration !== steps[index].duration) {
-      for (let i = 1; i < newSteps.length; i++) {
-        const prevEnd = (newSteps[i - 1].time || 0) + (newSteps[i - 1].duration || 0)
-        newSteps[i] = { ...newSteps[i], time: prevEnd }
-      }
-    }
-
+    if (cascadeTime && updatedStep.duration !== steps[index].duration) recascade(newSteps)
     onChange(newSteps)
   }
 
   const handleRemove = (index) => {
     const newSteps = steps.filter((_, i) => i !== index)
-    // Re-cascade if needed
-    if (cascadeTime) {
-      for (let i = 1; i < newSteps.length; i++) {
-        const prevEnd = (newSteps[i - 1].time || 0) + (newSteps[i - 1].duration || 0)
-        newSteps[i] = { ...newSteps[i], time: prevEnd }
-      }
-    }
+    if (cascadeTime) recascade(newSteps)
     onChange(newSteps)
   }
 
@@ -277,7 +275,7 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
 
       {/* Removed steps from plan */}
       {diffData?.removed?.map((step, i) => (
-        <RemovedStepRow key={`removed-${step.id}`} step={step} index={i} />
+        <RemovedStepRow key={`removed-${step.id}`} step={step} />
       ))}
 
       {!disabled && (

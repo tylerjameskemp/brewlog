@@ -305,6 +305,17 @@ export function generateRecipeCopyName(originalName, existingRecipes) {
   return `${originalName} (copy ${i})`
 }
 
+// Fork a recipe: create a copy with field overrides, auto-naming
+export function forkRecipe(recipeId, fieldOverrides = {}) {
+  const all = _getAllRecipes()
+  const original = all.find(r => r.id === recipeId)
+  if (!original) return null
+  const existingForBean = all.filter(r => r.beanId === original.beanId && !r.archivedAt)
+  const newName = generateRecipeCopyName(original.name, existingForBean)
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, version: _version, ...base } = original
+  return saveRecipe({ ...base, name: newName, ...fieldOverrides })
+}
+
 export function archiveRecipesForBean(beanId) {
   if (!beanId) return false
   const all = _getAllRecipes()

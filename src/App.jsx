@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getBrews, getEquipment, getBeans, getRecipes, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, migrateExtractRecipes, migrateDropRecipeSteps, seedDefaultPourTemplates, updateRecipe, saveRecipe, getRecipesForBean, generateRecipeCopyName } from './data/storage'
+import { getBrews, getEquipment, getBeans, getRecipes, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, migrateExtractRecipes, migrateDropRecipeSteps, seedDefaultPourTemplates, updateRecipe, forkRecipe } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
@@ -155,13 +155,8 @@ function App() {
                 setRecipes(getRecipes())
               }}
               onSaveAsNewRecipe={(recipeId, fields) => {
-                const original = recipes.find(r => r.id === recipeId)
-                if (original) {
-                  const existingForBean = getRecipesForBean(original.beanId)
-                  const newName = generateRecipeCopyName(original.name, existingForBean)
-                  saveRecipe({ ...original, id: undefined, name: newName, ...fields })
-                  setRecipes(getRecipes())
-                }
+                forkRecipe(recipeId, fields)
+                setRecipes(getRecipes())
               }}
             />
           )}

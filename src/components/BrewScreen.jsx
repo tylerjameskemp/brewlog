@@ -284,6 +284,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
       pourTemplateId: template?.id ?? null,
     }))
     setTemplatePicked(true)
+    setStepsOpen(true)
   }
 
   const updateField = (field, value) => {
@@ -499,21 +500,21 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
                         onBlur={() => {
                           const trimmed = renameValue.trim()
                           if (trimmed) {
-                            updateRecipe(r.id, { name: trimmed })
-                            onRecipeRenamed?.()
+                            onRecipeRenamed?.(r.id, trimmed)
                           }
                           setRenamingRecipeId(null)
                         }}
                         onKeyDown={e => {
                           if (e.key === 'Enter') e.target.blur()
                           if (e.key === 'Escape') {
+                            setRenameValue('')
                             setRenamingRecipeId(null)
                           }
                         }}
                         autoFocus
                         maxLength={50}
-                        className="w-full px-2 py-1 rounded-lg border border-brew-300 text-sm text-brew-800
-                                   focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
+                        className="w-full px-2 py-1 rounded-lg border border-brew-300 text-base text-brew-800
+                                   focus:outline-none focus:ring-2 focus:ring-brew-400"
                       />
                     </div>
                   ) : (
@@ -1925,7 +1926,10 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           onLogWithoutTimer={handleLogWithoutTimer}
           onBack={() => setPhase('pick')}
           onBeanUpdate={handleBeanUpdate}
-          onRecipeRenamed={() => setRecipes(getRecipes())}
+          onRecipeRenamed={(recipeId, newName) => {
+            updateRecipe(recipeId, { name: newName })
+            setRecipes(getRecipes())
+          }}
         />
       )}
 
