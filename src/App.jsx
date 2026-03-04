@@ -156,6 +156,8 @@ function App() {
               beans={beans}
               setBeans={setBeans}
               brews={brews}
+              recipes={recipes}
+              setRecipes={setRecipes}
               onBrewsChange={setBrews}
               onBrewBean={(bean) => {
                 setBrewingBean(bean)

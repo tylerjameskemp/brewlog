@@ -6,6 +6,7 @@ import {
   computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
   updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
   normalizeName, getRecipes, getRecipesForBean, saveRecipe, updateRecipe,
+  archiveRecipe, generateRecipeCopyName,
   RECIPE_FIELDS, recipeEntityToFormState, formStateToRecipeFields,
 } from '../data/storage'
 import { getMethodName } from '../data/defaults'
@@ -1145,7 +1146,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       }
 
       clearActiveBrew()
-      onComplete()
+      onComplete({ ...brew, ...updates })
     } finally {
       savingRef.current = false
     }
@@ -1393,6 +1394,118 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
   )
 }
 
+// ─── Phase 4: Brew Success ──────────────────────────────────
+// Post-brew success screen. Shows confirmation and (when applicable) recipe fork prompt.
+function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, onStartNewBrew, onViewHistory, onUpdateRecipe, onSaveAsNewRecipe, setRecipes }) {
+  const [forkDismissed, setForkDismissed] = useState(false)
+  const savingRef = useRef(false)
+
+  // Compute whether brew settings differ from source recipe
+  const sourceRecipe = useMemo(() => {
+    if (!selectedRecipeId || recipeWasAutoCreated) return null
+    return (recipes || []).find(r => r.id === selectedRecipeId) || null
+  }, [selectedRecipeId, recipeWasAutoCreated, recipes])
+
+  const changedFields = useMemo(() => {
+    if (!sourceRecipe || !brew) return []
+    const changes = []
+    RECIPE_FIELDS.forEach(field => {
+      const brewVal = brew[field]
+      const recipeVal = sourceRecipe[field]
+      // Compare stringified for arrays/objects, direct for primitives
+      const brewStr = JSON.stringify(brewVal ?? null)
+      const recipeStr = JSON.stringify(recipeVal ?? null)
+      if (brewStr !== recipeStr) {
+        changes.push({ field, brewVal, recipeVal })
+      }
+    })
+    return changes
+  }, [sourceRecipe, brew])
+
+  const showForkPrompt = changedFields.length > 0 && sourceRecipe && !forkDismissed
+
+  return (
+    <div className="flex flex-col items-center justify-center p-10 pb-32 text-center
+                    animate-fade-in motion-reduce:animate-none min-h-[calc(100vh-3rem)]">
+      <div className="w-20 h-20 rounded-full bg-brew-50 flex items-center justify-center
+                      text-4xl text-brew-500 mb-5">
+        ✓
+      </div>
+      <h2 className="text-2xl font-semibold text-brew-800 mb-2">Brew Saved</h2>
+      <p className="text-sm text-brew-400 leading-relaxed max-w-[260px]">
+        Your brew is saved. You can edit it anytime from your brew history.
+      </p>
+
+      {showForkPrompt && (
+        <div className="mt-6 w-full max-w-[320px] bg-white border border-amber-200 rounded-2xl p-5 text-left">
+          <p className="text-sm font-semibold text-brew-800 mb-2">
+            Your settings differed from "{sourceRecipe.name}"
+          </p>
+          <ul className="text-xs text-brew-500 mb-4 space-y-1">
+            {changedFields.map(({ field, brewVal, recipeVal }) => (
+              <li key={field}>
+                <span className="font-medium text-brew-600">{field}:</span>{' '}
+                {String(recipeVal ?? '–')} → {String(brewVal ?? '–')}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => {
+                if (savingRef.current) return
+                savingRef.current = true
+                onUpdateRecipe(selectedRecipeId)
+                setForkDismissed(true)
+                savingRef.current = false
+              }}
+              className="bg-brew-800 text-white rounded-xl px-4 py-3 text-sm font-semibold
+                         hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
+            >
+              Update Recipe
+            </button>
+            <button
+              onClick={() => {
+                if (savingRef.current) return
+                savingRef.current = true
+                onSaveAsNewRecipe(selectedRecipeId)
+                setForkDismissed(true)
+                savingRef.current = false
+              }}
+              className="border border-brew-200 text-brew-600 rounded-xl px-4 py-3 text-sm font-semibold
+                         hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
+            >
+              Save as New Recipe
+            </button>
+            <button
+              onClick={() => setForkDismissed(true)}
+              className="text-brew-400 text-xs mt-1 hover:text-brew-600 transition-colors"
+            >
+              Keep Original
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3 mt-6 w-full max-w-[260px]">
+        <button
+          onClick={onStartNewBrew}
+          className="bg-brew-800 text-white rounded-xl px-8 py-3.5 text-sm font-semibold
+                     hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
+        >
+          Start New Brew
+        </button>
+        <button
+          onClick={onViewHistory}
+          className="border border-brew-200 text-brew-600 rounded-xl px-8 py-3.5 text-sm font-semibold
+                     hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
+        >
+          View in History
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main BrewScreen Component ──────────────────────────────
 export default function BrewScreen({ equipment, beans, setBeans, recipes, setRecipes, initialBean, onBrewSaved, onBrewActiveChange, onNavigate, onFlowChange }) {
 
@@ -1401,6 +1514,8 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   const [ratingBrew, setRatingBrew] = useState(null)   // Brew record being rated (set on Finish Brew or recovery)
   const [savedBrewState, setSavedBrewState] = useState(null)
   const [selectedRecipeId, setSelectedRecipeId] = useState(null) // Tracks which recipe entity is active
+  const [recipeWasAutoCreated, setRecipeWasAutoCreated] = useState(false) // True when linkRecipeToBrew auto-created (skip fork prompt)
+  const [finalBrewState, setFinalBrewState] = useState(null) // Post-rating brew state for fork prompt
   const savingRef = useRef(false) // Double-tap guard for brew save
 
   const templates = useMemo(() => getPourTemplates(), [])
@@ -1478,6 +1593,8 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     setRatingBrew(null)
     setSavedBrewState(null)
     setSelectedRecipeId(null)
+    setRecipeWasAutoCreated(false)
+    setFinalBrewState(null)
     setRecipe(getRecipeDefaults())
     savingRef.current = false
     setPhase('pick')
@@ -1492,6 +1609,35 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     }
   }, [selectedBean, setBeans])
 
+  // Fork prompt handler: update existing recipe with brew's values
+  const handleUpdateRecipeFromFork = useCallback((recipeId) => {
+    if (!finalBrewState || !recipeId) return
+    const fields = {}
+    RECIPE_FIELDS.forEach(f => { if (finalBrewState[f] !== undefined) fields[f] = finalBrewState[f] })
+    updateRecipe(recipeId, fields)
+    setRecipes(getRecipes())
+  }, [finalBrewState, setRecipes])
+
+  // Fork prompt handler: save as new recipe from brew's values
+  const handleSaveAsNewFromFork = useCallback((recipeId) => {
+    if (!finalBrewState || !selectedBean?.id) return
+    const sourceRecipe = (recipes || []).find(r => r.id === recipeId)
+    if (!sourceRecipe) return
+    const beanRecipes = (recipes || []).filter(r => r.beanId === selectedBean.id)
+    const newName = generateRecipeCopyName(sourceRecipe.name, beanRecipes)
+    const fields = {}
+    RECIPE_FIELDS.forEach(f => { if (finalBrewState[f] !== undefined) fields[f] = finalBrewState[f] })
+    const newRecipe = saveRecipe({
+      beanId: selectedBean.id,
+      name: newName,
+      ...fields,
+      lastUsedAt: new Date().toISOString(),
+    })
+    if (newRecipe && ratingBrew?.id) {
+      updateBrew(ratingBrew.id, { recipeId: newRecipe.id })
+    }
+    setRecipes(getRecipes())
+  }, [finalBrewState, selectedBean, recipes, ratingBrew, setRecipes])
 
   // Build a brew record from current recipe + bean state
   const buildBrewRecord = useCallback((overrides = {}) => {
@@ -1545,6 +1691,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
       })
       if (!newRecipe) return null // write failed — skip recipe linking
       setSelectedRecipeId(newRecipe.id)
+      setRecipeWasAutoCreated(true)
       setRecipes(getRecipes())
       return newRecipe.id
     }
@@ -1724,40 +1871,27 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
         <RateThisBrew
           brew={ratingBrew}
           bean={selectedBean}
-          onComplete={() => setPhase('success')}
+          onComplete={(finalBrew) => {
+            setFinalBrewState(finalBrew)
+            setPhase('success')
+          }}
           onBrewUpdated={onBrewSaved}
           setBeans={setBeans}
         />
       )}
 
       {phase === 'success' && (
-        <div className="flex flex-col items-center justify-center p-10 pb-32 text-center
-                        animate-fade-in motion-reduce:animate-none min-h-[calc(100vh-3rem)]">
-          <div className="w-20 h-20 rounded-full bg-brew-50 flex items-center justify-center
-                          text-4xl text-brew-500 mb-5">
-            ✓
-          </div>
-          <h2 className="text-2xl font-semibold text-brew-800 mb-2">Brew Saved</h2>
-          <p className="text-sm text-brew-400 leading-relaxed max-w-[260px]">
-            Your brew is saved. You can edit it anytime from your brew history.
-          </p>
-          <div className="flex flex-col gap-3 mt-6 w-full max-w-[260px]">
-            <button
-              onClick={handleStartNewBrew}
-              className="bg-brew-800 text-white rounded-xl px-8 py-3.5 text-sm font-semibold
-                         hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
-            >
-              Start New Brew
-            </button>
-            <button
-              onClick={() => onNavigate('history')}
-              className="border border-brew-200 text-brew-600 rounded-xl px-8 py-3.5 text-sm font-semibold
-                         hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
-            >
-              View in History
-            </button>
-          </div>
-        </div>
+        <BrewSuccess
+          brew={finalBrewState}
+          selectedRecipeId={selectedRecipeId}
+          recipes={recipes}
+          recipeWasAutoCreated={recipeWasAutoCreated}
+          onStartNewBrew={handleStartNewBrew}
+          onViewHistory={() => onNavigate('history')}
+          onUpdateRecipe={handleUpdateRecipeFromFork}
+          onSaveAsNewRecipe={handleSaveAsNewFromFork}
+          setRecipes={setRecipes}
+        />
       )}
     </div>
   )
