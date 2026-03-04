@@ -558,6 +558,35 @@ export function migrateExtractRecipes() {
   }
 }
 
+// Drop recipeSteps — data now lives in recipeSnapshot.steps
+// MUST run AFTER migrateExtractRecipes (which reads recipeSteps)
+export function migrateDropRecipeSteps() {
+  const raw = localStorage.getItem(STORAGE_KEYS.BREWS)
+  if (!raw) return
+  let brews
+  try { brews = JSON.parse(raw) } catch { return }
+  if (!Array.isArray(brews)) return
+
+  let changed = false
+  for (const b of brews) {
+    if (b.recipeSteps === undefined) continue // already migrated or never had it
+
+    // Synthesize recipeSnapshot.steps if missing
+    if (!b.recipeSnapshot || !b.recipeSnapshot.steps) {
+      b.recipeSnapshot = b.recipeSnapshot || {}
+      b.recipeSnapshot.steps = structuredClone(b.recipeSteps)
+    }
+
+    delete b.recipeSteps
+    changed = true
+  }
+
+  if (changed) {
+    safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(brews))
+    _invalidateBrewsCache()
+  }
+}
+
 // --- POUR TEMPLATES ---
 
 export function getPourTemplates() {
@@ -751,6 +780,7 @@ export function importData(data) {
   _invalidateBrewsCache()
   migrateToSchemaV2()
   migrateExtractRecipes()
+  migrateDropRecipeSteps()
 }
 
 export function mergeData(data) {
@@ -806,4 +836,5 @@ export function mergeData(data) {
   _invalidateBrewsCache()
   migrateToSchemaV2()
   migrateExtractRecipes()
+  migrateDropRecipeSteps()
 }
