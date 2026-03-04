@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { normalizeSteps } from '../data/storage'
 
 // ============================================================
@@ -106,12 +106,17 @@ function TimeInput({ value, onChange, disabled, placeholder, label }) {
   )
 }
 
+// Build "0:00 → 0:40" time range string from a step
+function stepTimeRange(step) {
+  const startTime = step.time || 0
+  const endTime = step.duration != null ? startTime + step.duration : null
+  return `${formatTimeDisplay(startTime)} → ${endTime != null ? formatTimeDisplay(endTime) : ''}`
+}
+
 // ─── Collapsed One-Liner ───────────────────────────────────
 // Shows: timeRange · name · pour to Xg
 function StepOneLiner({ step, index, diff, onClick, disabled }) {
-  const startTime = step.time || 0
-  const endTime = step.duration != null ? startTime + step.duration : null
-  const timeRange = `${formatTimeDisplay(startTime)} → ${endTime != null ? formatTimeDisplay(endTime) : ''}`
+  const timeRange = stepTimeRange(step)
   const name = step.name || `Step ${index + 1}`
   const water = step.waterTo != null ? `pour to ${step.waterTo}g` : null
 
@@ -304,9 +309,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
 
 // ─── Removed Step (one-liner for diff mode) ────────────────
 function RemovedStepOneLiner({ step }) {
-  const startTime = step.time || 0
-  const endTime = step.duration != null ? startTime + step.duration : null
-  const timeRange = `${formatTimeDisplay(startTime)} → ${endTime != null ? formatTimeDisplay(endTime) : ''}`
+  const timeRange = stepTimeRange(step)
   const name = step.name || `Step #${step.id}`
 
   return (
@@ -330,7 +333,8 @@ function RemovedStepOneLiner({ step }) {
   )
 }
 
-// Recalculate start times from step durations (step 0 keeps its time)
+// Recalculate start times from step durations (step 0 keeps its time).
+// Mutates the array in-place for use with already-cloned arrays.
 function recascade(steps) {
   for (let i = 1; i < steps.length; i++) {
     const prevEnd = (steps[i - 1].time || 0) + (steps[i - 1].duration || 0)
@@ -341,6 +345,11 @@ function recascade(steps) {
 
 export default function StepEditor({ steps = [], onChange, disabled = false, hint, cascadeTime = false, plannedSteps }) {
   const [expandedStepId, setExpandedStepId] = useState(null)
+
+  // Collapse expanded step when editing becomes disabled
+  useEffect(() => {
+    if (disabled) setExpandedStepId(null)
+  }, [disabled])
 
   const diffData = useMemo(
     () => plannedSteps ? buildDiffMap(steps, plannedSteps) : null,
@@ -372,13 +381,15 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
     const step = steps[index]
     const d1 = Math.floor((step.duration || 0) / 2)
     const d2 = (step.duration || 0) - d1
-    const newId = Math.max(...steps.map(s => s.id || 0), 0) + 1
-    const name = step.name || `Step ${index + 1}`
+    const ids = steps.map(s => s.id || 0)
+    const newId = (ids.length > 0 ? Math.max(...ids) : 0) + 1
+    // Strip existing "(N)" suffix before re-numbering to prevent accumulation
+    const baseName = (step.name || `Step ${index + 1}`).replace(/\s*\(\d+\)$/, '')
 
     const newSteps = [...steps]
     newSteps.splice(index, 1,
-      { ...step, duration: d1, name: `${name} (1)` },
-      { id: newId, name: `${name} (2)`, time: (step.time || 0) + d1,
+      { ...step, duration: d1, name: `${baseName} (1)` },
+      { id: newId, name: `${baseName} (2)`, time: (step.time || 0) + d1,
         duration: d2, waterTo: null, note: '' }
     )
     if (cascadeTime) recascade(newSteps)

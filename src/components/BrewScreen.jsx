@@ -991,11 +991,13 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 
         {/* Recipe reference strip */}
         <div className="flex items-center justify-center gap-2 px-4 py-1 text-xs text-brew-400 font-mono truncate">
-          {recipe.coffeeGrams ? <span>{recipe.coffeeGrams}g</span> : null}
-          {recipe.coffeeGrams && recipe.grindSetting ? <span>&middot;</span> : null}
-          {recipe.grindSetting ? <span>{recipe.grindSetting}</span> : null}
-          {(recipe.coffeeGrams || recipe.grindSetting) && recipe.waterGrams ? <span>&middot;</span> : null}
-          {recipe.waterGrams ? <span>{recipe.waterGrams}g target</span> : null}
+          {[
+            recipe.coffeeGrams && `${recipe.coffeeGrams}g`,
+            recipe.grindSetting,
+            recipe.waterGrams && `${recipe.waterGrams}g target`,
+          ].filter(Boolean).map((part, i, arr) => (
+            <span key={i}>{part}{i < arr.length - 1 ? ' \u00b7 ' : ''}</span>
+          ))}
         </div>
 
         {/* Controls — fixed height container prevents layout shift */}
@@ -1044,10 +1046,10 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
           )}
 
           {steps.map((step, i) => {
-            const isCurrent = i === currentStepIdx && hasStarted
             const skipped = skippedSteps[step.id]
-            const isPast = hasStarted && (timer.elapsed >= step.time + step.duration || skipped)
-            const isFuture = !isCurrent && !isPast
+            const isCurrent = i === currentStepIdx && hasStarted && !skipped
+            const isPast = hasStarted && !skipped && timer.elapsed >= step.time + step.duration
+            const isFuture = !isCurrent && !isPast && !skipped
             const isNext = isFuture && i === currentStepIdx + 1 && hasStarted
             const tappedAt = tappedSteps[step.id]
             const variance = tappedAt !== undefined ? tappedAt - step.time : null
