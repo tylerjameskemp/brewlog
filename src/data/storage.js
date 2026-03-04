@@ -9,12 +9,13 @@
 // but for the MVP, localStorage is perfect. Zero setup, works offline.
 // ============================================================
 
-import { numericToGrindNotation, DEFAULT_POUR_TEMPLATES } from './defaults'
+import { numericToGrindNotation, DEFAULT_POUR_TEMPLATES, getMethodName } from './defaults'
 
 const STORAGE_KEYS = {
   BREWS: 'brewlog_brews',
   EQUIPMENT: 'brewlog_equipment',
   BEANS: 'brewlog_beans',
+  RECIPES: 'brewlog_recipes',
   UI_PREFS: 'brewlog_ui_prefs',
   POUR_TEMPLATES: 'brewlog_pour_templates',
   ACTIVE_BREW: 'brewlog_active_brew',
@@ -175,6 +176,7 @@ export function updateBean(id, updates) {
 }
 
 export function deleteBean(id) {
+  archiveRecipesForBean(id)
   const beans = getBeans().filter(b => b.id !== id)
   safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(beans))
   return beans
@@ -193,6 +195,92 @@ export function deduplicateBeans() {
     safeSetItem(STORAGE_KEYS.BEANS, JSON.stringify(deduped))
   }
   return deduped
+}
+
+// --- RECIPES ---
+
+function _getAllRecipes() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.RECIPES)
+    return data ? JSON.parse(data) : []
+  } catch {
+    return []
+  }
+}
+
+export function getRecipes() {
+  const recipes = _getAllRecipes().filter(r => !r.archivedAt)
+  recipes.sort((a, b) => (b?.updatedAt || '').localeCompare(a?.updatedAt || ''))
+  return recipes
+}
+
+export function getRecipesForBean(beanId) {
+  if (!beanId) return []
+  return getRecipes().filter(r => r.beanId === beanId)
+}
+
+export function getRecipeForBeanAndMethod(beanId, method) {
+  if (!beanId || !method) return null
+  const matches = getRecipesForBean(beanId).filter(r => r.method === method)
+  if (matches.length === 0) return null
+  // Return the one with the latest lastUsedAt
+  matches.sort((a, b) => (b?.lastUsedAt || '').localeCompare(a?.lastUsedAt || ''))
+  return matches[0]
+}
+
+export function saveRecipe(recipe) {
+  if (!recipe.beanId || !recipe.method) {
+    console.warn('saveRecipe: beanId and method are required')
+    return _getAllRecipes()
+  }
+  const now = new Date().toISOString()
+  const newRecipe = {
+    ...recipe,
+    id: recipe.id || crypto.randomUUID(),
+    version: 1,
+    createdAt: recipe.createdAt || now,
+    updatedAt: now,
+    lastUsedAt: recipe.lastUsedAt || now,
+    archivedAt: null,
+  }
+  const all = _getAllRecipes()
+  all.push(newRecipe)
+  safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))
+  return newRecipe
+}
+
+export function updateRecipe(id, updates) {
+  const all = _getAllRecipes()
+  const index = all.findIndex(r => r.id === id)
+  if (index === -1) return null
+  all[index] = {
+    ...all[index],
+    ...updates,
+    version: (all[index].version || 1) + 1,
+    updatedAt: new Date().toISOString(),
+  }
+  safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))
+  return all[index]
+}
+
+export function archiveRecipe(id) {
+  return updateRecipe(id, { archivedAt: new Date().toISOString() })
+}
+
+export function archiveRecipesForBean(beanId) {
+  if (!beanId) return
+  const all = _getAllRecipes()
+  let changed = false
+  const now = new Date().toISOString()
+  all.forEach(r => {
+    if (r.beanId === beanId && !r.archivedAt) {
+      r.archivedAt = now
+      changed = true
+    }
+  })
+  if (changed) {
+    safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))
+  }
 }
 
 export function renameBrewBean(oldName, newName) {
@@ -358,6 +446,79 @@ export function migrateToSchemaV2() {
   return getBrews()
 }
 
+export function migrateExtractRecipes() {
+  // Extract implied recipes from existing brew history.
+  // Idempotent — skips if recipes already exist.
+  const existing = _getAllRecipes()
+  if (existing.length > 0) return
+
+  const brews = getBrews()
+  if (brews.length === 0) return
+
+  const beans = getBeans()
+  const beanNameToId = new Map()
+  beans.forEach(b => {
+    beanNameToId.set(normalizeName(b.name), b.id)
+  })
+
+  const equipment = getEquipment()
+  const fallbackMethod = equipment?.brewMethod || 'v60'
+
+  // Group brews by normalized beanName + method
+  const groups = new Map()
+  brews.forEach(brew => {
+    const beanKey = normalizeName(brew.beanName)
+    if (!beanKey) return
+    const beanId = beanNameToId.get(beanKey)
+    if (!beanId) return // skip orphaned brews (no matching bean)
+
+    const method = brew.method || fallbackMethod
+    const groupKey = `${beanKey}::${method}`
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, { beanId, method, brew })
+    }
+    // brews are already sorted descending by brewedAt, so first hit is most recent
+  })
+
+  const recipes = []
+  groups.forEach(({ beanId, method, brew }) => {
+    const steps = brew.recipeSteps
+      ? normalizeSteps(brew.recipeSteps)
+      : brew.steps
+        ? normalizeSteps(brew.steps)
+        : []
+
+    recipes.push({
+      id: crypto.randomUUID(),
+      beanId,
+      name: getMethodName(method),
+      method,
+      grinder: brew.grinder || equipment?.grinder || '',
+      dripper: brew.dripper || equipment?.dripper || '',
+      filterType: brew.filterType || equipment?.filterType || '',
+      coffeeGrams: brew.coffeeGrams ?? 15,
+      waterGrams: brew.waterGrams ?? 240,
+      grindSetting: brew.grindSetting ?? '',
+      waterTemp: brew.waterTemp ?? 200,
+      targetTime: brew.targetTime ?? null,
+      targetTimeRange: brew.targetTimeRange ?? '',
+      targetTimeMin: brew.targetTimeMin ?? null,
+      targetTimeMax: brew.targetTimeMax ?? null,
+      steps,
+      pourTemplateId: brew.pourTemplateId ?? null,
+      version: 1,
+      createdAt: brew.brewedAt || new Date().toISOString(),
+      updatedAt: brew.brewedAt || new Date().toISOString(),
+      lastUsedAt: brew.brewedAt || new Date().toISOString(),
+      archivedAt: null,
+    })
+  })
+
+  if (recipes.length > 0) {
+    safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(recipes))
+  }
+}
+
 // --- POUR TEMPLATES ---
 
 export function getPourTemplates() {
@@ -402,6 +563,14 @@ export function getChangesForBean(beanName) {
   // Returns the nextBrewChanges string from the most recent brew of that bean
   if (!beanName) return null
   const brew = getLastBrewOfBean(beanName)
+  return brew?.nextBrewChanges || null
+}
+
+export function getChangesForRecipe(recipeId) {
+  // Returns the nextBrewChanges string from the most recent brew using this recipe
+  if (!recipeId) return null
+  const brews = getBrews()
+  const brew = brews.find(b => b.recipeId === recipeId)
   return brew?.nextBrewChanges || null
 }
 
@@ -511,6 +680,7 @@ export function exportData() {
     brews: getBrews(),
     equipment: getEquipment(),
     beans: getBeans(),
+    recipes: _getAllRecipes(), // include archived for full export
     pourTemplates: getPourTemplates(),
     exportedAt: new Date().toISOString(),
   }
@@ -535,9 +705,13 @@ export function importData(data) {
   if ('pourTemplates' in data) {
     safeSetItem(STORAGE_KEYS.POUR_TEMPLATES, JSON.stringify(data.pourTemplates || []))
   }
+  if ('recipes' in data) {
+    safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(data.recipes || []))
+  }
   // Run migration chain on imported data
   _invalidateBrewsCache()
   migrateToSchemaV2()
+  migrateExtractRecipes()
 }
 
 export function mergeData(data) {
@@ -579,7 +753,18 @@ export function mergeData(data) {
     }
   }
 
+  // Recipes: merge by ID
+  if (data.recipes && Array.isArray(data.recipes)) {
+    const existing = _getAllRecipes()
+    const existingIds = new Set(existing.map(r => r.id))
+    const newRecipes = data.recipes.filter(r => !existingIds.has(r.id))
+    if (newRecipes.length > 0) {
+      safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify([...existing, ...newRecipes]))
+    }
+  }
+
   // Run migration chain on merged data
   _invalidateBrewsCache()
   migrateToSchemaV2()
+  migrateExtractRecipes()
 }
