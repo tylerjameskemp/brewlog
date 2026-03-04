@@ -297,6 +297,14 @@ export function archiveRecipe(id) {
   return updateRecipe(id, { archivedAt: new Date().toISOString() })
 }
 
+export function generateRecipeCopyName(originalName, existingRecipes) {
+  const copyBase = `${originalName} (copy)`
+  if (!existingRecipes.some(r => r.name === copyBase)) return copyBase
+  let i = 2
+  while (existingRecipes.some(r => r.name === `${originalName} (copy ${i})`)) i++
+  return `${originalName} (copy ${i})`
+}
+
 export function archiveRecipesForBean(beanId) {
   if (!beanId) return false
   const all = _getAllRecipes()

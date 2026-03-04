@@ -52,7 +52,7 @@ All brews use one canonical format (`schemaVersion: 2`). Legacy brews are migrat
 ```
 
 ### Recipe
-Reusable recipe entity linked to a bean by UUID (`beanId`). Soft-deleted via `archivedAt` when parent bean is deleted. Field list defined by `RECIPE_FIELDS` constant in storage.js. Created automatically when a brew is saved via `linkRecipeToBrew()`.
+Reusable recipe entity linked to a bean by UUID (`beanId`). Soft-deleted via `archivedAt` when parent bean is deleted. Field list defined by `RECIPE_FIELDS` constant in storage.js. Created automatically when a brew is saved via `linkRecipeToBrew()`. `notes` is intentionally NOT in `RECIPE_FIELDS` — it's metadata, not a brew parameter.
 ```json
 { "id": "uuid", "beanId": "uuid", "name": "string (method display name)",
   "coffeeGrams": 15, "waterGrams": 250, "grindSetting": "string",
@@ -61,6 +61,7 @@ Reusable recipe entity linked to a bean by UUID (`beanId`). Soft-deleted via `ar
   "steps": [{ "id": 1, "name": "Bloom", "waterTo": 42, "time": 0, "duration": 40 }],
   "pourTemplateId": "string", "method": "string", "grinder": "string",
   "dripper": "string", "filterType": "string",
+  "notes": "string (optional, max 500 chars, not in RECIPE_FIELDS)",
   "lastUsedAt": "ISO timestamp", "createdAt": "ISO timestamp",
   "updatedAt": "ISO timestamp", "archivedAt": "ISO timestamp|null",
   "version": 1 }
@@ -155,13 +156,13 @@ pick → recipe → brew → rate → success
 **New entity CRUD parity:** When adding a new entity's CRUD, audit the existing entity's functions for write safety (`safeSetItem` return checks), field protection (pin `id`/FKs after spread), return conventions (`null` on failure), and cascade safety. See `docs/solutions/logic-errors/new-entity-crud-misses-defensive-patterns.md`.
 
 ## Bugs & Lessons Learned
-24 documented solutions in `docs/solutions/` across 6 categories:
+26 documented solutions in `docs/solutions/` across 6 categories:
 - **logic-errors/** (10): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence, cache mutation breaks sort invariant, entity-form field mapping divergence, new entity CRUD missing defensive patterns
-- **react-patterns/** (10): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow
+- **react-patterns/** (11): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective
 - **performance/** (1): per-keystroke localStorage writes
 - **state-management/** (1): lazy init state goes stale on prop change
 - **test-failures/** (1): Node 22 localStorage shadows browser mock
-- **ui-bugs/** (1): paired input blur race
+- **ui-bugs/** (2): paired input blur race, raw field names displayed to users
 
 Full tracking: `todos/` (90 items, 81 complete). Plans: `docs/plans/`. Solutions: `docs/solutions/`.
 
