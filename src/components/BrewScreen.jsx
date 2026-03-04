@@ -1157,7 +1157,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
   const savingRef = useRef(false)
 
   const isManual = brew.isManualEntry === true
-  const steps = brew.recipeSteps || []
+  const steps = brew.recipeSnapshot?.steps || brew.steps || []
   const stepResults = brew.stepResults || {}
 
   // Compute time status for display
@@ -1728,7 +1728,6 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
       targetTimeMin: recipe.targetTimeMin || null,
       targetTimeMax: recipe.targetTimeMax || null,
       steps: recipe.steps.map(s => ({ ...s })),
-      recipeSteps: recipe.steps,
       // Brew execution fields
       timeStatus: null,
       totalTime: null,

@@ -71,7 +71,7 @@ function compareBrews(brewA, brewB) {
     bFormatted: ratioB ? `1:${ratioB.toFixed(1)}` : '—',
   })
   if (ratioChanged) diffs.push('Ratio')
-  if (stepsChanged(brewA.recipeSteps, brewB.recipeSteps) || stepsChanged(brewA.steps, brewB.steps)) {
+  if (stepsChanged(brewA.recipeSnapshot?.steps, brewB.recipeSnapshot?.steps) || stepsChanged(brewA.steps, brewB.steps)) {
     diffs.push('Pour steps')
   }
 
@@ -226,7 +226,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
       if (brew.waterTemp !== prev.waterTemp) {
         diffs.push(`Temp: ${prev.waterTemp}° → ${brew.waterTemp}°`)
       }
-      if (stepsChanged(brew.recipeSteps, prev.recipeSteps) || stepsChanged(brew.steps, prev.steps)) {
+      if (stepsChanged(brew.recipeSnapshot?.steps, prev.recipeSnapshot?.steps) || stepsChanged(brew.steps, prev.steps)) {
         diffs.push('Pour plan changed')
       }
       if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
@@ -491,7 +491,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
         const diff = diffsMap[brew.id] || null
         const ratingInfo = RATING_SCALE.find(r => r.value === brew.rating)
         const actualSteps = isExpanded ? normalizeSteps(brew.steps) : []
-        const recipeSteps = isExpanded ? normalizeSteps(brew.recipeSteps) : []
+        const recipeSteps = isExpanded ? normalizeSteps(brew.recipeSnapshot?.steps) : []
 
         return (
           <div
@@ -656,7 +656,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       </div>
                     </div>
                   )}
-                  {recipeSteps.length > 0 && stepsChanged(brew.recipeSteps, brew.steps) && (
+                  {recipeSteps.length > 0 && brew.recipeSnapshot?.steps && stepsChanged(brew.recipeSnapshot.steps, brew.steps) && (
                     <div className="mt-1 text-xs">
                       <span className="text-amber-600">Actual pour steps differed from recipe plan</span>
                     </div>
