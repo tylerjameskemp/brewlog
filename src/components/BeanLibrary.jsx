@@ -1,8 +1,7 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { saveBean, updateBean, deleteBean, renameBrewBean, formatTime, normalizeName, getRecipes, updateRecipe, archiveRecipe } from '../data/storage'
-import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE } from '../data/defaults'
-import { getMethodName } from '../data/defaults'
+import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE, getMethodName } from '../data/defaults'
 import Collapsible from './Collapsible'
 import EmptyState from './EmptyState'
 import Modal from './Modal'
@@ -218,7 +217,7 @@ export default function BeanLibrary({ beans, setBeans, brews, recipes, setRecipe
 
                   {/* Recipe section */}
                   {recipes && (() => {
-                    const beanRecipes = (recipes || []).filter(r => r.beanId === bean.id)
+                    const beanRecipes = recipes.filter(r => r.beanId === bean.id)
                     if (beanRecipes.length === 0) return null
                     return (
                       <RecipeSection
@@ -307,7 +306,6 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
   const [editingNotesId, setEditingNotesId] = useState(null)
   const [notesBuffer, setNotesBuffer] = useState('')
   const [deletingRecipeId, setDeletingRecipeId] = useState(null)
-  const savingRef = useRef(false)
 
   const handleStartRename = (recipe) => {
     setEditingNameId(recipe.id)
@@ -317,10 +315,7 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
   const handleFinishRename = (id) => {
     const trimmed = nameBuffer.trim()
     if (trimmed && trimmed !== recipes.find(r => r.id === id)?.name) {
-      if (savingRef.current) return
-      savingRef.current = true
       onRename(id, trimmed)
-      savingRef.current = false
     }
     setEditingNameId(null)
   }
@@ -334,19 +329,13 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
     const trimmed = notesBuffer.trim()
     const original = recipes.find(r => r.id === id)?.notes || ''
     if (trimmed !== original) {
-      if (savingRef.current) return
-      savingRef.current = true
       onNotesUpdate(id, trimmed)
-      savingRef.current = false
     }
     setEditingNotesId(null)
   }
 
   const handleDelete = (id) => {
-    if (savingRef.current) return
-    savingRef.current = true
     onDelete(id)
-    savingRef.current = false
     setDeletingRecipeId(null)
   }
 
@@ -366,7 +355,7 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
                   onKeyDown={(e) => { if (e.key === 'Enter') handleFinishRename(recipe.id); if (e.key === 'Escape') setEditingNameId(null) }}
                   maxLength={100}
                   autoFocus
-                  className="flex-1 text-sm font-medium text-brew-800 bg-white border border-brew-200 rounded-lg px-2 py-1
+                  className="flex-1 text-base font-medium text-brew-800 bg-white border border-brew-200 rounded-lg px-2 py-1
                              focus:outline-none focus:ring-2 focus:ring-brew-400"
                 />
               ) : (
@@ -410,7 +399,7 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
                 rows={2}
                 autoFocus
                 placeholder="Add a note about this recipe..."
-                className="mt-2 w-full text-xs text-brew-600 bg-white border border-brew-200 rounded-lg px-2 py-1.5
+                className="mt-2 w-full text-base text-brew-600 bg-white border border-brew-200 rounded-lg px-2 py-1.5
                            focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
               />
             ) : recipe.notes ? (
@@ -441,13 +430,13 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleDelete(recipe.id)}
-                    className="text-xs px-3 py-1.5 min-h-[32px] font-medium text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                    className="text-xs px-3 py-1.5 min-h-[44px] font-medium text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                   >
                     Delete
                   </button>
                   <button
                     onClick={() => setDeletingRecipeId(null)}
-                    className="text-xs px-3 py-1.5 min-h-[32px] text-brew-400 hover:text-brew-600 rounded-lg transition-colors"
+                    className="text-xs px-3 py-1.5 min-h-[44px] text-brew-400 hover:text-brew-600 rounded-lg transition-colors"
                   >
                     Cancel
                   </button>

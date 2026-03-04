@@ -1447,11 +1447,22 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
   )
 }
 
+// Field display labels for fork prompt (raw field → user-friendly name)
+const FIELD_LABELS = {
+  coffeeGrams: 'Coffee', waterGrams: 'Water', grindSetting: 'Grind',
+  waterTemp: 'Temp', targetTime: 'Target time', targetTimeRange: 'Time range',
+  targetTimeMin: 'Min time', targetTimeMax: 'Max time',
+  pourTemplateId: 'Template', method: 'Method', grinder: 'Grinder',
+  dripper: 'Dripper', filterType: 'Filter',
+}
+
+// Fields to skip in fork prompt display (arrays/objects don't display well inline)
+const SKIP_DISPLAY_FIELDS = new Set(['steps'])
+
 // ─── Phase 4: Brew Success ──────────────────────────────────
 // Post-brew success screen. Shows confirmation and (when applicable) recipe fork prompt.
-function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, onStartNewBrew, onViewHistory, onUpdateRecipe, onSaveAsNewRecipe, setRecipes }) {
+function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, onStartNewBrew, onViewHistory, onUpdateRecipe, onSaveAsNewRecipe }) {
   const [forkDismissed, setForkDismissed] = useState(false)
-  const savingRef = useRef(false)
 
   // Compute whether brew settings differ from source recipe
   const sourceRecipe = useMemo(() => {
@@ -1495,9 +1506,9 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
             Your settings differed from "{sourceRecipe.name}"
           </p>
           <ul className="text-xs text-brew-500 mb-4 space-y-1">
-            {changedFields.map(({ field, brewVal, recipeVal }) => (
+            {changedFields.filter(({ field }) => !SKIP_DISPLAY_FIELDS.has(field)).map(({ field, brewVal, recipeVal }) => (
               <li key={field}>
-                <span className="font-medium text-brew-600">{field}:</span>{' '}
+                <span className="font-medium text-brew-600">{FIELD_LABELS[field] || field}:</span>{' '}
                 {String(recipeVal ?? '–')} → {String(brewVal ?? '–')}
               </li>
             ))}
@@ -1671,26 +1682,33 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     setRecipes(getRecipes())
   }, [finalBrewState, setRecipes])
 
-  // Fork prompt handler: save as new recipe from brew's values
-  const handleSaveAsNewFromFork = useCallback((recipeId) => {
-    if (!finalBrewState || !selectedBean?.id) return
+  // Shared helper: save a copy of an existing recipe with new field values
+  const saveRecipeAsNewCopy = useCallback((recipeId, recipeFields, { linkBrewId } = {}) => {
+    if (!selectedBean?.id) return null
     const sourceRecipe = (recipes || []).find(r => r.id === recipeId)
-    if (!sourceRecipe) return
+    if (!sourceRecipe) return null
     const beanRecipes = (recipes || []).filter(r => r.beanId === selectedBean.id)
     const newName = generateRecipeCopyName(sourceRecipe.name, beanRecipes)
-    const fields = {}
-    RECIPE_FIELDS.forEach(f => { if (finalBrewState[f] !== undefined) fields[f] = finalBrewState[f] })
     const newRecipe = saveRecipe({
       beanId: selectedBean.id,
       name: newName,
-      ...fields,
+      ...recipeFields,
       lastUsedAt: new Date().toISOString(),
     })
-    if (newRecipe && ratingBrew?.id) {
-      updateBrew(ratingBrew.id, { recipeId: newRecipe.id })
+    if (newRecipe && linkBrewId) {
+      updateBrew(linkBrewId, { recipeId: newRecipe.id })
     }
     setRecipes(getRecipes())
-  }, [finalBrewState, selectedBean, recipes, ratingBrew, setRecipes])
+    return newRecipe
+  }, [selectedBean, recipes, setRecipes])
+
+  // Fork prompt handler: save as new recipe from brew's values
+  const handleSaveAsNewFromFork = useCallback((recipeId) => {
+    if (!finalBrewState) return
+    const fields = {}
+    RECIPE_FIELDS.forEach(f => { if (finalBrewState[f] !== undefined) fields[f] = finalBrewState[f] })
+    saveRecipeAsNewCopy(recipeId, fields, { linkBrewId: ratingBrew?.id })
+  }, [finalBrewState, ratingBrew, saveRecipeAsNewCopy])
 
   // Build a brew record from current recipe + bean state
   const buildBrewRecord = useCallback((overrides = {}) => {
@@ -1904,20 +1922,8 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
             setRecipes(getRecipes())
           }}
           onSaveAsNewRecipe={(recipeId) => {
-            const source = (recipes || []).find(r => r.id === recipeId)
-            if (!source || !selectedBean?.id) return
-            const beanRecipes = (recipes || []).filter(r => r.beanId === selectedBean.id)
-            const newName = generateRecipeCopyName(source.name, beanRecipes)
-            const newRecipe = saveRecipe({
-              beanId: selectedBean.id,
-              name: newName,
-              ...formStateToRecipeFields(recipe),
-              lastUsedAt: new Date().toISOString(),
-            })
-            if (newRecipe) {
-              setSelectedRecipeId(newRecipe.id)
-              setRecipes(getRecipes())
-            }
+            const newRecipe = saveRecipeAsNewCopy(recipeId, formStateToRecipeFields(recipe))
+            if (newRecipe) setSelectedRecipeId(newRecipe.id)
           }}
           onStartBrew={() => setPhase('brew')}
           onLogWithoutTimer={handleLogWithoutTimer}
@@ -1959,7 +1965,6 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           onViewHistory={() => onNavigate('history')}
           onUpdateRecipe={handleUpdateRecipeFromFork}
           onSaveAsNewRecipe={handleSaveAsNewFromFork}
-          setRecipes={setRecipes}
         />
       )}
     </div>
