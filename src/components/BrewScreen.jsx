@@ -166,8 +166,50 @@ function BeanPicker({ beans, onSelect }) {
   )
 }
 
+// ─── Recipe Save Choice — inline Update vs Save-as-New ──────
+function RecipeSaveChoice({ recipeName, onUpdate, onSaveAsNew }) {
+  const [showChoice, setShowChoice] = useState(false)
+
+  if (!showChoice) {
+    return (
+      <button
+        onClick={() => setShowChoice(true)}
+        className="w-full py-2.5 text-sm font-medium text-brew-600 border border-brew-300
+                   rounded-xl hover:bg-brew-50 active:scale-[0.99] transition-all min-h-[44px]"
+      >
+        Save changes to recipe
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-white border border-amber-200 rounded-xl p-4 space-y-2">
+      <button
+        onClick={() => { onUpdate(); setShowChoice(false) }}
+        className="w-full py-2.5 text-sm font-semibold text-white bg-brew-800
+                   rounded-xl hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
+      >
+        Update "{recipeName}"
+      </button>
+      <button
+        onClick={() => { onSaveAsNew(); setShowChoice(false) }}
+        className="w-full py-2.5 text-sm font-medium text-brew-600 border border-brew-200
+                   rounded-xl hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
+      >
+        Save as New Recipe
+      </button>
+      <button
+        onClick={() => setShowChoice(false)}
+        className="w-full text-xs text-brew-400 hover:text-brew-600 transition-colors mt-1"
+      >
+        Cancel
+      </button>
+    </div>
+  )
+}
+
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onLogWithoutTimer, onBack, onBeanUpdate, equipment, beanRecipes, selectedRecipeId, onRecipeSelect, onSaveToRecipe }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onLogWithoutTimer, onBack, onBeanUpdate, equipment, beanRecipes, selectedRecipeId, onRecipeSelect, onSaveToRecipe, onSaveAsNewRecipe }) {
 
   const [cardIndex, setCardIndex] = useState(0)
   const [editing, setEditing] = useState(false)
@@ -786,13 +828,11 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
             if (!differs) return null
             return (
               <div className="px-4 mt-3">
-                <button
-                  onClick={() => onSaveToRecipe(selectedRecipeId)}
-                  className="w-full py-2.5 text-sm font-medium text-brew-600 border border-brew-300
-                             rounded-xl hover:bg-brew-50 active:scale-[0.99] transition-all min-h-[44px]"
-                >
-                  Save changes to recipe
-                </button>
+                <RecipeSaveChoice
+                  recipeName={loaded.name}
+                  onUpdate={() => onSaveToRecipe(selectedRecipeId)}
+                  onSaveAsNew={() => onSaveAsNewRecipe(selectedRecipeId)}
+                />
               </div>
             )
           })()}
@@ -1849,6 +1889,22 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           onSaveToRecipe={(recipeId) => {
             updateRecipe(recipeId, formStateToRecipeFields(recipe))
             setRecipes(getRecipes())
+          }}
+          onSaveAsNewRecipe={(recipeId) => {
+            const source = (recipes || []).find(r => r.id === recipeId)
+            if (!source || !selectedBean?.id) return
+            const beanRecipes = (recipes || []).filter(r => r.beanId === selectedBean.id)
+            const newName = generateRecipeCopyName(source.name, beanRecipes)
+            const newRecipe = saveRecipe({
+              beanId: selectedBean.id,
+              name: newName,
+              ...formStateToRecipeFields(recipe),
+              lastUsedAt: new Date().toISOString(),
+            })
+            if (newRecipe) {
+              setSelectedRecipeId(newRecipe.id)
+              setRecipes(getRecipes())
+            }
           }}
           onStartBrew={() => setPhase('brew')}
           onLogWithoutTimer={handleLogWithoutTimer}
