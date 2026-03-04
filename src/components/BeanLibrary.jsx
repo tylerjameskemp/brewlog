@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { saveBean, updateBean, deleteBean, renameBrewBean, formatTime, normalizeName } from '../data/storage'
+import { saveBean, updateBean, deleteBean, renameBrewBean, formatTime, normalizeName, getRecipes, updateRecipe, archiveRecipe } from '../data/storage'
 import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE } from '../data/defaults'
+import { getMethodName } from '../data/defaults'
 import Collapsible from './Collapsible'
 import EmptyState from './EmptyState'
 import Modal from './Modal'
@@ -13,7 +14,7 @@ import Modal from './Modal'
 // Click a card to expand and see all brews made with that bean.
 // Add/edit beans via a modal form. Delete with inline confirmation.
 
-export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onBrewBean }) {
+export default function BeanLibrary({ beans, setBeans, brews, recipes, setRecipes, onBrewsChange, onBrewBean }) {
   const [expandedBeanId, setExpandedBeanId] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingBean, setEditingBean] = useState(null)
@@ -215,6 +216,21 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
                     )}
                   </div>
 
+                  {/* Recipe section */}
+                  {recipes && (() => {
+                    const beanRecipes = (recipes || []).filter(r => r.beanId === bean.id)
+                    if (beanRecipes.length === 0) return null
+                    return (
+                      <RecipeSection
+                        recipes={beanRecipes}
+                        onRename={(id, name) => { updateRecipe(id, { name }); setRecipes(getRecipes()) }}
+                        onDelete={(id) => { archiveRecipe(id); setRecipes(getRecipes()) }}
+                        onNotesUpdate={(id, notes) => { updateRecipe(id, { notes }); setRecipes(getRecipes()) }}
+                        isLastRecipe={beanRecipes.length === 1}
+                      />
+                    )
+                  })()}
+
                   {/* Brew list */}
                   {beanBrews.length > 0 ? (
                     <div className="space-y-2">
@@ -280,6 +296,167 @@ export default function BeanLibrary({ beans, setBeans, brews, onBrewsChange, onB
           onClose={() => { setShowForm(false); setEditingBean(null) }}
         />
       )}
+    </div>
+  )
+}
+
+// --- RECIPE SECTION — inline recipe list within expanded bean card ---
+function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecipe }) {
+  const [editingNameId, setEditingNameId] = useState(null)
+  const [nameBuffer, setNameBuffer] = useState('')
+  const [editingNotesId, setEditingNotesId] = useState(null)
+  const [notesBuffer, setNotesBuffer] = useState('')
+  const [deletingRecipeId, setDeletingRecipeId] = useState(null)
+  const savingRef = useRef(false)
+
+  const handleStartRename = (recipe) => {
+    setEditingNameId(recipe.id)
+    setNameBuffer(recipe.name)
+  }
+
+  const handleFinishRename = (id) => {
+    const trimmed = nameBuffer.trim()
+    if (trimmed && trimmed !== recipes.find(r => r.id === id)?.name) {
+      if (savingRef.current) return
+      savingRef.current = true
+      onRename(id, trimmed)
+      savingRef.current = false
+    }
+    setEditingNameId(null)
+  }
+
+  const handleStartNotes = (recipe) => {
+    setEditingNotesId(recipe.id)
+    setNotesBuffer(recipe.notes || '')
+  }
+
+  const handleFinishNotes = (id) => {
+    const trimmed = notesBuffer.trim()
+    const original = recipes.find(r => r.id === id)?.notes || ''
+    if (trimmed !== original) {
+      if (savingRef.current) return
+      savingRef.current = true
+      onNotesUpdate(id, trimmed)
+      savingRef.current = false
+    }
+    setEditingNotesId(null)
+  }
+
+  const handleDelete = (id) => {
+    if (savingRef.current) return
+    savingRef.current = true
+    onDelete(id)
+    savingRef.current = false
+    setDeletingRecipeId(null)
+  }
+
+  return (
+    <div className="mb-4">
+      <span className="text-xs font-medium text-brew-500">Recipes:</span>
+      <div className="mt-2 space-y-2">
+        {recipes.map(recipe => (
+          <div key={recipe.id} className="p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+            <div className="flex items-center gap-2">
+              {editingNameId === recipe.id ? (
+                <input
+                  type="text"
+                  value={nameBuffer}
+                  onChange={(e) => setNameBuffer(e.target.value)}
+                  onBlur={() => handleFinishRename(recipe.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleFinishRename(recipe.id); if (e.key === 'Escape') setEditingNameId(null) }}
+                  maxLength={100}
+                  autoFocus
+                  className="flex-1 text-sm font-medium text-brew-800 bg-white border border-brew-200 rounded-lg px-2 py-1
+                             focus:outline-none focus:ring-2 focus:ring-brew-400"
+                />
+              ) : (
+                <button
+                  onClick={() => handleStartRename(recipe)}
+                  className="flex-1 text-left text-sm font-medium text-brew-800 hover:text-brew-600 transition-colors truncate"
+                  title="Click to rename"
+                >
+                  {recipe.name}
+                </button>
+              )}
+              {deletingRecipeId !== recipe.id && editingNameId !== recipe.id && (
+                <button
+                  onClick={() => setDeletingRecipeId(recipe.id)}
+                  className="text-brew-300 hover:text-red-400 transition-colors flex-shrink-0 p-1"
+                  title="Delete recipe"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Settings summary */}
+            <div className="text-xs text-brew-400 mt-1">
+              {recipe.coffeeGrams && recipe.waterGrams && (
+                <span className="font-mono">{recipe.coffeeGrams}g / {recipe.waterGrams}g</span>
+              )}
+              {recipe.grindSetting && <span className="font-mono"> · grind {recipe.grindSetting}</span>}
+              {recipe.method && <span> · {getMethodName(recipe.method)}</span>}
+            </div>
+
+            {/* Notes */}
+            {editingNotesId === recipe.id ? (
+              <textarea
+                value={notesBuffer}
+                onChange={(e) => setNotesBuffer(e.target.value)}
+                onBlur={() => handleFinishNotes(recipe.id)}
+                maxLength={500}
+                rows={2}
+                autoFocus
+                placeholder="Add a note about this recipe..."
+                className="mt-2 w-full text-xs text-brew-600 bg-white border border-brew-200 rounded-lg px-2 py-1.5
+                           focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
+              />
+            ) : recipe.notes ? (
+              <button
+                onClick={() => handleStartNotes(recipe)}
+                className="mt-1 text-xs text-brew-500 italic text-left line-clamp-2 hover:text-brew-700 transition-colors"
+                title="Click to edit note"
+              >
+                {recipe.notes}
+              </button>
+            ) : (
+              <button
+                onClick={() => handleStartNotes(recipe)}
+                className="mt-1 text-xs text-brew-300 hover:text-brew-500 transition-colors"
+              >
+                + Add note
+              </button>
+            )}
+
+            {/* Delete confirmation */}
+            {deletingRecipeId === recipe.id && (
+              <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-100">
+                <p className="text-xs text-red-600 mb-2">
+                  {isLastRecipe
+                    ? 'This is the only recipe for this bean. Your next brew will start with default settings.'
+                    : 'Delete this recipe? Your brew history won\'t be affected.'}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleDelete(recipe.id)}
+                    className="text-xs px-3 py-1.5 min-h-[32px] font-medium text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setDeletingRecipeId(null)}
+                    className="text-xs px-3 py-1.5 min-h-[32px] text-brew-400 hover:text-brew-600 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
