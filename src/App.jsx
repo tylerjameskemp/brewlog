@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getBrews, getEquipment, getBeans, getRecipes, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, migrateExtractRecipes, seedDefaultPourTemplates } from './data/storage'
+import { getBrews, getEquipment, getBeans, getRecipes, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, migrateExtractRecipes, migrateDropRecipeSteps, seedDefaultPourTemplates, updateRecipe, forkRecipe } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
@@ -28,7 +28,7 @@ function App() {
   // Think of these as variables that React watches for changes.
 
   const [view, setViewRaw] = useState('brew')           // Which screen to show
-  const [brews, setBrews] = useState(() => { migrateGrindSettings(); seedDefaultPourTemplates(); migrateBloomToSteps(); migrateToSchemaV2(); migrateExtractRecipes(); return getBrews() })
+  const [brews, setBrews] = useState(() => { migrateGrindSettings(); seedDefaultPourTemplates(); migrateBloomToSteps(); migrateToSchemaV2(); migrateExtractRecipes(); migrateDropRecipeSteps(); return getBrews() })
   const [equipment, setEquipment] = useState(() => getEquipment())    // User's gear profile
   const [beans, setBeans] = useState(() => deduplicateBeans())              // Bean library
   const [recipes, setRecipes] = useState(() => getRecipes())          // Recipe library
@@ -87,6 +87,7 @@ function App() {
             onImportComplete={() => {
               migrateToSchemaV2()
               migrateExtractRecipes()
+              migrateDropRecipeSteps()
               setBrews(getBrews())
               setEquipment(getEquipment())
               setBeans(deduplicateBeans())
@@ -147,6 +148,15 @@ function App() {
               onEditComplete={() => {
                 setEditingBrew(null)
                 setView('history')
+              }}
+              recipes={recipes}
+              onUpdateRecipe={(recipeId, fields) => {
+                updateRecipe(recipeId, fields)
+                setRecipes(getRecipes())
+              }}
+              onSaveAsNewRecipe={(recipeId, fields) => {
+                forkRecipe(recipeId, fields)
+                setRecipes(getRecipes())
               }}
             />
           )}

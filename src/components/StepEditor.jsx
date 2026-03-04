@@ -1,11 +1,19 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { normalizeSteps } from '../data/storage'
 
 // ============================================================
 // STEP EDITOR — Inline pour step editor for brew recipes
 // ============================================================
-// Each step captures: name, time (seconds), waterTo (grams), technique note.
-// Used in both Recipe phase (planning) and Brew phase (copy-on-write).
-// Modeled after FlavorPicker's prop interface: steps + onChange.
+// Each step captures: name, time (seconds), duration (seconds), waterTo (grams), technique note.
+// Used in RecipeAssembly (planning), BrewForm (editing actuals), and anywhere steps are edited.
+//
+// Props:
+//   steps      — array of step objects
+//   onChange   — called with updated steps array
+//   disabled   — locks all editing
+//   hint       — optional help text
+//   cascadeTime — when true, duration changes auto-cascade start times; time field becomes read-only
+//   plannedSteps — when provided, shows inline diff annotations comparing each step against the plan
 
 function formatTimeDisplay(seconds) {
   if (seconds == null || seconds === '') return ''
@@ -16,50 +24,75 @@ function formatTimeDisplay(seconds) {
   return `${m}:${sec.toString().padStart(2, '0')}`
 }
 
-function StepRow({ step, index, onChange, onRemove, disabled }) {
+// Match actual steps against planned steps by id for diff annotations
+function buildDiffMap(actualSteps, plannedSteps) {
+  if (!plannedSteps || plannedSteps.length === 0) return null
+  const planned = normalizeSteps(plannedSteps)
+  const plannedById = new Map(planned.map(s => [s.id, s]))
+  const actualIds = new Set(actualSteps.map(s => s.id))
+
+  const stepDiffs = new Map()
+  for (const step of actualSteps) {
+    const plan = plannedById.get(step.id)
+    if (!plan) {
+      stepDiffs.set(step.id, { isAdded: true })
+      continue
+    }
+    const fieldDiffs = {}
+    for (const field of ['name', 'duration', 'waterTo', 'time']) {
+      if (step[field] !== plan[field] && (step[field] != null || plan[field] != null)) {
+        fieldDiffs[field] = plan[field]
+      }
+    }
+    if (Object.keys(fieldDiffs).length > 0) {
+      stepDiffs.set(step.id, { fields: fieldDiffs })
+    }
+  }
+
+  // Find removed steps (in plan but not in actuals)
+  const removed = planned.filter(s => !actualIds.has(s.id))
+
+  return { stepDiffs, removed }
+}
+
+function DiffTag({ children }) {
   return (
-    <div className="flex flex-col gap-2 p-3 bg-brew-50/50 rounded-xl border border-brew-100">
-      {/* Row 1: Name, Time, Water, Remove */}
+    <span className="text-[9px] text-amber-500 font-medium ml-1">
+      {children}
+    </span>
+  )
+}
+
+function StepRow({ step, index, onChange, onRemove, disabled, cascadeTime, diff }) {
+  return (
+    <div className={`flex flex-col gap-2 p-3 rounded-xl border ${
+      diff?.isAdded ? 'bg-green-50/50 border-green-200' : 'bg-brew-50/50 border-brew-100'
+    }`}>
+      {/* Row 1: Name, Duration, Time, Water, Remove */}
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-semibold text-brew-400 uppercase w-5 flex-shrink-0">
           {index + 1}
         </span>
-        <input
-          type="text"
-          value={step.name || ''}
-          onChange={(e) => onChange({ ...step, name: e.target.value })}
-          placeholder="e.g., Bloom, First pour"
-          disabled={disabled}
-          className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-brew-200 text-sm text-brew-800
-                     placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                     disabled:bg-brew-50 disabled:text-brew-500"
-        />
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex-1 min-w-0">
           <input
-            type="number"
-            value={step.time ?? ''}
-            onChange={(e) => onChange({ ...step, time: e.target.value === '' ? null : Number(e.target.value) })}
-            placeholder="0"
+            type="text"
+            value={step.name || ''}
+            onChange={(e) => onChange({ ...step, name: e.target.value })}
+            placeholder="e.g., Bloom, First pour"
             disabled={disabled}
-            className="w-16 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
+            className="w-full px-2 py-1.5 rounded-lg border border-brew-200 text-sm text-brew-800
                        placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
                        disabled:bg-brew-50 disabled:text-brew-500"
           />
-          <span className="text-[10px] text-brew-400">sec</span>
+          {diff?.fields?.name != null && (
+            <DiffTag>planned: {diff.fields.name || '(empty)'}</DiffTag>
+          )}
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <input
-            type="number"
-            value={step.waterTo ?? ''}
-            onChange={(e) => onChange({ ...step, waterTo: e.target.value === '' ? null : Number(e.target.value) })}
-            placeholder="—"
-            disabled={disabled}
-            className="w-16 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
-                       placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                       disabled:bg-brew-50 disabled:text-brew-500"
-          />
-          <span className="text-[10px] text-brew-400">g</span>
-        </div>
+        {diff?.isAdded && (
+          <span className="text-[9px] text-green-600 font-medium bg-green-100 px-1.5 py-0.5 rounded flex-shrink-0">
+            added
+          </span>
+        )}
         {!disabled && (
           <button
             onClick={onRemove}
@@ -73,14 +106,70 @@ function StepRow({ step, index, onChange, onRemove, disabled }) {
         )}
       </div>
 
-      {/* Time display hint */}
-      {step.time != null && step.time !== '' && (
-        <div className="ml-7 text-[10px] text-brew-400 -mt-1">
-          {formatTimeDisplay(step.time)}
+      {/* Row 2: Duration + Time + Water */}
+      <div className="ml-7 flex items-center gap-3 flex-wrap">
+        {/* Duration */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <input
+            type="number"
+            value={step.duration ?? ''}
+            onChange={(e) => onChange({ ...step, duration: e.target.value === '' ? null : Number(e.target.value) })}
+            placeholder="40"
+            disabled={disabled}
+            className="w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
+                       placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
+                       disabled:bg-brew-50 disabled:text-brew-500"
+          />
+          <span className="text-[10px] text-brew-400">sec</span>
+          {diff?.fields?.duration != null && (
+            <DiffTag>planned: {diff.fields.duration ?? '—'}s</DiffTag>
+          )}
         </div>
-      )}
 
-      {/* Row 2: Note */}
+        {/* Time (start time) */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {cascadeTime ? (
+            <span className="w-14 px-2 py-1.5 text-sm font-mono text-brew-500 text-center">
+              {formatTimeDisplay(step.time)}
+            </span>
+          ) : (
+            <input
+              type="number"
+              value={step.time ?? ''}
+              onChange={(e) => onChange({ ...step, time: e.target.value === '' ? null : Number(e.target.value) })}
+              placeholder="0"
+              disabled={disabled}
+              className="w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
+                         placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
+                         disabled:bg-brew-50 disabled:text-brew-500"
+            />
+          )}
+          <span className="text-[10px] text-brew-400">@</span>
+          {diff?.fields?.time != null && !cascadeTime && (
+            <DiffTag>planned: {formatTimeDisplay(diff.fields.time)}</DiffTag>
+          )}
+        </div>
+
+        {/* Water */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <input
+            type="number"
+            value={step.waterTo ?? ''}
+            onChange={(e) => onChange({ ...step, waterTo: e.target.value === '' ? null : Number(e.target.value) })}
+            placeholder="—"
+            disabled={disabled}
+            className="w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-sm font-mono text-brew-800 text-center
+                       placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
+                       disabled:bg-brew-50 disabled:text-brew-500"
+          />
+          <span className="text-[10px] text-brew-400">g</span>
+          {diff?.fields?.waterTo != null && (
+            <DiffTag>planned: {diff.fields.waterTo ?? '—'}g</DiffTag>
+          )}
+        </div>
+      </div>
+
+      {/* Row 3: Note */}
       <div className="ml-7">
         <input
           type="text"
@@ -97,27 +186,64 @@ function StepRow({ step, index, onChange, onRemove, disabled }) {
   )
 }
 
-export default function StepEditor({ steps = [], onChange, disabled = false, hint }) {
+// Removed step row — shown in diff mode for steps in plan but not in actuals
+function RemovedStepRow({ step }) {
+  return (
+    <div className="flex flex-col gap-1 p-3 bg-red-50/30 rounded-xl border border-red-200/50 opacity-60">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold text-red-300 uppercase w-5 flex-shrink-0">
+          {'\u2212'}
+        </span>
+        <span className="text-sm text-red-400 line-through flex-1">{step.name || `Step #${step.id}`}</span>
+        <span className="text-[9px] text-red-400 font-medium bg-red-100 px-1.5 py-0.5 rounded">
+          removed
+        </span>
+      </div>
+      <div className="ml-7 text-[10px] text-red-300">
+        {step.duration ? `${step.duration}s` : ''}{step.waterTo ? ` · ${step.waterTo}g` : ''}
+      </div>
+    </div>
+  )
+}
+
+// Recalculate start times from step durations (step 0 keeps its time)
+function recascade(steps) {
+  for (let i = 1; i < steps.length; i++) {
+    const prevEnd = (steps[i - 1].time || 0) + (steps[i - 1].duration || 0)
+    steps[i] = { ...steps[i], time: prevEnd }
+  }
+  return steps
+}
+
+export default function StepEditor({ steps = [], onChange, disabled = false, hint, cascadeTime = false, plannedSteps }) {
+  const diffData = useMemo(
+    () => plannedSteps ? buildDiffMap(steps, plannedSteps) : null,
+    [steps, plannedSteps]
+  )
+
   const handleStepChange = (index, updatedStep) => {
     const newSteps = [...steps]
     newSteps[index] = updatedStep
+    if (cascadeTime && updatedStep.duration !== steps[index].duration) recascade(newSteps)
     onChange(newSteps)
   }
 
   const handleRemove = (index) => {
-    onChange(steps.filter((_, i) => i !== index))
+    const newSteps = steps.filter((_, i) => i !== index)
+    if (cascadeTime) recascade(newSteps)
+    onChange(newSteps)
   }
 
   const handleAdd = () => {
     // Default new step: guess start time from last step
     const lastStep = steps[steps.length - 1]
-    const nextTime = lastStep?.time != null ? lastStep.time + 40 : 0
+    const nextTime = lastStep ? (lastStep.time || 0) + (lastStep.duration || 40) : 0
     onChange([...steps, {
       id: (steps.length > 0 ? Math.max(...steps.map(s => s.id || 0)) : 0) + 1,
       name: '',
       time: nextTime,
+      duration: 40,
       waterTo: null,
-      duration: null,
       note: '',
     }])
   }
@@ -128,7 +254,7 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
         <p className="text-[10px] text-brew-400 mb-1">{hint}</p>
       )}
 
-      {steps.length === 0 && (
+      {steps.length === 0 && !diffData?.removed?.length && (
         <p className="text-xs text-brew-400 text-center py-2">
           No steps yet. Add your first pour step below.
         </p>
@@ -142,7 +268,14 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
           onChange={(updated) => handleStepChange(index, updated)}
           onRemove={() => handleRemove(index)}
           disabled={disabled}
+          cascadeTime={cascadeTime}
+          diff={diffData?.stepDiffs?.get(step.id)}
         />
+      ))}
+
+      {/* Removed steps from plan */}
+      {diffData?.removed?.map((step, i) => (
+        <RemovedStepRow key={`removed-${step.id}`} step={step} />
       ))}
 
       {!disabled && (

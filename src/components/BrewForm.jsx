@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { updateBrew, saveBean, getBeans, formatTime, parseTimeRange, formatTimeRange, normalizeSteps } from '../data/storage'
+import { updateBrew, updateRecipe, saveBean, getBeans, formatTime, parseTimeRange, formatTimeRange, normalizeSteps } from '../data/storage'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import StepEditor from './StepEditor'
@@ -12,24 +12,28 @@ import Collapsible from './Collapsible'
 // New brews are created via BrewScreen's guided flow.
 //
 // Structured into three phases that mirror the actual brewing workflow:
-//   1. RECIPE — the plan (bean, dose, grind, water, bloom)
-//   2. BREW — what happened (timing, actual bloom, issues, notes)
+//   1. RECIPE — the plan (bean, dose, grind, water)
+//   2. BREW — what happened (timing, steps, issues, notes)
 //   3. TASTING — the results (flavors, body, rating)
+//
+// Pour steps: ONE StepEditor editing `steps` (actuals), with inline diff
+// annotations comparing against `recipeSnapshot.steps` (the frozen plan).
 
-export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete }) {
-  const getRecipeSteps = (brew) => {
-    if (Array.isArray(brew?.recipeSteps) && brew.recipeSteps.length > 0) return normalizeSteps(brew.recipeSteps)
-    return []
-  }
-
+export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete, recipes, onUpdateRecipe, onSaveAsNewRecipe }) {
   const getActualSteps = (brew) => {
     if (Array.isArray(brew?.steps) && brew.steps.length > 0) return normalizeSteps(brew.steps)
+    if (Array.isArray(brew?.recipeSnapshot?.steps) && brew.recipeSnapshot.steps.length > 0) return normalizeSteps(brew.recipeSnapshot.steps)
     return []
   }
 
   // Get the user's grinder config for setting display
   const grinder = GRINDERS.find(g => g.id === equipment?.grinder) || GRINDERS[0]
   const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
+
+  // Planned steps from recipe snapshot (for diff annotations)
+  const plannedSteps = editBrew?.recipeSnapshot?.steps
+    ? normalizeSteps(editBrew.recipeSnapshot.steps)
+    : null
 
   const [form, setForm] = useState(() => {
     return {
@@ -60,8 +64,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       // Notes
       notes: editBrew?.notes || '',
 
-      // Pour steps (copy-on-write: recipe = plan, steps = actual)
-      recipeSteps: getRecipeSteps(editBrew),
+      // Pour steps — single field (actuals)
       steps: getActualSteps(editBrew),
     }
   })
@@ -71,19 +74,12 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
   )
 
   const [saved, setSaved] = useState(false)
+  const [showRecipePrompt, setShowRecipePrompt] = useState(false)
   const savingRef = useRef(false)
-  const stepsModifiedRef = useRef(false)
-  const recipeStepsModifiedRef = useRef(false)
 
   // Helper to update form fields
   const update = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
-    setSaved(false)
-  }
-
-  // Bean name change handler — in edit mode, just update the name
-  const handleBeanNameChange = (newName) => {
-    setForm(prev => ({ ...prev, beanName: newName }))
     setSaved(false)
   }
 
@@ -99,21 +95,11 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
     const trimmedName = form.beanName.trim()
 
-    // Resolve steps: preserve original data unless user actively modified
-    let finalRecipeSteps = form.recipeSteps
-    let finalSteps
+    // Structural comparison: did steps actually change from original?
+    const stepsChanged = JSON.stringify(form.steps) !== JSON.stringify(getActualSteps(editBrew))
+    const finalSteps = stepsChanged ? form.steps : editBrew.steps
 
-    // Preserve original exactly as stored — including undefined/missing
-    if (!recipeStepsModifiedRef.current) {
-      finalRecipeSteps = editBrew.recipeSteps
-    }
-    if (!stepsModifiedRef.current) {
-      finalSteps = editBrew.steps ?? editBrew.recipeSteps ?? []
-    } else {
-      finalSteps = form.steps.length > 0 ? form.steps : finalRecipeSteps
-    }
-
-    // Update existing brew and navigate back
+    // Update existing brew
     // Preserve fields the form doesn't manage (per documented learning:
     // edit-form-overwrites-fields-it-doesnt-manage)
     const updatedBrews = updateBrew(editBrew.id, {
@@ -121,7 +107,6 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       beanName: trimmedName,
       targetTime: form.targetTime || undefined,
       totalTime: form.totalTime || form.targetTime || undefined,
-      recipeSteps: finalRecipeSteps,
       steps: finalSteps,
       // Preserve schema V2 fields the form doesn't manage
       stepResults: editBrew.stepResults,
@@ -142,12 +127,34 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     }
     onBrewSaved(updatedBrews)
     savingRef.current = false
+    setSaved(true)
+
+    // Check if steps differ from plan and we have a valid recipe to update
+    const hasRecipe = editBrew.recipeId && recipes?.find(r => r.id === editBrew.recipeId && !r.archivedAt)
+    const planChanged = stepsChanged && plannedSteps && JSON.stringify(form.steps) !== JSON.stringify(plannedSteps)
+    if (hasRecipe && planChanged) {
+      setShowRecipePrompt(true)
+    } else {
+      onEditComplete()
+    }
+  }
+
+  const handleRecipeAction = (action) => {
+    if (action === 'update') {
+      onUpdateRecipe?.(editBrew.recipeId, { steps: form.steps })
+    } else if (action === 'saveNew') {
+      onSaveAsNewRecipe?.(editBrew.recipeId, { steps: form.steps })
+    }
+    // 'keep' = dismiss
+    setShowRecipePrompt(false)
     onEditComplete()
   }
 
   // --- FORM LAYOUT ---
   // Organized into three phases: Recipe → Brew → Tasting
   // Each phase has a header and one or more collapsible sections.
+
+  const hasSteps = form.steps.length > 0 || (plannedSteps && plannedSteps.length > 0)
 
   return (
     <div className="mt-6 space-y-4">
@@ -169,7 +176,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
             <input
               type="text"
               value={form.beanName}
-              onChange={(e) => handleBeanNameChange(e.target.value)}
+              onChange={(e) => update('beanName', e.target.value)}
               placeholder="e.g., Heart Columbia Javier Omar"
               list="bean-suggestions"
               maxLength={100}
@@ -336,15 +343,6 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         </div>
       </Section>
 
-      {/* ---- POUR STEPS (Recipe) ---- */}
-      <Section title="Pour Steps" defaultOpen={form.recipeSteps.length > 0}>
-        <StepEditor
-          steps={form.recipeSteps}
-          onChange={(steps) => { recipeStepsModifiedRef.current = true; update('recipeSteps', steps) }}
-          hint="Plan each pour stage — bloom, main pours, drawdown."
-        />
-      </Section>
-
       {/* ===== PHASE 2: BREW ===== */}
       <PhaseHeader number={2} title="Brew" subtitle="What happened" phase="brew" />
 
@@ -375,13 +373,14 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         </div>
       </Section>
 
-      {/* ---- POUR STEPS (Brew — copy-on-write from recipe) ---- */}
-      {form.recipeSteps.length > 0 && (
+      {/* ---- POUR STEPS (single editor with diff annotations) ---- */}
+      {hasSteps && (
         <Section title="Pour Steps" defaultOpen>
           <StepEditor
-            steps={form.steps.length > 0 ? form.steps : form.recipeSteps}
-            onChange={(steps) => { stepsModifiedRef.current = true; update('steps', steps) }}
-            hint="Your planned steps are shown below. Modify anything that went differently, or delete steps you skipped."
+            steps={form.steps}
+            onChange={(steps) => update('steps', steps)}
+            plannedSteps={plannedSteps}
+            hint="Modify anything that went differently from your plan."
           />
         </Section>
       )}
@@ -492,6 +491,39 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       >
         {saved ? '\u2713 Brew Updated!' : 'Update Brew'}
       </button>
+
+      {/* Recipe update prompt — shown after save when steps differ from plan */}
+      {showRecipePrompt && (
+        <div className="px-4 py-4 bg-amber-50 border border-amber-200 rounded-xl animate-fade-in motion-reduce:animate-none">
+          <p className="text-sm text-amber-700 font-medium mb-3">
+            Your steps differed from the original plan. Update the recipe?
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleRecipeAction('update')}
+              className="flex-1 py-2.5 rounded-xl text-xs font-medium bg-amber-500 text-white
+                         hover:bg-amber-600 transition-colors min-h-[44px]"
+            >
+              Update Recipe
+            </button>
+            <button
+              onClick={() => handleRecipeAction('saveNew')}
+              className="flex-1 py-2.5 rounded-xl text-xs font-medium border border-amber-300 text-amber-700
+                         hover:bg-amber-100 transition-colors min-h-[44px]"
+            >
+              Save as New
+            </button>
+            <button
+              onClick={() => handleRecipeAction('keep')}
+              className="flex-1 py-2.5 rounded-xl text-xs font-medium text-amber-500
+                         hover:bg-amber-50 transition-colors min-h-[44px]"
+            >
+              Keep Original
+            </button>
+          </div>
+        </div>
+      )}
+
       <button
         onClick={onEditComplete}
         className="w-full py-3 rounded-2xl font-medium text-brew-500

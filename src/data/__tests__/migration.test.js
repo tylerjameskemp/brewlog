@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { migrateToSchemaV2, getBrews } from '../storage'
+import { migrateToSchemaV2, migrateDropRecipeSteps, getBrews } from '../storage'
 
 describe('migrateToSchemaV2', () => {
   it('migrates a legacy BrewForm brew to schema V2', () => {
@@ -228,5 +228,98 @@ describe('migrateToSchemaV2', () => {
     const result = getBrews()
     expect(result).toHaveLength(2) // nulls filtered by getBrews()
     expect(result.every(b => b.schemaVersion === 2)).toBe(true)
+  })
+})
+
+describe('migrateDropRecipeSteps', () => {
+  it('drops recipeSteps when recipeSnapshot.steps exists', () => {
+    const brews = [{
+      id: 'b1',
+      beanName: 'Test',
+      brewedAt: '2026-03-01T00:00:00Z',
+      recipeSteps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }],
+      recipeSnapshot: { steps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }] },
+      steps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }],
+    }]
+    localStorage.setItem('brewlog_brews', JSON.stringify(brews))
+
+    migrateDropRecipeSteps()
+
+    const result = getBrews()
+    expect(result[0].recipeSteps).toBeUndefined()
+    expect(result[0].recipeSnapshot.steps).toHaveLength(1)
+    expect(result[0].steps).toHaveLength(1)
+  })
+
+  it('synthesizes recipeSnapshot.steps from recipeSteps when snapshot is missing', () => {
+    const brews = [{
+      id: 'b1',
+      beanName: 'Test',
+      brewedAt: '2026-03-01T00:00:00Z',
+      recipeSteps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }],
+      steps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }],
+    }]
+    localStorage.setItem('brewlog_brews', JSON.stringify(brews))
+
+    migrateDropRecipeSteps()
+
+    const result = getBrews()
+    expect(result[0].recipeSteps).toBeUndefined()
+    expect(result[0].recipeSnapshot).toBeDefined()
+    expect(result[0].recipeSnapshot.steps).toHaveLength(1)
+    expect(result[0].recipeSnapshot.steps[0].name).toBe('Bloom')
+  })
+
+  it('synthesizes when recipeSnapshot exists but has no steps', () => {
+    const brews = [{
+      id: 'b1',
+      beanName: 'Test',
+      brewedAt: '2026-03-01T00:00:00Z',
+      recipeSteps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }],
+      recipeSnapshot: { coffeeGrams: 20 },
+      steps: [],
+    }]
+    localStorage.setItem('brewlog_brews', JSON.stringify(brews))
+
+    migrateDropRecipeSteps()
+
+    const result = getBrews()
+    expect(result[0].recipeSteps).toBeUndefined()
+    expect(result[0].recipeSnapshot.coffeeGrams).toBe(20)
+    expect(result[0].recipeSnapshot.steps).toHaveLength(1)
+  })
+
+  it('is a no-op when recipeSteps is already undefined', () => {
+    const brews = [{
+      id: 'b1',
+      beanName: 'Test',
+      brewedAt: '2026-03-01T00:00:00Z',
+      steps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }],
+    }]
+    localStorage.setItem('brewlog_brews', JSON.stringify(brews))
+
+    migrateDropRecipeSteps()
+
+    const result = getBrews()
+    expect(result[0].recipeSteps).toBeUndefined()
+    expect(result[0].recipeSnapshot).toBeUndefined()
+  })
+
+  it('is idempotent — running twice produces same result', () => {
+    const brews = [{
+      id: 'b1',
+      beanName: 'Test',
+      brewedAt: '2026-03-01T00:00:00Z',
+      recipeSteps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }],
+      recipeSnapshot: { steps: [{ id: 1, name: 'Bloom', waterTo: 42, time: 0, duration: 40 }] },
+    }]
+    localStorage.setItem('brewlog_brews', JSON.stringify(brews))
+
+    migrateDropRecipeSteps()
+    migrateDropRecipeSteps()
+
+    const result = getBrews()
+    expect(result[0].recipeSteps).toBeUndefined()
+    expect(result[0].recipeSnapshot.steps).toHaveLength(1)
   })
 })
