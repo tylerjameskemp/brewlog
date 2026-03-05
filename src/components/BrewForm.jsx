@@ -63,7 +63,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       targetTimeMax: editBrew?.targetTimeMax || null,
 
       // Brew execution
-      totalTime: editBrew?.totalTime || null,
+      totalTime: editBrew?.totalTime ?? null,
 
       // Tasting
       flavors: editBrew?.flavors || [],
@@ -386,7 +386,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         <div>
           <label className="text-xs font-medium text-brew-500 mb-1 block">Total Time</label>
           <TimeInput
-            value={form.totalTime || null}
+            value={form.totalTime ?? null}
             onChange={(seconds) => update('totalTime', seconds)}
             placeholder="3:30"
             className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono text-center
