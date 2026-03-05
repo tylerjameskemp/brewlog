@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
   getBrews, getLastBrewOfBean, getChangesForBean, getChangesForRecipe,
-  normalizeSteps, formatTime, parseTime, parseTimeRange, formatTimeRange,
+  normalizeSteps, formatTime, parseTimeRange, formatTimeRange,
   computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
   updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
   normalizeName, getRecipes, getRecipesForBean, saveRecipe, updateRecipe,
@@ -13,6 +13,7 @@ import { getMethodName } from '../data/defaults'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import StepEditor from './StepEditor'
+import TimeInput from './TimeInput'
 import useTimer from '../hooks/useTimer'
 import useWakeLock from '../hooks/useWakeLock'
 
@@ -1265,7 +1266,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
   const [rating, setRating] = useState(brew.rating ?? null)
   const [issues, setIssues] = useState(brew.issues || [])
   const [grindSetting, setGrindSetting] = useState(brew.grindSetting || '')
-  const [totalTimeStr, setTotalTimeStr] = useState(brew.totalTime != null ? formatTime(brew.totalTime) : '')
+  const [totalTimeSeconds, setTotalTimeSeconds] = useState(brew.totalTime)
   const savingRef = useRef(false)
 
   const isManual = brew.isManualEntry === true
@@ -1280,7 +1281,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
     if (savingRef.current) return
     savingRef.current = true
     try {
-      const parsedTime = parseTime(totalTimeStr)
+      const resolvedTime = totalTimeSeconds ?? brew.totalTime
       const updates = {
         flavors,
         body,
@@ -1289,12 +1290,12 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
         notes,
         nextBrewChanges,
         grindSetting,
-        totalTime: parsedTime ?? brew.totalTime,
+        totalTime: resolvedTime,
       }
 
       // Recompute timeStatus if totalTime was corrected
-      if (parsedTime != null && parsedTime !== brew.totalTime) {
-        const newTimeResult = computeTimeStatus(parsedTime, brew.targetTimeMin, brew.targetTimeMax, brew.targetTime, totalDuration)
+      if (resolvedTime != null && resolvedTime !== brew.totalTime) {
+        const newTimeResult = computeTimeStatus(resolvedTime, brew.targetTimeMin, brew.targetTimeMax, brew.targetTime, totalDuration)
         updates.timeStatus = newTimeResult?.status || null
       }
 
@@ -1401,11 +1402,10 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
         {isManual && (
           <div className="mb-3">
             <label className="text-xs text-brew-400 block mb-1">Total Brew Time</label>
-            <input
-              type="text"
-              value={totalTimeStr}
-              onChange={e => setTotalTimeStr(e.target.value)}
-              placeholder="M:SS (e.g. 3:30)"
+            <TimeInput
+              value={totalTimeSeconds}
+              onChange={setTotalTimeSeconds}
+              placeholder="3:30"
               className="w-full p-3 rounded-xl border border-brew-300 bg-brew-50
                          text-lg text-brew-800 font-mono text-center
                          focus:outline-none focus:border-brew-500 focus:ring-2 focus:ring-brew-400 text-base"
@@ -1426,10 +1426,9 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
           {!isManual && (
             <div>
               <label className="text-xs text-brew-400 block mb-1">Total Time</label>
-              <input
-                type="text"
-                value={totalTimeStr}
-                onChange={e => setTotalTimeStr(e.target.value)}
+              <TimeInput
+                value={totalTimeSeconds}
+                onChange={setTotalTimeSeconds}
                 placeholder="3:30"
                 className="w-full p-2.5 rounded-xl border border-brew-200 bg-brew-50
                            text-sm text-brew-800 font-mono focus:outline-none focus:border-brew-500 text-base"

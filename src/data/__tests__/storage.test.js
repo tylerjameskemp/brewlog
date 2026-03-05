@@ -22,6 +22,7 @@ import {
   getEquipment,
   saveEquipment,
   getPourTemplates,
+  parseFlexTime,
 } from '../storage'
 
 // --- Brew CRUD ---
@@ -351,6 +352,51 @@ describe('active brew persistence', () => {
 
   it('returns null when no active brew exists', () => {
     expect(getActiveBrew()).toBeNull()
+  })
+})
+
+// --- parseFlexTime ---
+
+describe('parseFlexTime', () => {
+  it('parses raw seconds string', () => {
+    expect(parseFlexTime('90')).toBe(90)
+    expect(parseFlexTime('0')).toBe(0)
+    expect(parseFlexTime('090')).toBe(90)
+  })
+
+  it('parses MM:SS format', () => {
+    expect(parseFlexTime('1:30')).toBe(90)
+    expect(parseFlexTime('0:00')).toBe(0)
+    expect(parseFlexTime('2:00')).toBe(120)
+    expect(parseFlexTime('01:30')).toBe(90)
+    expect(parseFlexTime('12:30')).toBe(750)
+  })
+
+  it('parses forgiving M:S format', () => {
+    expect(parseFlexTime('1:3')).toBe(63)
+    expect(parseFlexTime('0:5')).toBe(5)
+  })
+
+  it('passes through valid numbers', () => {
+    expect(parseFlexTime(90)).toBe(90)
+    expect(parseFlexTime(0)).toBe(0)
+  })
+
+  it('returns null for invalid input', () => {
+    expect(parseFlexTime(null)).toBeNull()
+    expect(parseFlexTime(undefined)).toBeNull()
+    expect(parseFlexTime('')).toBeNull()
+    expect(parseFlexTime(':')).toBeNull()
+    expect(parseFlexTime('abc')).toBeNull()
+    expect(parseFlexTime('-5')).toBeNull()
+    expect(parseFlexTime('1.5')).toBeNull()
+    expect(parseFlexTime('1:300')).toBeNull()
+  })
+
+  it('rejects non-integer numbers', () => {
+    expect(parseFlexTime(1.5)).toBeNull()
+    expect(parseFlexTime(-5)).toBeNull()
+    expect(parseFlexTime(Infinity)).toBeNull()
   })
 })
 

@@ -3,6 +3,7 @@ import { updateBrew, updateRecipe, saveBean, getBeans, formatTime, parseTimeRang
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import StepEditor from './StepEditor'
+import TimeInput from './TimeInput'
 import Collapsible from './Collapsible'
 
 // ============================================================
@@ -62,7 +63,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       targetTimeMax: editBrew?.targetTimeMax || null,
 
       // Brew execution
-      totalTime: editBrew?.totalTime || '',
+      totalTime: editBrew?.totalTime || null,
 
       // Tasting
       flavors: editBrew?.flavors || [],
@@ -383,22 +384,15 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
       {/* ---- TIMING ---- */}
       <Section title="Timing">
         <div>
-          <label className="text-xs font-medium text-brew-500 mb-1 block">Total Time (sec)</label>
-          <input
-            type="number"
-            value={form.totalTime}
-            onChange={(e) => update('totalTime', Number(e.target.value))}
-            min={0} max={3600}
-            placeholder={form.targetTime || method.defaultTotalTime}
-            className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono
+          <label className="text-xs font-medium text-brew-500 mb-1 block">Total Time</label>
+          <TimeInput
+            value={form.totalTime || null}
+            onChange={(seconds) => update('totalTime', seconds)}
+            placeholder="3:30"
+            className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono text-center
                        placeholder:text-brew-300
                        focus:outline-none focus:ring-2 focus:ring-brew-400"
           />
-          {form.totalTime && (
-            <div className="text-xs text-brew-400 mt-1 text-center">
-              {formatTime(form.totalTime)}
-            </div>
-          )}
           {form.targetTime && !form.totalTime && (
             <div className="text-xs text-brew-400 mt-1 text-center">
               Leave blank if brew time matched your target
