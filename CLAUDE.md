@@ -151,14 +151,16 @@ pick → recipe → brew → rate → success
 
 **Per-keystroke storage writes:** Never call storage functions in `onChange` handlers. Buffer in local state, persist on blur or action button. See `docs/solutions/performance/per-keystroke-localstorage-writes-cause-render-cascade.md`.
 
+**Primary action flush:** Every action button that advances the workflow (Brew This, Save, Log without timer) must flush all pending edit-mode inputs before proceeding. If the action runs in the same tick as the flush, the flush function must return computed values for immediate use (React state updates are batched). See `docs/solutions/react-patterns/primary-action-must-flush-pending-edits.md`.
+
 **Entity-form field mapping:** When an entity maps to/from form state at multiple sites, extract a shared `FIELDS` constant and bidirectional helpers (`entityToForm`, `formToEntity`). Diff detection must use the same field list. See `docs/solutions/logic-errors/entity-form-field-mapping-diverges-across-sites.md`.
 
 **New entity CRUD parity:** When adding a new entity's CRUD, audit the existing entity's functions for write safety (`safeSetItem` return checks), field protection (pin `id`/FKs after spread), return conventions (`null` on failure), and cascade safety. See `docs/solutions/logic-errors/new-entity-crud-misses-defensive-patterns.md`.
 
 ## Bugs & Lessons Learned
-29 documented solutions in `docs/solutions/` across 6 categories:
-- **logic-errors/** (13): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence, cache mutation breaks sort invariant, entity-form field mapping divergence, new entity CRUD missing defensive patterns, redundant step fields diverge, split operation accumulates name suffixes, boolean state classifications must be mutually exclusive
-- **react-patterns/** (11): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective
+31 documented solutions in `docs/solutions/` across 6 categories:
+- **logic-errors/** (14): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence, cache mutation breaks sort invariant, entity-form field mapping divergence, new entity CRUD missing defensive patterns, redundant step fields diverge, split operation accumulates name suffixes, boolean state classifications must be mutually exclusive, standalone component references parent scope
+- **react-patterns/** (12): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective, primary action must flush pending edits
 - **performance/** (1): per-keystroke localStorage writes
 - **state-management/** (1): lazy init state goes stale on prop change
 - **test-failures/** (1): Node 22 localStorage shadows browser mock
