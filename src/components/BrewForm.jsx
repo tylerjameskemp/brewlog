@@ -19,6 +19,15 @@ import Collapsible from './Collapsible'
 // Pour steps: ONE StepEditor editing `steps` (actuals), with inline diff
 // annotations comparing against `recipeSnapshot.steps` (the frozen plan).
 
+// Fields BrewForm exposes in its UI (9 of 14 RECIPE_FIELDS).
+// NOT included: method, grinder, dripper, filterType, pourTemplateId
+// (BrewForm preserves those from the original brew, not editable here)
+const BREWFORM_RECIPE_FIELDS = [
+  'coffeeGrams', 'waterGrams', 'grindSetting', 'waterTemp',
+  'targetTime', 'targetTimeRange', 'targetTimeMin', 'targetTimeMax',
+  'steps',
+]
+
 export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete, recipes, onUpdateRecipe, onSaveAsNewRecipe }) {
   const getActualSteps = (brew) => {
     if (Array.isArray(brew?.steps) && brew.steps.length > 0) return normalizeSteps(brew.steps)
@@ -93,6 +102,15 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     if (savingRef.current) return
     savingRef.current = true
 
+    // Flush target time input if user hasn't blurred (paired-input blur race fix)
+    const range = parseTimeRange(targetTimeInput)
+    if (range) {
+      form.targetTime = Math.round((range.min + range.max) / 2)
+      form.targetTimeMin = range.min
+      form.targetTimeMax = range.max
+      form.targetTimeRange = formatTimeRange(range.min, range.max)
+    }
+
     const trimmedName = form.beanName.trim()
 
     // Structural comparison: did steps actually change from original?
@@ -129,21 +147,35 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     savingRef.current = false
     setSaved(true)
 
-    // Check if steps differ from plan and we have a valid recipe to update
-    const hasRecipe = editBrew.recipeId && recipes?.find(r => r.id === editBrew.recipeId && !r.archivedAt)
-    const planChanged = stepsChanged && plannedSteps && JSON.stringify(form.steps) !== JSON.stringify(plannedSteps)
-    if (hasRecipe && planChanged) {
-      setShowRecipePrompt(true)
+    // Check if any editable recipe field differs from the stored recipe
+    const storedRecipe = editBrew.recipeId && recipes?.find(r => r.id === editBrew.recipeId && !r.archivedAt)
+    if (storedRecipe) {
+      const anyFieldChanged = BREWFORM_RECIPE_FIELDS.some(f => {
+        const formVal = JSON.stringify((f === 'steps' ? finalSteps : form[f]) ?? null)
+        const recipeVal = JSON.stringify(storedRecipe[f] ?? null)
+        return formVal !== recipeVal
+      })
+      if (anyFieldChanged) {
+        setShowRecipePrompt(true)
+      } else {
+        onEditComplete()
+      }
     } else {
       onEditComplete()
     }
   }
 
   const handleRecipeAction = (action) => {
-    if (action === 'update') {
-      onUpdateRecipe?.(editBrew.recipeId, { steps: form.steps })
-    } else if (action === 'saveNew') {
-      onSaveAsNewRecipe?.(editBrew.recipeId, { steps: form.steps })
+    if (action === 'update' || action === 'saveNew') {
+      const fields = {}
+      BREWFORM_RECIPE_FIELDS.forEach(f => {
+        if (form[f] !== undefined) fields[f] = f === 'steps' ? [...form.steps] : form[f]
+      })
+      if (action === 'update') {
+        onUpdateRecipe?.(editBrew.recipeId, fields)
+      } else {
+        onSaveAsNewRecipe?.(editBrew.recipeId, fields)
+      }
     }
     // 'keep' = dismiss
     setShowRecipePrompt(false)
@@ -492,11 +524,11 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         {saved ? '\u2713 Brew Updated!' : 'Update Brew'}
       </button>
 
-      {/* Recipe update prompt — shown after save when steps differ from plan */}
+      {/* Recipe update prompt — shown after save when brew settings differ from recipe */}
       {showRecipePrompt && (
         <div className="px-4 py-4 bg-amber-50 border border-amber-200 rounded-xl animate-fade-in motion-reduce:animate-none">
           <p className="text-sm text-amber-700 font-medium mb-3">
-            Your steps differed from the original plan. Update the recipe?
+            Your brew settings differed from the recipe. Update the recipe?
           </p>
           <div className="flex gap-2">
             <button

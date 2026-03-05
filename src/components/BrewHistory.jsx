@@ -44,7 +44,7 @@ function compareBrews(brewA, brewB) {
     { key: 'waterGrams', label: 'Water', unit: 'g', section: 'recipe' },
     { key: 'grindSetting', label: 'Grind', unit: '', section: 'recipe' },
     { key: 'waterTemp', label: 'Temp', unit: '°F', section: 'recipe' },
-    { key: 'targetTime', label: 'Target Time', format: formatTime, section: 'recipe' },
+    { key: 'targetTime', label: 'Target Time', format: (v, brew) => brew?.targetTimeRange || formatTime(v), section: 'recipe' },
     { key: 'totalTime', label: 'Total Time', format: formatTime, section: 'brew' },
   ]
 
@@ -56,7 +56,7 @@ function compareBrews(brewA, brewB) {
     const b = brewB[field.key]
     const changed = a !== b
     const fmt = field.format || (v => v != null ? `${v}${field.unit}` : '—')
-    params.push({ ...field, a, b, changed, aFormatted: fmt(a), bFormatted: fmt(b) })
+    params.push({ ...field, a, b, changed, aFormatted: fmt(a, brewA), bFormatted: fmt(b, brewB) })
     if (changed) diffs.push(field.label)
   }
 
@@ -229,8 +229,12 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
       if (stepsChanged(brew.recipeSnapshot?.steps, prev.recipeSnapshot?.steps) || stepsChanged(brew.steps, prev.steps)) {
         diffs.push('Pour plan changed')
       }
-      if (brew.targetTime !== prev.targetTime && (brew.targetTime || prev.targetTime)) {
-        diffs.push(`Target: ${formatTime(prev.targetTime) || '—'} → ${formatTime(brew.targetTime) || '—'}`)
+      {
+        const prevDisplay = prev.targetTimeRange || formatTime(prev.targetTime) || '—'
+        const brewDisplay = brew.targetTimeRange || formatTime(brew.targetTime) || '—'
+        if (prevDisplay !== brewDisplay) {
+          diffs.push(`Target: ${prevDisplay} → ${brewDisplay}`)
+        }
       }
       if ((brew.method || '') !== (prev.method || '')) {
         diffs.push(`Method: ${getMethodName(brew.method)}`)
@@ -589,10 +593,10 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       <span className="text-brew-500">Temp:</span>{' '}
                       <span className="font-mono text-brew-700">{brew.waterTemp}{'\u00B0'}F</span>
                     </div>
-                    {brew.targetTime && (
+                    {(brew.targetTimeRange || brew.targetTime) && (
                       <div className="text-xs">
                         <span className="text-brew-500">Target Time:</span>{' '}
-                        <span className="font-mono text-brew-700">{formatTime(brew.targetTime)}</span>
+                        <span className="font-mono text-brew-700">{brew.targetTimeRange || formatTime(brew.targetTime)}</span>
                       </div>
                     )}
                   </div>
@@ -629,9 +633,9 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                     </div>
                   )}
                   {/* Time deviation — only shown if actual differs from target */}
-                  {brew.targetTime && brew.totalTime && brew.totalTime !== brew.targetTime && (
+                  {(brew.targetTimeRange || brew.targetTime) && brew.totalTime && brew.totalTime !== brew.targetTime && (
                     <div className="mt-1 text-xs">
-                      <span className="text-amber-600">Target {formatTime(brew.targetTime)}, actual {formatTime(brew.totalTime)}</span>
+                      <span className="text-amber-600">Target {brew.targetTimeRange || formatTime(brew.targetTime)}, actual {formatTime(brew.totalTime)}</span>
                     </div>
                   )}
                   {actualSteps.length > 0 && (

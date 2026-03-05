@@ -249,26 +249,36 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
     if (range) setTargetTimeInput(formatTimeRange(range.min, range.max))
   }
 
+  // Returns computed time fields (or null if nothing to flush).
+  // Sets recipe state AND returns values for immediate use (React batching workaround).
   const commitTargetTimeInputs = () => {
     const range = parseTimeRange(targetTimeInput)
-    if (!range) return
-    setRecipe(prev => ({
-      ...prev,
+    if (!range) return null
+    const timeFields = {
       targetTimeMin: range.min,
       targetTimeMax: range.max,
       targetTime: Math.round((range.min + range.max) / 2),
       targetTimeRange: formatTimeRange(range.min, range.max),
-    }))
+    }
+    setRecipe(prev => ({ ...prev, ...timeFields }))
     setTargetTimeInput(formatTimeRange(range.min, range.max))
+    return timeFields
   }
 
-  const handleDoneEditing = () => {
-    commitTargetTimeInputs()
-    setEditing(false)
+  // Flush all buffered edits (target time + bean overrides).
+  // Returns time overrides for immediate use before React processes state updates.
+  const flushPendingEdits = () => {
+    const timeOverrides = commitTargetTimeInputs()
     if (Object.keys(beanOverrides).length > 0) {
       onBeanUpdate(beanOverrides)
       setBeanOverrides({})
     }
+    return timeOverrides
+  }
+
+  const handleDoneEditing = () => {
+    flushPendingEdits()
+    setEditing(false)
   }
 
 
@@ -841,8 +851,16 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               <div className="px-4 mt-3">
                 <RecipeSaveChoice
                   recipeName={loaded.name}
-                  onUpdate={() => onSaveToRecipe(selectedRecipeId)}
-                  onSaveAsNew={() => onSaveAsNewRecipe(selectedRecipeId)}
+                  onUpdate={() => {
+                    const timeOverrides = flushPendingEdits()
+                    const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
+                    onSaveToRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
+                  }}
+                  onSaveAsNew={() => {
+                    const timeOverrides = flushPendingEdits()
+                    const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
+                    onSaveAsNewRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
+                  }}
                 />
               </div>
             )
@@ -852,7 +870,10 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
           <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
                           bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
             <button
-              onClick={onStartBrew}
+              onClick={() => {
+                flushPendingEdits()
+                onStartBrew()
+              }}
               className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
                          shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
                          pointer-events-auto min-h-[44px]"
@@ -860,7 +881,10 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
               Brew This
             </button>
             <button
-              onClick={onLogWithoutTimer}
+              onClick={() => {
+                const timeOverrides = flushPendingEdits()
+                onLogWithoutTimer(timeOverrides || {})
+              }}
               className="w-full py-3 mt-2 text-brew-500 text-sm font-medium
                          hover:text-brew-700 pointer-events-auto min-h-[44px]"
             >
@@ -1601,11 +1625,8 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
           <div className="flex flex-col gap-2">
             <button
               onClick={() => {
-                if (savingRef.current) return
-                savingRef.current = true
                 onUpdateRecipe(selectedRecipeId)
                 setForkDismissed(true)
-                savingRef.current = false
               }}
               className="bg-brew-800 text-white rounded-xl px-4 py-3 text-sm font-semibold
                          hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
@@ -1614,11 +1635,8 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
             </button>
             <button
               onClick={() => {
-                if (savingRef.current) return
-                savingRef.current = true
                 onSaveAsNewRecipe(selectedRecipeId)
                 setForkDismissed(true)
-                savingRef.current = false
               }}
               className="border border-brew-200 text-brew-600 rounded-xl px-4 py-3 text-sm font-semibold
                          hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
@@ -1796,9 +1814,15 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   }, [finalBrewState, ratingBrew, saveRecipeAsNewCopy])
 
   // Build a brew record from current recipe + bean state
-  const buildBrewRecord = useCallback((overrides = {}) => {
-    const totalDuration = getTotalDuration(recipe.steps)
-    const recipeSnapshot = formStateToRecipeFields(recipe)
+  // recipeOverrides: flushed edits that haven't hit React state yet (e.g., target time
+  // from commitTargetTimeInputs). Merged into recipe for snapshot + top-level fields.
+  // Needed for "Log without timer" path where buildBrewRecord runs in the same tick.
+  const buildBrewRecord = useCallback((overrides = {}, recipeOverrides = {}) => {
+    const mergedRecipe = Object.keys(recipeOverrides).length > 0
+      ? { ...recipe, ...recipeOverrides }
+      : recipe
+    const totalDuration = getTotalDuration(mergedRecipe.steps)
+    const recipeSnapshot = formStateToRecipeFields(mergedRecipe)
     return {
       id: uuidv4(),
       schemaVersion: 2,
@@ -1811,11 +1835,11 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
       // Top-level recipe fields (backward compat — sourced from recipeSnapshot)
       ...recipeSnapshot,
       // Override snapshot fields that differ at top level
-      targetTime: recipe.targetTime || totalDuration,
-      targetTimeRange: recipe.targetTimeRange || formatTime(recipe.targetTime || totalDuration),
-      targetTimeMin: recipe.targetTimeMin || null,
-      targetTimeMax: recipe.targetTimeMax || null,
-      steps: recipe.steps.map(s => ({ ...s })),
+      targetTime: mergedRecipe.targetTime || totalDuration,
+      targetTimeRange: mergedRecipe.targetTimeRange || formatTime(mergedRecipe.targetTime || totalDuration),
+      targetTimeMin: mergedRecipe.targetTimeMin || null,
+      targetTimeMax: mergedRecipe.targetTimeMax || null,
+      steps: mergedRecipe.steps.map(s => ({ ...s })),
       // Brew execution fields
       timeStatus: null,
       totalTime: null,
@@ -1895,11 +1919,12 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     setPhase('rate')
   }, [recipe, selectedBean, onBrewSaved, buildBrewRecord, linkRecipeToBrew])
 
-  // Handle "Log without timer" — skip-timer brew, save immediately, transition to rate
-  const handleLogWithoutTimer = useCallback(() => {
+  // Handle "Log without timer" — skip-timer brew, save immediately, transition to rate.
+  // timeOverrides: flushed target time fields from RecipeAssembly (React batching workaround).
+  const handleLogWithoutTimer = useCallback((timeOverrides = {}) => {
     if (savingRef.current) return
     savingRef.current = true
-    const brew = buildBrewRecord({ isManualEntry: true })
+    const brew = buildBrewRecord({ isManualEntry: true }, timeOverrides)
 
     // Link recipe (create if needed) and stamp recipeId on brew
     const recipeId = linkRecipeToBrew(brew)
@@ -2001,12 +2026,12 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
               setRecipe(recipeEntityToFormState(recipeEntity, getRecipeDefaults()))
             }
           }}
-          onSaveToRecipe={(recipeId) => {
-            updateRecipe(recipeId, formStateToRecipeFields(recipe))
+          onSaveToRecipe={(recipeId, fields) => {
+            updateRecipe(recipeId, fields || formStateToRecipeFields(recipe))
             setRecipes(getRecipes())
           }}
-          onSaveAsNewRecipe={(recipeId) => {
-            const newRecipe = saveRecipeAsNewCopy(recipeId, formStateToRecipeFields(recipe))
+          onSaveAsNewRecipe={(recipeId, fields) => {
+            const newRecipe = saveRecipeAsNewCopy(recipeId, fields || formStateToRecipeFields(recipe))
             if (newRecipe) setSelectedRecipeId(newRecipe.id)
           }}
           onStartBrew={() => setPhase('brew')}
