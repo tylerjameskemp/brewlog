@@ -1818,9 +1818,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   // from commitTargetTimeInputs). Merged into recipe for snapshot + top-level fields.
   // Needed for "Log without timer" path where buildBrewRecord runs in the same tick.
   const buildBrewRecord = useCallback((overrides = {}, recipeOverrides = {}) => {
-    const mergedRecipe = Object.keys(recipeOverrides).length > 0
-      ? { ...recipe, ...recipeOverrides }
-      : recipe
+    const mergedRecipe = { ...recipe, ...recipeOverrides }
     const totalDuration = getTotalDuration(mergedRecipe.steps)
     const recipeSnapshot = formStateToRecipeFields(mergedRecipe)
     return {
@@ -2027,11 +2025,11 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
             }
           }}
           onSaveToRecipe={(recipeId, fields) => {
-            updateRecipe(recipeId, fields || formStateToRecipeFields(recipe))
+            updateRecipe(recipeId, fields)
             setRecipes(getRecipes())
           }}
           onSaveAsNewRecipe={(recipeId, fields) => {
-            const newRecipe = saveRecipeAsNewCopy(recipeId, fields || formStateToRecipeFields(recipe))
+            const newRecipe = saveRecipeAsNewCopy(recipeId, fields)
             if (newRecipe) setSelectedRecipeId(newRecipe.id)
           }}
           onStartBrew={() => setPhase('brew')}

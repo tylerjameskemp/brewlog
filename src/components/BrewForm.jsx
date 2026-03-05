@@ -104,12 +104,12 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
 
     // Flush target time input if user hasn't blurred (paired-input blur race fix)
     const range = parseTimeRange(targetTimeInput)
-    if (range) {
-      form.targetTime = Math.round((range.min + range.max) / 2)
-      form.targetTimeMin = range.min
-      form.targetTimeMax = range.max
-      form.targetTimeRange = formatTimeRange(range.min, range.max)
-    }
+    const timeFlush = range ? {
+      targetTime: Math.round((range.min + range.max) / 2),
+      targetTimeMin: range.min,
+      targetTimeMax: range.max,
+      targetTimeRange: formatTimeRange(range.min, range.max),
+    } : {}
 
     const trimmedName = form.beanName.trim()
 
@@ -120,11 +120,13 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     // Update existing brew
     // Preserve fields the form doesn't manage (per documented learning:
     // edit-form-overwrites-fields-it-doesnt-manage)
+    const merged = { ...form, ...timeFlush }
+    if (Object.keys(timeFlush).length > 0) setForm(prev => ({ ...prev, ...timeFlush }))
     const updatedBrews = updateBrew(editBrew.id, {
-      ...form,
+      ...merged,
       beanName: trimmedName,
-      targetTime: form.targetTime || undefined,
-      totalTime: form.totalTime || form.targetTime || undefined,
+      targetTime: merged.targetTime || undefined,
+      totalTime: merged.totalTime || merged.targetTime || undefined,
       steps: finalSteps,
       // Preserve schema V2 fields the form doesn't manage
       stepResults: editBrew.stepResults,
@@ -151,7 +153,7 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
     const storedRecipe = editBrew.recipeId && recipes?.find(r => r.id === editBrew.recipeId && !r.archivedAt)
     if (storedRecipe) {
       const anyFieldChanged = BREWFORM_RECIPE_FIELDS.some(f => {
-        const formVal = JSON.stringify((f === 'steps' ? finalSteps : form[f]) ?? null)
+        const formVal = JSON.stringify((f === 'steps' ? finalSteps : merged[f]) ?? null)
         const recipeVal = JSON.stringify(storedRecipe[f] ?? null)
         return formVal !== recipeVal
       })
