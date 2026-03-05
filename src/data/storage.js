@@ -715,6 +715,20 @@ export function parseTime(str) {
   return parseInt(match[1], 10) * 60 + parseInt(match[2], 10)
 }
 
+export function parseFlexTime(input) {
+  if (input == null) return null
+  if (typeof input === 'number') return Number.isInteger(input) && input >= 0 ? input : null
+  const str = String(input).trim()
+  if (!str) return null
+  if (str.includes(':')) {
+    const match = str.match(/^(\d{1,3}):(\d{1,2})$/)
+    if (!match) return null
+    return parseInt(match[1], 10) * 60 + parseInt(match[2], 10)
+  }
+  if (!/^\d+$/.test(str)) return null
+  return parseInt(str, 10)
+}
+
 export function parseTimeRange(str) {
   if (!str || typeof str !== 'string') return null
   const parts = str.split(/\s*[-–]\s*/)

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { normalizeSteps } from '../data/storage'
+import { normalizeSteps, formatTime } from '../data/storage'
+import TimeInput from './TimeInput'
 
 // ============================================================
 // STEP EDITOR — Timeline-based pour step editor for brew recipes
@@ -14,15 +15,6 @@ import { normalizeSteps } from '../data/storage'
 //   hint       — optional help text
 //   cascadeTime — when true, duration changes auto-cascade start times; time field becomes read-only
 //   plannedSteps — when provided, shows inline diff annotations comparing each step against the plan
-
-function formatTimeDisplay(seconds) {
-  if (seconds == null || seconds === '') return ''
-  const s = Number(seconds)
-  if (isNaN(s)) return ''
-  const m = Math.floor(s / 60)
-  const sec = s % 60
-  return `${m}:${sec.toString().padStart(2, '0')}`
-}
 
 // Match actual steps against planned steps by id for diff annotations
 function buildDiffMap(actualSteps, plannedSteps) {
@@ -63,54 +55,11 @@ function DiffTag({ children }) {
   )
 }
 
-// ─── Smart Time Input ──────────────────────────────────────
-// Displays MM:SS when not focused, shows raw seconds when editing.
-// Commits on blur only — never fires onChange during typing.
-function TimeInput({ value, onChange, disabled, placeholder, label }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
-
-  const display = formatTimeDisplay(value)
-
-  const handleFocus = () => {
-    setEditing(true)
-    setDraft(value != null ? String(value) : '')
-  }
-
-  const handleBlur = () => {
-    setEditing(false)
-    const parsed = parseInt(draft, 10)
-    if (!isNaN(parsed) && parsed >= 0) {
-      onChange(parsed)
-    }
-    // else: revert — display snaps back to formatted canonical value
-  }
-
-  return (
-    <div className="flex items-center gap-1">
-      {label && <span className="text-[10px] text-brew-400">{label}</span>}
-      <input
-        type="text"
-        inputMode="numeric"
-        value={editing ? draft : display}
-        onChange={(e) => setDraft(e.target.value)}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        disabled={disabled}
-        placeholder={placeholder || '0'}
-        className="w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-base font-mono text-brew-800 text-center
-                   placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                   disabled:bg-brew-50 disabled:text-brew-500"
-      />
-    </div>
-  )
-}
-
 // Build "0:00 → 0:40" time range string from a step
 function stepTimeRange(step) {
   const startTime = step.time || 0
   const endTime = step.duration != null ? startTime + step.duration : null
-  return `${formatTimeDisplay(startTime)} → ${endTime != null ? formatTimeDisplay(endTime) : ''}`
+  return `${formatTime(startTime)} → ${endTime != null ? formatTime(endTime) : ''}`
 }
 
 // ─── Collapsed One-Liner ───────────────────────────────────
@@ -249,13 +198,13 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
           placeholder="40"
         />
         <span className="text-[10px] text-brew-400 ml-1">
-          ({step.duration || 0}s)
+          ({formatTime(step.duration || 0)})
         </span>
         {diff?.fields?.duration != null && (
-          <DiffTag>planned: {diff.fields.duration ?? '\u2014'}s</DiffTag>
+          <DiffTag>planned: {formatTime(diff.fields.duration)}</DiffTag>
         )}
         {diff?.fields?.time != null && !cascadeTime && (
-          <DiffTag>planned: {formatTimeDisplay(diff.fields.time)}</DiffTag>
+          <DiffTag>planned: {formatTime(diff.fields.time)}</DiffTag>
         )}
       </div>
 
