@@ -1100,22 +1100,24 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
             const tappedAt = result?.tappedAt
             const skipped = result?.skipped
             const variance = result?.variance
+            const notReached = !skipped && tappedAt == null && brew.totalTime != null && step.time > brew.totalTime
 
             return (
               <div
                 key={step.id}
                 className={`flex justify-between items-center py-2.5 border-b border-brew-50
-                            last:border-0 ${skipped ? 'opacity-40' : ''}`}
+                            last:border-0 ${skipped || notReached ? 'opacity-40' : ''}`}
               >
                 <div>
                   <span className={`font-semibold text-sm ${skipped ? 'line-through' : ''} text-brew-800`}>
                     {step.name}
                   </span>
                   {skipped && <span className="text-[11px] text-red-500 ml-2">Skipped</span>}
+                  {notReached && <span className="text-[11px] text-brew-400 ml-2">Not reached</span>}
                 </div>
                 <div className="text-right">
                   <div className="text-sm tabular-nums text-brew-800">
-                    {skipped ? '—' : tappedAt != null ? formatTime(tappedAt) : formatTime(step.time)}
+                    {skipped || notReached ? '—' : tappedAt != null ? formatTime(tappedAt) : formatTime(step.time)}
                   </div>
                   {variance != null && !skipped && (
                     <div className={`text-[11px] font-semibold ${
@@ -1124,7 +1126,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                       {variance > 0 ? '+' : ''}{variance}s
                     </div>
                   )}
-                  {!skipped && tappedAt == null && (
+                  {!skipped && !notReached && tappedAt == null && (
                     <div className="text-[11px] text-brew-300">as planned</div>
                   )}
                 </div>
