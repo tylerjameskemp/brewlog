@@ -208,20 +208,9 @@ export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewS
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className="text-xs font-medium text-brew-500 mb-1 block">Bean Name</label>
-            <input
-              type="text"
-              value={form.beanName}
-              onChange={(e) => update('beanName', e.target.value)}
-              placeholder="e.g., Heart Columbia Javier Omar"
-              list="bean-suggestions"
-              maxLength={100}
-              className="w-full p-3 rounded-xl border border-brew-200 text-base
-                         focus:outline-none focus:ring-2 focus:ring-brew-400"
-            />
-            {/* Autocomplete from bean library */}
-            <datalist id="bean-suggestions">
-              {beans.map(b => <option key={b.id} value={b.name} />)}
-            </datalist>
+            <div className="p-3 rounded-xl border border-brew-100 bg-brew-50/50 text-base text-brew-800">
+              {form.beanName}
+            </div>
           </div>
           <div>
             <label className="text-xs font-medium text-brew-500 mb-1 block">Roaster</label>

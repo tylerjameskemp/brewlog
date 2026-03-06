@@ -17,8 +17,8 @@ export default function Header({ view, setView, onSettingsClick, settingsMenu })
       <div className="max-w-2xl mx-auto px-4">
         <div className="flex items-center justify-between h-12 md:h-14">
           {/* Logo / App name */}
-          <h1 className="text-lg font-bold text-brew-800 tracking-tight">
-            ☕ BrewLog
+          <h1 className="text-lg font-bold text-brew-800 tracking-tight" aria-label="BrewLog">
+            ☕
           </h1>
 
           {/* Nav tabs */}
