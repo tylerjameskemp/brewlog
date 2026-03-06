@@ -644,16 +644,22 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       <div className="mt-1 space-y-1">
                         {actualSteps.map((step, idx) => {
                           const result = brew.stepResults?.[step.id]
+                          const notReached = !result?.skipped && result?.tappedAt == null
+                            && brew.totalTime != null && step.time > brew.totalTime
                           return (
-                            <div key={`${brew.id}-actual-${idx}`} className="text-xs text-brew-700 font-mono">
-                              {step.time != null ? formatTime(step.time) : '—'} · {step.name || `Step ${idx + 1}`}
-                              {step.waterTo != null ? ` · ${step.waterTo}g` : ''}
-                              {result?.tappedAt != null && (
-                                <span className="text-brew-400"> (tapped {formatTime(result.tappedAt)})</span>
-                              )}
-                              {result?.skipped && (
-                                <span className="text-amber-500"> skipped</span>
-                              )}
+                            <div key={`${brew.id}-actual-${idx}`} className={`text-xs font-mono ${notReached ? 'text-brew-400' : 'text-brew-700'}`}>
+                              {notReached
+                                ? <>{step.name || `Step ${idx + 1}`} · <span className="text-brew-400">not reached</span></>
+                                : <>{step.time != null ? formatTime(step.time) : '—'} · {step.name || `Step ${idx + 1}`}
+                                  {step.waterTo != null ? ` · ${step.waterTo}g` : ''}
+                                  {result?.tappedAt != null && (
+                                    <span className="text-brew-400"> (tapped {formatTime(result.tappedAt)})</span>
+                                  )}
+                                  {result?.skipped && (
+                                    <span className="text-amber-500"> skipped</span>
+                                  )}
+                                </>
+                              }
                             </div>
                           )
                         })}

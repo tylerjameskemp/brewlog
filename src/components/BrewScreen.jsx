@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
-  getBrews, getLastBrewOfBean, getChangesForBean, getChangesForRecipe,
+  getBrews, getChangesForBean, getChangesForRecipe,
   normalizeSteps, formatTime, parseTimeRange, formatTimeRange,
   computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
   updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
-  normalizeName, getRecipes, getRecipesForBean, saveRecipe, updateRecipe,
-  archiveRecipe, generateRecipeCopyName,
+  normalizeName, getRecipes, saveRecipe, updateRecipe,
+  generateRecipeCopyName,
   RECIPE_FIELDS, recipeEntityToFormState, formStateToRecipeFields,
 } from '../data/storage'
 import { getMethodName } from '../data/defaults'
@@ -22,7 +22,7 @@ import useWakeLock from '../hooks/useWakeLock'
 // ============================================================
 // Phase state machine: pick → recipe → brew → rate → success
 // pick:    Bean picker (if no bean pre-selected)
-// recipe:  Recipe Assembly — review, adjust, select pour template
+// recipe:  Recipe Assembly — review, adjust recipe parameters
 // brew:    Active Brew — timer, step teleprompter, variance tracking
 // rate:    Rate This Brew — tasting notes, correct actuals, "what to try next"
 // success: Done — start new brew or view history
@@ -33,64 +33,6 @@ const getTotalDuration = (steps) =>
   steps.length > 0
     ? steps[steps.length - 1].time + steps[steps.length - 1].duration
     : 210
-
-// ─── Swipe Cards ────────────────────────────────────────────
-function SwipeCards({ cards, currentIndex, onSwipe }) {
-  const startX = useRef(0)
-  const [dragging, setDragging] = useState(false)
-  const [offset, setOffset] = useState(0)
-
-  const handleStart = (e) => {
-    startX.current = e.touches ? e.touches[0].clientX : e.clientX
-    setDragging(true)
-  }
-  const handleMove = (e) => {
-    if (!dragging) return
-    const x = e.touches ? e.touches[0].clientX : e.clientX
-    setOffset(x - startX.current)
-  }
-  const handleEnd = () => {
-    setDragging(false)
-    if (Math.abs(offset) > 60) {
-      onSwipe(offset < 0 ? 1 : -1)
-    }
-    setOffset(0)
-  }
-
-  return (
-    <div
-      className="relative overflow-hidden"
-      onTouchStart={handleStart}
-      onTouchMove={handleMove}
-      onTouchEnd={handleEnd}
-      onMouseDown={handleStart}
-      onMouseMove={dragging ? handleMove : undefined}
-      onMouseUp={handleEnd}
-    >
-      <div
-        className={dragging ? '' : 'transition-transform duration-300 ease-out motion-reduce:transition-none'}
-        style={{ display: 'flex', transform: `translateX(calc(${-currentIndex * 100}% + ${offset}px))` }}
-      >
-        {cards.map((card, i) => (
-          <div key={i} className="min-w-full px-4 box-border">
-            {card}
-          </div>
-        ))}
-      </div>
-      {/* Dot indicators */}
-      <div className="flex justify-center gap-1.5 mt-3">
-        {cards.map((_, i) => (
-          <div
-            key={i}
-            className={`h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${
-              i === currentIndex ? 'w-5 bg-brew-500' : 'w-1.5 bg-brew-200'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ─── Phase Indicator ────────────────────────────────────────
 function PhaseIndicator({ phase }) {
@@ -211,26 +153,20 @@ function RecipeSaveChoice({ recipeName, onUpdate, onSaveAsNew }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onLogWithoutTimer, onBack, onBeanUpdate, equipment, beanRecipes, selectedRecipeId, onRecipeSelect, onSaveToRecipe, onSaveAsNewRecipe, onRecipeRenamed }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onSaveToRecipe, onSaveAsNewRecipe, onRecipeRenamed }) {
 
-  const [cardIndex, setCardIndex] = useState(0)
-  const [editing, setEditing] = useState(false)
-  const [selectedTemplateId, setSelectedTemplateId] = useState(recipe.pourTemplateId || templates[0]?.id || null)
   const [showRecipePicker, setShowRecipePicker] = useState(false)
   const [renamingRecipeId, setRenamingRecipeId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
-  const [templatePicked, setTemplatePicked] = useState(() => recipe.steps.length > 0 || !!recipe.pourTemplateId)
-  const [beanOverrides, setBeanOverrides] = useState({})
   const [targetTimeInput, setTargetTimeInput] = useState(
     () => recipe.targetTimeRange || formatTime(recipe.targetTime)
   )
 
-  const [stepsOpen, setStepsOpen] = useState(() => recipe.steps.length > 0)
+  const [stepsOpen, setStepsOpen] = useState(false)
   const [equipmentOpen, setEquipmentOpen] = useState(false)
 
   const grinder = GRINDERS.find(g => g.id === recipe.grinder) || GRINDERS[0]
   const methodObj = BREW_METHODS.find(m => m.id === recipe.method) || BREW_METHODS[0]
-  const displayBean = Object.keys(beanOverrides).length > 0 ? { ...bean, ...beanOverrides } : bean
 
   // Methods that use a separate dripper (pour-over devices)
   const methodHasDripper = recipe.method === 'v60' || recipe.method === 'chemex'
@@ -266,38 +202,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
     return timeFields
   }
 
-  // Flush all buffered edits (target time + bean overrides).
-  // Returns time overrides for immediate use before React processes state updates.
-  const flushPendingEdits = () => {
-    const timeOverrides = commitTargetTimeInputs()
-    if (Object.keys(beanOverrides).length > 0) {
-      onBeanUpdate(beanOverrides)
-      setBeanOverrides({})
-    }
-    return timeOverrides
-  }
-
-  const handleDoneEditing = () => {
-    flushPendingEdits()
-    setEditing(false)
-  }
-
-
-  const handleSwipe = (dir) => {
-    setCardIndex(prev => Math.max(0, Math.min(1, prev + dir)))
-  }
-
-  const handleTemplateSelect = (template) => {
-    setSelectedTemplateId(template?.id ?? null)
-    setRecipe(prev => ({
-      ...prev,
-      steps: template?.steps ?? [],
-      pourTemplateId: template?.id ?? null,
-    }))
-    setTemplatePicked(true)
-    setStepsOpen(true)
-  }
-
   const updateField = (field, value) => {
     if (typeof value === 'number' && isNaN(value)) return // NaN guard for numeric inputs
     setRecipe(prev => ({ ...prev, [field]: value }))
@@ -307,143 +211,17 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
     setRecipe(prev => ({ ...prev, steps: newSteps }))
   }
 
-
-  const essentialsCard = (
-    <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-2xl font-semibold text-brew-800 leading-tight">{bean.name}</h2>
-          <p className="text-sm text-brew-400 mt-1">{bean.roaster}</p>
-        </div>
-        {bean.roastDate && (
-          <div className="text-xs text-brew-500 bg-brew-50 px-2.5 py-1.5 rounded-lg shrink-0">
-            Roasted {bean.roastDate}
-          </div>
-        )}
-      </div>
-
-      {/* Coffee / Water / Ratio */}
-      <div className="grid grid-cols-3 gap-2 mt-5">
-        {[
-          { label: 'Coffee', value: `${recipe.coffeeGrams}g`, field: 'coffeeGrams', type: 'number', min: 1, max: 100 },
-          { label: 'Water', value: `${recipe.waterGrams}g`, field: 'waterGrams', type: 'number', min: 1, max: 2000 },
-          { label: 'Ratio', value: ratio(recipe.coffeeGrams, recipe.waterGrams) },
-        ].map(item => (
-          <div key={item.label} className="text-center p-3 bg-brew-50 rounded-xl">
-            <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">{item.label}</div>
-            {editing && item.field ? (
-              <input
-                type={item.type}
-                value={recipe[item.field]}
-                onChange={e => updateField(item.field, Number(e.target.value))}
-                min={item.min} max={item.max}
-                className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
-                           border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
-              />
-            ) : (
-              <div className="text-lg font-medium text-brew-800">{item.value}</div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Grind / Temp */}
-      <div className="grid grid-cols-2 gap-2 mt-2">
-        <div className="text-center p-3 bg-brew-50 rounded-xl">
-          <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Grind</div>
-          {editing ? (
-            grinder.settingType === 'ode' ? (
-              <select
-                value={recipe.grindSetting}
-                onChange={e => updateField('grindSetting', e.target.value)}
-                className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
-                           border-b border-brew-300 focus:outline-none text-base"
-              >
-                {FELLOW_ODE_POSITIONS.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                value={recipe.grindSetting}
-                onChange={e => updateField('grindSetting', e.target.value)}
-                maxLength={50}
-                className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
-                           border-b border-brew-300 focus:outline-none text-base"
-              />
-            )
-          ) : (
-            <div className="text-sm font-medium text-brew-800">{recipe.grindSetting || '—'}</div>
-          )}
-        </div>
-        <div className="text-center p-3 bg-brew-50 rounded-xl">
-          <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Temp</div>
-          {editing ? (
-            <input
-              type="number"
-              value={recipe.waterTemp}
-              onChange={e => updateField('waterTemp', Number(e.target.value))}
-              min={32} max={212}
-              className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
-                         border-b border-brew-300 focus:outline-none text-base"
-            />
-          ) : (
-            <div className="text-sm font-medium text-brew-800">{recipe.waterTemp ? `${recipe.waterTemp}°F` : '—'}</div>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4 text-center">
-        <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Target Time</div>
-        {editing ? (
-          <input
-            type="text"
-            value={targetTimeInput}
-            onChange={e => setTargetTimeInput(e.target.value)}
-            onBlur={handleTargetTimeBlur}
-            placeholder="3:00 - 3:30"
-            maxLength={15}
-            className="w-32 mx-auto text-center text-lg font-medium text-brew-800 bg-transparent
-                       border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base block"
-          />
-        ) : (
-          <div className="text-brew-800 font-medium">
-            {recipe.targetTimeRange || formatTime(recipe.targetTime)}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
-
-  const originCard = (
-    <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
-      <h3 className="text-lg font-semibold text-brew-800 mb-4">Origin Details</h3>
-      {[
-        { label: 'Origin', value: displayBean.origin, field: 'origin' },
-        { label: 'Process', value: displayBean.process, field: 'process' },
-        { label: 'Roaster', value: displayBean.roaster, field: 'roaster' },
-      ].map(item => (
-        <div key={item.label} className="flex justify-between items-center py-2.5 border-b border-brew-50 text-sm last:border-0">
-          <span className="text-brew-400">{item.label}</span>
-          {editing ? (
-            <input
-              type="text"
-              value={item.value || ''}
-              onChange={e => setBeanOverrides(prev => ({ ...prev, [item.field]: e.target.value }))}
-              placeholder="—"
-              className="text-right font-medium text-brew-800 bg-transparent w-1/2
-                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
-            />
-          ) : (
-            <span className="font-medium text-brew-800">{item.value || '—'}</span>
-          )}
-
-        </div>
-      ))}
-    </div>
-  )
+  // Memoize recipe diff detection — avoids JSON.stringify on every render
+  const recipeDiff = useMemo(() => {
+    if (!selectedRecipeId) return null
+    const loaded = beanRecipes.find(r => r.id === selectedRecipeId)
+    if (!loaded) return null
+    const differs = RECIPE_FIELDS.some(f => {
+      if (f === 'steps') return JSON.stringify(recipe[f]) !== JSON.stringify(loaded[f] || [])
+      return recipe[f] !== loaded[f]
+    })
+    return differs ? { name: loaded.name } : null
+  }, [selectedRecipeId, beanRecipes, recipe])
 
   return (
     <div className="pb-28">
@@ -462,17 +240,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
           </button>
           <div className="text-[11px] text-brew-400 uppercase tracking-widest">Recipe</div>
         </div>
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-brew-800">Prepare Your Brew</h1>
-          <button
-            onClick={() => editing ? handleDoneEditing() : setEditing(true)}
-
-            className="border border-brew-200 rounded-lg px-3 py-1.5 text-xs text-brew-400
-                       hover:bg-brew-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
-          >
-            {editing ? 'Done' : 'Edit'}
-          </button>
-        </div>
+        <h1 className="text-xl font-semibold text-brew-800">Prepare Your Brew</h1>
       </div>
 
       {/* Recipe Indicator */}
@@ -605,295 +373,270 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
         </div>
       )}
 
-      {/* Template Picker (new beans with no prior brews) */}
-      {!templatePicked ? (
-        <div className="px-4 mt-4">
-          <div className="text-sm font-medium text-brew-700 mb-1">Choose a pour template</div>
-          <div className="text-xs text-brew-400 mb-3">Pick a starting recipe, or go custom</div>
-          <div className="space-y-2">
-            {templates.map(t => {
-              const totalWater = t.steps.reduce((max, s) => Math.max(max, s.waterTo || 0), 0)
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => handleTemplateSelect(t)}
-                  className="w-full text-left p-4 rounded-2xl border border-brew-200
-                             bg-white shadow-sm hover:bg-brew-50 hover:border-brew-400
-                             active:scale-[0.99] transition-all min-h-[44px]"
-                >
-                  <div className="font-medium text-brew-800 text-sm">{t.name}</div>
-                  <div className="text-xs text-brew-400 mt-1">
-                    {t.steps.length} steps · {totalWater}g total water
-                  </div>
-                </button>
-              )
-            })}
-            <button
-              onClick={() => handleTemplateSelect(null)}
-              className="w-full text-left p-4 rounded-2xl border border-dashed border-brew-300
-                         bg-brew-50/50 shadow-sm hover:bg-brew-50 hover:border-brew-400
-                         active:scale-[0.99] transition-all min-h-[44px]"
-            >
-              <div className="font-medium text-brew-600 text-sm">Custom</div>
-              <div className="text-xs text-brew-400 mt-1">Timer only — no step guidance</div>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Swipeable Cards */}
-          <div className="mt-4">
-            <SwipeCards cards={[essentialsCard, originCard]} currentIndex={cardIndex} onSwipe={handleSwipe} />
+      {/* Bean + Brew Params — always editable, no card wrapper */}
+      <div className="px-4 mt-4">
+        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-2xl font-semibold text-brew-800 leading-tight">{bean.name}</h2>
+              <p className="text-sm text-brew-400 mt-1">{bean.roaster}</p>
+            </div>
+            {bean.roastDate && (
+              <div className="text-xs text-brew-500 bg-brew-50 px-2.5 py-1.5 rounded-lg shrink-0">
+                Roasted {bean.roastDate}
+              </div>
+            )}
           </div>
 
-          {/* Pour Template Selector */}
-          {templates.length > 0 && (
-            <div className="px-4 mt-4">
-              <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-2">Pour Templates</div>
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-                {templates.map(t => (
+          {/* Coffee / Water / Ratio */}
+          <div className="grid grid-cols-3 gap-2 mt-5">
+            {[
+              { label: 'Coffee', field: 'coffeeGrams', type: 'number', min: 1, max: 100 },
+              { label: 'Water', field: 'waterGrams', type: 'number', min: 1, max: 2000 },
+            ].map(item => (
+              <div key={item.label} className="text-center p-3 bg-brew-50 rounded-xl">
+                <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">{item.label}</div>
+                <input
+                  type={item.type}
+                  value={recipe[item.field]}
+                  onChange={e => updateField(item.field, Number(e.target.value))}
+                  min={item.min} max={item.max}
+                  className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
+                             border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+                />
+              </div>
+            ))}
+            <div className="text-center p-3 bg-brew-50 rounded-xl">
+              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Ratio</div>
+              <div className="text-lg font-medium text-brew-800">{ratio(recipe.coffeeGrams, recipe.waterGrams)}</div>
+            </div>
+          </div>
+
+          {/* Grind / Temp */}
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="text-center p-3 bg-brew-50 rounded-xl">
+              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Grind</div>
+              {grinder.settingType === 'ode' ? (
+                <select
+                  value={recipe.grindSetting}
+                  onChange={e => updateField('grindSetting', e.target.value)}
+                  className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
+                             border-b border-brew-300 focus:outline-none text-base"
+                >
+                  {FELLOW_ODE_POSITIONS.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={recipe.grindSetting}
+                  onChange={e => updateField('grindSetting', e.target.value)}
+                  maxLength={50}
+                  className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
+                             border-b border-brew-300 focus:outline-none text-base"
+                />
+              )}
+            </div>
+            <div className="text-center p-3 bg-brew-50 rounded-xl">
+              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Temp</div>
+              <input
+                type="number"
+                value={recipe.waterTemp}
+                onChange={e => updateField('waterTemp', Number(e.target.value))}
+                min={32} max={212}
+                className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
+                           border-b border-brew-300 focus:outline-none text-base"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 text-center">
+            <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Target Time</div>
+            <input
+              type="text"
+              value={targetTimeInput}
+              onChange={e => setTargetTimeInput(e.target.value)}
+              onBlur={handleTargetTimeBlur}
+              placeholder="3:00 - 3:30"
+              maxLength={15}
+              className="w-32 mx-auto text-center text-lg font-medium text-brew-800 bg-transparent
+                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base block"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Pour Steps — collapsed by default */}
+      <div className="px-4 mt-4">
+        <button
+          onClick={() => setStepsOpen(!stepsOpen)}
+          className="w-full flex items-center justify-between py-2 min-h-[44px]"
+        >
+          <div className="text-[11px] text-brew-400 uppercase tracking-widest">Pour Steps</div>
+          {!stepsOpen && recipe.steps.length > 0 && (
+            <div className="text-xs text-brew-500">
+              {recipe.steps.length} steps{recipe.waterGrams ? ` · ${recipe.waterGrams}g` : ''}
+            </div>
+          )}
+          <span className={`text-brew-400 transition-transform text-xs ml-2 ${stepsOpen ? 'rotate-180' : ''}`}>
+            {'\u25BE'}
+          </span>
+        </button>
+        {stepsOpen && (
+          <div className="pb-2 animate-fade-in motion-reduce:animate-none">
+            <StepEditor
+              steps={recipe.steps}
+              onChange={handleStepsChange}
+              cascadeTime
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Equipment Section */}
+      <div className="px-4 mt-4">
+        <button
+          onClick={() => setEquipmentOpen(!equipmentOpen)}
+          className="w-full flex items-center justify-between py-2 min-h-[44px]"
+        >
+          <div className="text-[11px] text-brew-400 uppercase tracking-widest">Equipment</div>
+          {!equipmentOpen && (
+            <div className="text-xs text-brew-500">
+              {methodObj.name} · {grinder.name}{recipe.filterType ? ` · ${recipe.filterType.replace('-', ' ')}` : ''}
+            </div>
+          )}
+          <span className={`text-brew-400 transition-transform text-xs ml-2 ${equipmentOpen ? 'rotate-180' : ''}`}>
+            {'\u25BE'}
+          </span>
+        </button>
+
+        {equipmentOpen && (
+          <div className="space-y-4 pb-2 animate-fade-in motion-reduce:animate-none">
+            {/* Method */}
+            <div>
+              <div className="text-[11px] text-brew-400 mb-1.5">Method</div>
+              <div className="flex flex-wrap gap-2">
+                {BREW_METHODS.map(m => (
                   <button
-                    key={t.id}
-                    onClick={() => handleTemplateSelect(t)}
-                    className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-sm border transition-all
-                                min-h-[44px] shrink-0 ${
-                      t.id === selectedTemplateId
-                        ? 'bg-brew-50 border-brew-500 text-brew-500 font-semibold'
-                        : 'bg-white border-brew-200 text-brew-400'
-                    }`}
+                    key={m.id}
+                    onClick={() => setRecipe(prev => ({ ...prev, method: m.id }))}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all min-h-[44px]
+                      ${recipe.method === m.id
+                        ? 'border-brew-500 bg-brew-50 text-brew-700'
+                        : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                      }`}
                   >
-                    {t.name}
+                    {m.icon} {m.name}
                   </button>
                 ))}
               </div>
             </div>
-          )}
 
-          {/* Pour Steps — full StepEditor with add/remove/edit */}
-          <div className="px-4 mt-4">
-            <button
-              onClick={() => setStepsOpen(!stepsOpen)}
-              className="w-full flex items-center justify-between py-2 min-h-[44px]"
-            >
-              <div className="text-[11px] text-brew-400 uppercase tracking-widest">Pour Steps</div>
-              {!stepsOpen && recipe.steps.length > 0 && (
-                <div className="text-xs text-brew-500">
-                  {recipe.steps.length} steps
-                </div>
-              )}
-              <span className={`text-brew-400 transition-transform text-xs ml-2 ${stepsOpen ? 'rotate-180' : ''}`}>
-                {'\u25BE'}
-              </span>
-            </button>
-            {stepsOpen && (
-              <div className="pb-2 animate-fade-in motion-reduce:animate-none">
-                <StepEditor
-                  steps={recipe.steps}
-                  onChange={handleStepsChange}
-                  disabled={!editing}
-                  cascadeTime
-                  hint={editing ? 'Add, remove, or edit your pour steps.' : 'Tap Edit above to modify steps.'}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Revert to template — shown when returning bean has modified steps */}
-          {(() => {
-            const originalTemplate = recipe.pourTemplateId
-              ? templates.find(t => t.id === recipe.pourTemplateId)
-              : null
-            const stepsMatch = originalTemplate && originalTemplate.steps.length === recipe.steps.length &&
-              originalTemplate.steps.every((s, i) => s.name === recipe.steps[i].name && s.waterTo === recipe.steps[i].waterTo &&
-                s.time === recipe.steps[i].time && s.duration === recipe.steps[i].duration)
-            if (originalTemplate && !stepsMatch) {
-              return (
-                <div className="px-4 mt-2">
-                  <button
-                    onClick={() => {
-                      setRecipe(prev => ({
-                        ...prev,
-                        steps: structuredClone(originalTemplate.steps),
-                        pourTemplateId: originalTemplate.id,
-                      }))
-                      setSelectedTemplateId(originalTemplate.id)
-                    }}
-                    className="text-xs text-brew-500 hover:text-brew-700 underline min-h-[44px]"
-                  >
-                    Revert steps to {originalTemplate.name}
-                  </button>
-                </div>
-              )
-            }
-            if (!recipe.pourTemplateId && recipe.steps.length > 0) {
-              return (
-                <div className="px-4 mt-2">
-                  <button
-                    onClick={() => setTemplatePicked(false)}
-                    className="text-xs text-brew-500 hover:text-brew-700 underline min-h-[44px]"
-                  >
-                    Choose a pour template
-                  </button>
-                </div>
-              )
-            }
-            return null
-          })()}
-
-          {/* Equipment Section */}
-          <div className="px-4 mt-4">
-            <button
-              onClick={() => setEquipmentOpen(!equipmentOpen)}
-              className="w-full flex items-center justify-between py-2 min-h-[44px]"
-            >
-              <div className="text-[11px] text-brew-400 uppercase tracking-widest">Equipment</div>
-              {!equipmentOpen && (
-                <div className="text-xs text-brew-500">
-                  {methodObj.name} · {grinder.name}{recipe.filterType ? ` · ${recipe.filterType.replace('-', ' ')}` : ''}
-                </div>
-              )}
-              <span className={`text-brew-400 transition-transform text-xs ml-2 ${equipmentOpen ? 'rotate-180' : ''}`}>
-                {'\u25BE'}
-              </span>
-            </button>
-
-            {equipmentOpen && (
-              <div className="space-y-4 pb-2 animate-fade-in motion-reduce:animate-none">
-                {/* Method */}
-                <div>
-                  <div className="text-[11px] text-brew-400 mb-1.5">Method</div>
-                  <div className="flex flex-wrap gap-2">
-                    {BREW_METHODS.map(m => (
-                      <button
-                        key={m.id}
-                        onClick={() => setRecipe(prev => ({ ...prev, method: m.id }))}
-                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all min-h-[44px]
-                          ${recipe.method === m.id
-                            ? 'border-brew-500 bg-brew-50 text-brew-700'
-                            : 'border-brew-200 text-brew-400 hover:border-brew-300'
-                          }`}
-                      >
-                        {m.icon} {m.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Dripper — only for pour-over methods */}
-                {methodHasDripper && (
-                  <div>
-                    <div className="text-[11px] text-brew-400 mb-1.5">Dripper</div>
-                    <div className="flex flex-wrap gap-2">
-                      {DRIPPER_MATERIALS.map(mat => (
-                        <button
-                          key={mat}
-                          onClick={() => setRecipe(prev => ({ ...prev, dripper: mat }))}
-                          className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
-                            ${recipe.dripper === mat
-                              ? 'border-brew-500 bg-brew-50 text-brew-700'
-                              : 'border-brew-200 text-brew-400 hover:border-brew-300'
-                            }`}
-                        >
-                          {mat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Grinder */}
-                <div>
-                  <div className="text-[11px] text-brew-400 mb-1.5">Grinder</div>
-                  <select
-                    value={recipe.grinder}
-                    onChange={e => handleGrinderChange(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-brew-200 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
-                  >
-                    {GRINDERS.map(g => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Filter Type */}
-                <div>
-                  <div className="text-[11px] text-brew-400 mb-1.5">Filter</div>
-                  <div className="flex flex-wrap gap-2">
-                    {FILTER_TYPES.map(f => (
-                      <button
-                        key={f}
-                        onClick={() => setRecipe(prev => ({ ...prev, filterType: f }))}
-                        className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
-                          ${recipe.filterType === f
-                            ? 'border-brew-500 bg-brew-50 text-brew-700'
-                            : 'border-brew-200 text-brew-400 hover:border-brew-300'
-                          }`}
-                      >
-                        {f.replace('-', ' ')}
-                      </button>
-                    ))}
-                  </div>
+            {/* Dripper — only for pour-over methods */}
+            {methodHasDripper && (
+              <div>
+                <div className="text-[11px] text-brew-400 mb-1.5">Dripper</div>
+                <div className="flex flex-wrap gap-2">
+                  {DRIPPER_MATERIALS.map(mat => (
+                    <button
+                      key={mat}
+                      onClick={() => setRecipe(prev => ({ ...prev, dripper: mat }))}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
+                        ${recipe.dripper === mat
+                          ? 'border-brew-500 bg-brew-50 text-brew-700'
+                          : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                        }`}
+                    >
+                      {mat}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Save to Recipe — shown when form values differ from loaded recipe */}
-          {selectedRecipeId && onSaveToRecipe && (() => {
-            const loaded = beanRecipes.find(r => r.id === selectedRecipeId)
-            if (!loaded) return null
-            const differs = RECIPE_FIELDS.some(f => {
-              if (f === 'steps') return JSON.stringify(recipe[f]) !== JSON.stringify(loaded[f] || [])
-              return recipe[f] !== loaded[f]
-            })
-            if (!differs) return null
-            return (
-              <div className="px-4 mt-3">
-                <RecipeSaveChoice
-                  recipeName={loaded.name}
-                  onUpdate={() => {
-                    const timeOverrides = flushPendingEdits()
-                    const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
-                    onSaveToRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
-                  }}
-                  onSaveAsNew={() => {
-                    const timeOverrides = flushPendingEdits()
-                    const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
-                    onSaveAsNewRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
-                  }}
-                />
+            {/* Grinder */}
+            <div>
+              <div className="text-[11px] text-brew-400 mb-1.5">Grinder</div>
+              <select
+                value={recipe.grinder}
+                onChange={e => handleGrinderChange(e.target.value)}
+                className="w-full p-3 rounded-xl border border-brew-200 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
+              >
+                {GRINDERS.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Type */}
+            <div>
+              <div className="text-[11px] text-brew-400 mb-1.5">Filter</div>
+              <div className="flex flex-wrap gap-2">
+                {FILTER_TYPES.map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setRecipe(prev => ({ ...prev, filterType: f }))}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
+                      ${recipe.filterType === f
+                        ? 'border-brew-500 bg-brew-50 text-brew-700'
+                        : 'border-brew-200 text-brew-400 hover:border-brew-300'
+                      }`}
+                  >
+                    {f.replace('-', ' ')}
+                  </button>
+                ))}
               </div>
-            )
-          })()}
-
-          {/* Brew This CTA */}
-          <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
-                          bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
-            <button
-              onClick={() => {
-                flushPendingEdits()
-                onStartBrew()
-              }}
-              className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
-                         shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
-                         pointer-events-auto min-h-[44px]"
-            >
-              Brew This
-            </button>
-            <button
-              onClick={() => {
-                const timeOverrides = flushPendingEdits()
-                onLogWithoutTimer(timeOverrides || {})
-              }}
-              className="w-full py-3 mt-2 text-brew-500 text-sm font-medium
-                         hover:text-brew-700 pointer-events-auto min-h-[44px]"
-            >
-              Log without timer
-            </button>
+            </div>
           </div>
-        </>
+        )}
+      </div>
+
+      {/* Save to Recipe — shown when form values differ from loaded recipe */}
+      {recipeDiff && onSaveToRecipe && (
+        <div className="px-4 mt-3">
+          <RecipeSaveChoice
+            recipeName={recipeDiff.name}
+            onUpdate={() => {
+              const timeOverrides = commitTargetTimeInputs()
+              const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
+              onSaveToRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
+            }}
+            onSaveAsNew={() => {
+              const timeOverrides = commitTargetTimeInputs()
+              const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
+              onSaveAsNewRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
+            }}
+          />
+        </div>
       )}
+
+      {/* Brew This CTA */}
+      <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
+                      bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
+        <button
+          onClick={() => {
+            commitTargetTimeInputs()
+            onStartBrew()
+          }}
+          className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
+                     shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
+                     pointer-events-auto min-h-[44px]"
+        >
+          Brew This
+        </button>
+        <button
+          onClick={() => {
+            const timeOverrides = commitTargetTimeInputs()
+            onLogWithoutTimer(timeOverrides || {})
+          }}
+          className="w-full py-3 mt-2 text-brew-500 text-sm font-medium
+                     hover:text-brew-700 pointer-events-auto min-h-[44px]"
+        >
+          Log without timer
+        </button>
+      </div>
     </div>
   )
 }
@@ -1357,22 +1100,24 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
             const tappedAt = result?.tappedAt
             const skipped = result?.skipped
             const variance = result?.variance
+            const notReached = !skipped && tappedAt == null && brew.totalTime != null && step.time > brew.totalTime
 
             return (
               <div
                 key={step.id}
                 className={`flex justify-between items-center py-2.5 border-b border-brew-50
-                            last:border-0 ${skipped ? 'opacity-40' : ''}`}
+                            last:border-0 ${skipped || notReached ? 'opacity-40' : ''}`}
               >
                 <div>
                   <span className={`font-semibold text-sm ${skipped ? 'line-through' : ''} text-brew-800`}>
                     {step.name}
                   </span>
                   {skipped && <span className="text-[11px] text-red-500 ml-2">Skipped</span>}
+                  {notReached && <span className="text-[11px] text-brew-400 ml-2">Not reached</span>}
                 </div>
                 <div className="text-right">
                   <div className="text-sm tabular-nums text-brew-800">
-                    {skipped ? '—' : tappedAt != null ? formatTime(tappedAt) : formatTime(step.time)}
+                    {skipped || notReached ? '—' : tappedAt != null ? formatTime(tappedAt) : formatTime(step.time)}
                   </div>
                   {variance != null && !skipped && (
                     <div className={`text-[11px] font-semibold ${
@@ -1381,7 +1126,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                       {variance > 0 ? '+' : ''}{variance}s
                     </div>
                   )}
-                  {!skipped && tappedAt == null && (
+                  {!skipped && !notReached && tappedAt == null && (
                     <div className="text-[11px] text-brew-300">as planned</div>
                   )}
                 </div>
@@ -1709,7 +1454,12 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     // Look up recipes for this bean, sorted by lastUsedAt (most recent first)
     const beanRecipes = (recipes || []).filter(r => r.beanId === beanId)
     if (beanRecipes.length === 0) {
-      // No recipe entity — fall back to last brew for backward compat during transition
+      // No recipe entity — auto-populate steps from default template
+      const defaultTemplate = templates.find(t => t.id === 'standard-3pour-v60') || templates[0]
+      if (defaultTemplate) {
+        defaults.steps = structuredClone(defaultTemplate.steps)
+        defaults.pourTemplateId = defaultTemplate.id
+      }
       return { recipe: defaults, recipeId: null }
     }
 
@@ -1720,7 +1470,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
       recipe: recipeEntityToFormState(selected, defaults),
       recipeId: selected.id,
     }
-  }, [recipes, getRecipeDefaults])
+  }, [recipes, getRecipeDefaults, templates])
 
   // Recipe state — initialized lazily from recipe entity or defaults
   const [recipe, setRecipe] = useState(() => {
@@ -1765,15 +1515,6 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     savingRef.current = false
     setPhase('pick')
   }, [getRecipeDefaults])
-
-  // Update bean fields — batched, called once when editing completes
-  const handleBeanUpdate = useCallback((overrides) => {
-    setSelectedBean(prev => ({ ...prev, ...overrides }))
-    if (selectedBean?.id) {
-      const updated = updateBean(selectedBean.id, overrides)
-      setBeans(updated)
-    }
-  }, [selectedBean, setBeans])
 
   // Fork prompt handler: update existing recipe with brew's values
   const handleUpdateRecipeFromFork = useCallback((recipeId) => {
@@ -2008,8 +1749,6 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           recipe={recipe}
           setRecipe={setRecipe}
           changes={changes}
-          templates={templates}
-          equipment={equipment}
           beanRecipes={(recipes || []).filter(r => r.beanId === selectedBean.id)}
           selectedRecipeId={selectedRecipeId}
           onRecipeSelect={(recipeEntity) => {
@@ -2034,7 +1773,6 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           onStartBrew={() => setPhase('brew')}
           onLogWithoutTimer={handleLogWithoutTimer}
           onBack={() => setPhase('pick')}
-          onBeanUpdate={handleBeanUpdate}
           onRecipeRenamed={(recipeId, newName) => {
             updateRecipe(recipeId, { name: newName })
             setRecipes(getRecipes())
