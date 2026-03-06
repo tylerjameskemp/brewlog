@@ -141,7 +141,6 @@ function App() {
           {view === 'brew' && !needsSetup && editingBrew && (
             <BrewForm
               equipment={equipment}
-              beans={beans}
               setBeans={setBeans}
               editBrew={editingBrew}
               onBrewSaved={(updatedBrews) => setBrews(updatedBrews)}

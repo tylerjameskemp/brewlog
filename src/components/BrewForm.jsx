@@ -29,7 +29,7 @@ const BREWFORM_RECIPE_FIELDS = [
   'steps',
 ]
 
-export default function BrewForm({ equipment, beans, setBeans, editBrew, onBrewSaved, onEditComplete, recipes, onUpdateRecipe, onSaveAsNewRecipe }) {
+export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, onEditComplete, recipes, onUpdateRecipe, onSaveAsNewRecipe }) {
   const getActualSteps = (brew) => {
     if (Array.isArray(brew?.steps) && brew.steps.length > 0) return normalizeSteps(brew.steps)
     if (Array.isArray(brew?.recipeSnapshot?.steps) && brew.recipeSnapshot.steps.length > 0) return normalizeSteps(brew.recipeSnapshot.steps)

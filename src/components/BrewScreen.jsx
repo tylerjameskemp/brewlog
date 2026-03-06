@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import {
-  getBrews, getLastBrewOfBean, getChangesForBean, getChangesForRecipe,
+  getBrews, getChangesForBean, getChangesForRecipe,
   normalizeSteps, formatTime, parseTimeRange, formatTimeRange,
   computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
   updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
-  normalizeName, getRecipes, getRecipesForBean, saveRecipe, updateRecipe,
-  archiveRecipe, generateRecipeCopyName,
+  normalizeName, getRecipes, saveRecipe, updateRecipe,
+  generateRecipeCopyName,
   RECIPE_FIELDS, recipeEntityToFormState, formStateToRecipeFields,
 } from '../data/storage'
 import { getMethodName } from '../data/defaults'
@@ -22,7 +22,7 @@ import useWakeLock from '../hooks/useWakeLock'
 // ============================================================
 // Phase state machine: pick → recipe → brew → rate → success
 // pick:    Bean picker (if no bean pre-selected)
-// recipe:  Recipe Assembly — review, adjust, select pour template
+// recipe:  Recipe Assembly — review, adjust recipe parameters
 // brew:    Active Brew — timer, step teleprompter, variance tracking
 // rate:    Rate This Brew — tasting notes, correct actuals, "what to try next"
 // success: Done — start new brew or view history
@@ -153,7 +153,7 @@ function RecipeSaveChoice({ recipeName, onUpdate, onSaveAsNew }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBrew, onLogWithoutTimer, onBack, equipment, beanRecipes, selectedRecipeId, onRecipeSelect, onSaveToRecipe, onSaveAsNewRecipe, onRecipeRenamed }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onSaveToRecipe, onSaveAsNewRecipe, onRecipeRenamed }) {
 
   const [showRecipePicker, setShowRecipePicker] = useState(false)
   const [renamingRecipeId, setRenamingRecipeId] = useState(null)
@@ -202,12 +202,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
     return timeFields
   }
 
-  // Flush buffered target time input.
-  // Returns time overrides for immediate use before React processes state updates.
-  const flushPendingEdits = () => {
-    return commitTargetTimeInputs()
-  }
-
   const updateField = (field, value) => {
     if (typeof value === 'number' && isNaN(value)) return // NaN guard for numeric inputs
     setRecipe(prev => ({ ...prev, [field]: value }))
@@ -216,6 +210,18 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
   const handleStepsChange = (newSteps) => {
     setRecipe(prev => ({ ...prev, steps: newSteps }))
   }
+
+  // Memoize recipe diff detection — avoids JSON.stringify on every render
+  const recipeDiff = useMemo(() => {
+    if (!selectedRecipeId) return null
+    const loaded = beanRecipes.find(r => r.id === selectedRecipeId)
+    if (!loaded) return null
+    const differs = RECIPE_FIELDS.some(f => {
+      if (f === 'steps') return JSON.stringify(recipe[f]) !== JSON.stringify(loaded[f] || [])
+      return recipe[f] !== loaded[f]
+    })
+    return differs ? { name: loaded.name } : null
+  }, [selectedRecipeId, beanRecipes, recipe])
 
   return (
     <div className="pb-28">
@@ -588,39 +594,30 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
       </div>
 
       {/* Save to Recipe — shown when form values differ from loaded recipe */}
-      {selectedRecipeId && onSaveToRecipe && (() => {
-        const loaded = beanRecipes.find(r => r.id === selectedRecipeId)
-        if (!loaded) return null
-        const differs = RECIPE_FIELDS.some(f => {
-          if (f === 'steps') return JSON.stringify(recipe[f]) !== JSON.stringify(loaded[f] || [])
-          return recipe[f] !== loaded[f]
-        })
-        if (!differs) return null
-        return (
-          <div className="px-4 mt-3">
-            <RecipeSaveChoice
-              recipeName={loaded.name}
-              onUpdate={() => {
-                const timeOverrides = flushPendingEdits()
-                const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
-                onSaveToRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
-              }}
-              onSaveAsNew={() => {
-                const timeOverrides = flushPendingEdits()
-                const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
-                onSaveAsNewRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
-              }}
-            />
-          </div>
-        )
-      })()}
+      {recipeDiff && onSaveToRecipe && (
+        <div className="px-4 mt-3">
+          <RecipeSaveChoice
+            recipeName={recipeDiff.name}
+            onUpdate={() => {
+              const timeOverrides = commitTargetTimeInputs()
+              const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
+              onSaveToRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
+            }}
+            onSaveAsNew={() => {
+              const timeOverrides = commitTargetTimeInputs()
+              const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
+              onSaveAsNewRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
+            }}
+          />
+        </div>
+      )}
 
       {/* Brew This CTA */}
       <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
                       bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
         <button
           onClick={() => {
-            flushPendingEdits()
+            commitTargetTimeInputs()
             onStartBrew()
           }}
           className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
@@ -631,7 +628,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, templates, onStartBr
         </button>
         <button
           onClick={() => {
-            const timeOverrides = flushPendingEdits()
+            const timeOverrides = commitTargetTimeInputs()
             onLogWithoutTimer(timeOverrides || {})
           }}
           className="w-full py-3 mt-2 text-brew-500 text-sm font-medium
@@ -1456,7 +1453,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     const beanRecipes = (recipes || []).filter(r => r.beanId === beanId)
     if (beanRecipes.length === 0) {
       // No recipe entity — auto-populate steps from default template
-      const defaultTemplate = templates[0]
+      const defaultTemplate = templates.find(t => t.id === 'standard-3pour-v60') || templates[0]
       if (defaultTemplate) {
         defaults.steps = structuredClone(defaultTemplate.steps)
         defaults.pourTemplateId = defaultTemplate.id
@@ -1750,8 +1747,6 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           recipe={recipe}
           setRecipe={setRecipe}
           changes={changes}
-          templates={templates}
-          equipment={equipment}
           beanRecipes={(recipes || []).filter(r => r.beanId === selectedBean.id)}
           selectedRecipeId={selectedRecipeId}
           onRecipeSelect={(recipeEntity) => {
