@@ -35,22 +35,6 @@ const getTotalDuration = (steps) =>
     : 210
 
 // ─── Phase Indicator ────────────────────────────────────────
-function PhaseIndicator({ phase }) {
-  const phases = ['recipe', 'brew', 'rate']
-  return (
-    <div className="flex gap-1.5 px-5 py-3">
-      {phases.map((p, i) => (
-        <div
-          key={p}
-          className={`flex-1 h-0.5 rounded-full transition-colors duration-500 motion-reduce:transition-none ${
-            i <= phases.indexOf(phase) ? 'bg-brew-500' : 'bg-brew-200'
-          }`}
-        />
-      ))}
-    </div>
-  )
-}
-
 // ─── Phase 0: Bean Picker ───────────────────────────────────
 function BeanPicker({ beans, onSelect }) {
   const [search, setSearch] = useState('')
@@ -110,50 +94,8 @@ function BeanPicker({ beans, onSelect }) {
   )
 }
 
-// ─── Recipe Save Choice — inline Update vs Save-as-New ──────
-function RecipeSaveChoice({ recipeName, onUpdate, onSaveAsNew }) {
-  const [showChoice, setShowChoice] = useState(false)
-
-  if (!showChoice) {
-    return (
-      <button
-        onClick={() => setShowChoice(true)}
-        className="w-full py-2.5 text-sm font-medium text-brew-600 border border-brew-300
-                   rounded-xl hover:bg-brew-50 active:scale-[0.99] transition-all min-h-[44px]"
-      >
-        Save changes to recipe
-      </button>
-    )
-  }
-
-  return (
-    <div className="bg-white border border-amber-200 rounded-xl p-4 space-y-2">
-      <button
-        onClick={() => { onUpdate(); setShowChoice(false) }}
-        className="w-full py-2.5 text-sm font-semibold text-white bg-brew-800
-                   rounded-xl hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
-      >
-        Update "{recipeName}"
-      </button>
-      <button
-        onClick={() => { onSaveAsNew(); setShowChoice(false) }}
-        className="w-full py-2.5 text-sm font-medium text-brew-600 border border-brew-200
-                   rounded-xl hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
-      >
-        Save as New Recipe
-      </button>
-      <button
-        onClick={() => setShowChoice(false)}
-        className="w-full text-xs text-brew-400 hover:text-brew-600 transition-colors mt-1"
-      >
-        Cancel
-      </button>
-    </div>
-  )
-}
-
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onSaveToRecipe, onSaveAsNewRecipe, onRecipeRenamed }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onRecipeRenamed }) {
 
   const [showRecipePicker, setShowRecipePicker] = useState(false)
   const [renamingRecipeId, setRenamingRecipeId] = useState(null)
@@ -210,18 +152,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
   const handleStepsChange = (newSteps) => {
     setRecipe(prev => ({ ...prev, steps: newSteps }))
   }
-
-  // Memoize recipe diff detection — avoids JSON.stringify on every render
-  const recipeDiff = useMemo(() => {
-    if (!selectedRecipeId) return null
-    const loaded = beanRecipes.find(r => r.id === selectedRecipeId)
-    if (!loaded) return null
-    const differs = RECIPE_FIELDS.some(f => {
-      if (f === 'steps') return JSON.stringify(recipe[f]) !== JSON.stringify(loaded[f] || [])
-      return recipe[f] !== loaded[f]
-    })
-    return differs ? { name: loaded.name } : null
-  }, [selectedRecipeId, beanRecipes, recipe])
 
   return (
     <div className="pb-28">
@@ -593,25 +523,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         )}
       </div>
 
-      {/* Save to Recipe — shown when form values differ from loaded recipe */}
-      {recipeDiff && onSaveToRecipe && (
-        <div className="px-4 mt-3">
-          <RecipeSaveChoice
-            recipeName={recipeDiff.name}
-            onUpdate={() => {
-              const timeOverrides = commitTargetTimeInputs()
-              const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
-              onSaveToRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
-            }}
-            onSaveAsNew={() => {
-              const timeOverrides = commitTargetTimeInputs()
-              const currentRecipe = timeOverrides ? { ...recipe, ...timeOverrides } : recipe
-              onSaveAsNewRecipe(selectedRecipeId, formStateToRecipeFields(currentRecipe))
-            }}
-          />
-        </div>
-      )}
-
       {/* Brew This CTA */}
       <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
                       bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
@@ -755,17 +666,6 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
               style={{ width: `${progress * 100}%` }}
             />
           </div>
-        </div>
-
-        {/* Recipe reference strip */}
-        <div className="flex items-center justify-center gap-2 px-4 py-1 text-xs text-brew-400 font-mono truncate">
-          {[
-            recipe.coffeeGrams && `${recipe.coffeeGrams}g`,
-            recipe.grindSetting,
-            recipe.waterGrams && `${recipe.waterGrams}g target`,
-          ].filter(Boolean).map((part, i, arr) => (
-            <span key={i}>{part}{i < arr.length - 1 ? ' \u00b7 ' : ''}</span>
-          ))}
         </div>
 
         {/* Controls — fixed height container prevents layout shift */}
@@ -1737,8 +1637,6 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
 
   return (
     <div>
-      {phase !== 'pick' && phase !== 'success' && <PhaseIndicator phase={phase} />}
-
       {phase === 'pick' && (
         <BeanPicker beans={beans} onSelect={handleBeanSelect} />
       )}
@@ -1761,14 +1659,6 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
               setSelectedRecipeId(recipeEntity.id)
               setRecipe(recipeEntityToFormState(recipeEntity, getRecipeDefaults()))
             }
-          }}
-          onSaveToRecipe={(recipeId, fields) => {
-            updateRecipe(recipeId, fields)
-            setRecipes(getRecipes())
-          }}
-          onSaveAsNewRecipe={(recipeId, fields) => {
-            const newRecipe = saveRecipeAsNewCopy(recipeId, fields)
-            if (newRecipe) setSelectedRecipeId(newRecipe.id)
           }}
           onStartBrew={() => setPhase('brew')}
           onLogWithoutTimer={handleLogWithoutTimer}
