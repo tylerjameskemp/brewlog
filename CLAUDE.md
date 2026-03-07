@@ -167,15 +167,15 @@ pick → recipe → brew → rate → success
 **Ref-tracked previous value for onBlur cascades:** Use `useRef` (not `useState`) to track the "last committed" value when you need to detect changes on blur and trigger a prompt (e.g., water scaling). Sync the ref when the source entity changes (via `useEffect` keyed on entity ID, not value) to prevent stale comparisons. See `docs/solutions/react-patterns/ref-tracked-previous-value-enables-onblur-cascade.md`.
 
 ## Bugs & Lessons Learned
-40 documented solutions in `docs/solutions/` across 6 categories:
+43 documented solutions in `docs/solutions/` across 6 categories:
 - **logic-errors/** (16): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence, cache mutation breaks sort invariant, entity-form field mapping divergence, new entity CRUD missing defensive patterns, redundant step fields diverge, split operation accumulates name suffixes, boolean state classifications must be mutually exclusive, standalone component references parent scope, nullish coalescing required for numeric form state, positional array access creates implicit ordering contract
-- **react-patterns/** (18): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective, primary action must flush pending edits, extracted component should not bake layout wrapper, subtractive refactor leaves dead-prop halo, progressive disclosure summary vs details split, shared toggle must reset on card switch, content indicators on collapsed sections, ref-tracked previous value enables onBlur cascade
+- **react-patterns/** (19): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective, primary action must flush pending edits, extracted component should not bake layout wrapper, subtractive refactor leaves dead-prop halo, progressive disclosure summary vs details split, shared toggle must reset on card switch, content indicators on collapsed sections, ref-tracked previous value enables onBlur cascade, related cards merge with internal dividers
 - **performance/** (2): per-keystroke localStorage writes, edit-mode gate removal exposes ungated render computation
 - **state-management/** (1): lazy init state goes stale on prop change
 - **test-failures/** (1): Node 22 localStorage shadows browser mock
-- **ui-bugs/** (2): paired input blur race, raw field names displayed to users
+- **ui-bugs/** (4): paired input blur race, raw field names displayed to users, touch target min-h must use flex centering, typography drift requires canonical scale table
 
-Full tracking: `todos/` (90 items, 81 complete). Plans: `docs/plans/`. Solutions: `docs/solutions/`.
+Full tracking: `todos/` (97 items, 81 complete). Plans: `docs/plans/`. Solutions: `docs/solutions/`.
 
 ## Commands
 - `npm install` — Install dependencies
