@@ -371,7 +371,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       <PhaseHeader number={2} title="Brew" subtitle="What happened" phase="brew" />
 
       {/* ---- TIMING ---- */}
-      <Section title="Timing">
+      <Section title="Timing" collapsible={false}>
         <div>
           <label className="text-xs font-medium text-brew-500 mb-1 block">Total Time</label>
           <TimeInput
@@ -403,7 +403,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       )}
 
       {/* ---- ISSUES ---- */}
-      <Section title="Issues">
+      <Section title="Issues" preview={form.issues.length > 0 ? `(${form.issues.length})` : null}>
         <div className="flex flex-wrap gap-2">
           {BREW_ISSUES.map(issue => (
             <button
@@ -427,7 +427,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       </Section>
 
       {/* ---- NOTES ---- */}
-      <Section title="Notes">
+      <Section title="Notes" preview={form.notes ? (form.notes.length > 40 ? form.notes.slice(0, 40) + '...' : form.notes) : null}>
         <textarea
           value={form.notes}
           onChange={(e) => update('notes', e.target.value)}
@@ -444,7 +444,16 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       <PhaseHeader number={3} title="Tasting" subtitle="How did it taste?" phase="tasting" />
 
       {/* ---- TASTING NOTES ---- */}
-      <Section title="Tasting">
+      <Section title="Tasting" preview={(() => {
+        const parts = []
+        if (form.flavors?.length > 0) parts.push(`${form.flavors.length} flavor${form.flavors.length !== 1 ? 's' : ''}`)
+        if (form.body) parts.push(form.body)
+        if (form.rating != null) {
+          const r = RATING_SCALE.find(s => s.value === form.rating)
+          if (r) parts.push(r.emoji)
+        }
+        return parts.length > 0 ? parts.join(' · ') : null
+      })()}>
         {/* Flavor picker */}
         <div className="mb-4">
           <label className="text-xs font-medium text-brew-500 mb-2 block">Flavors</label>
@@ -554,8 +563,19 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
 // --- COLLAPSIBLE SECTION COMPONENT ---
 // Keeps the form clean by letting sections collapse
-function Section({ title, defaultOpen = false, children }) {
+function Section({ title, defaultOpen = false, preview, collapsible = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
+
+  if (!collapsible) {
+    return (
+      <div className="bg-white rounded-2xl border border-brew-100 overflow-hidden shadow-sm">
+        <div className="px-5 py-4">
+          <span className="text-sm font-semibold text-brew-800">{title}</span>
+        </div>
+        <div className="px-5 pb-5">{children}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-brew-100 overflow-hidden shadow-sm">
@@ -564,8 +584,13 @@ function Section({ title, defaultOpen = false, children }) {
         className="w-full px-5 py-4 flex justify-between items-center text-left
                    hover:bg-brew-50/50 transition-colors"
       >
-        <span className="text-sm font-semibold text-brew-800">{title}</span>
-        <span className={`text-brew-400 transition-transform ${open ? 'rotate-180' : ''}`}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-semibold text-brew-800 shrink-0">{title}</span>
+          {!open && preview && (
+            <span className="text-xs text-brew-400 truncate">{preview}</span>
+          )}
+        </div>
+        <span className={`text-brew-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}>
           {'\u25BE'}
         </span>
       </button>
