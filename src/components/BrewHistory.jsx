@@ -168,6 +168,7 @@ function TagComparison({ label, shared, uniqueA, uniqueB, changed, sharedClass, 
 
 export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate, onEditBrew }) {
   const [expandedId, setExpandedId] = useState(null)
+  const [showDetails, setShowDetails] = useState(false)
   const [compareMode, setCompareMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
   const [showDiffHint, setShowDiffHint] = useState(() => !getUIPref('seenDiffExplanation'))
@@ -261,7 +262,9 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
 
   const handleCardClick = (brew) => {
     if (!compareMode) {
-      setExpandedId(expandedId === brew.id ? null : brew.id)
+      const newId = expandedId === brew.id ? null : brew.id
+      setExpandedId(newId)
+      if (newId !== expandedId) setShowDetails(false)
       return
     }
 
@@ -573,162 +576,48 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
             {/* Expanded detail */}
             <Collapsible open={isExpanded}>
               {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
-                {/* --- RECIPE --- */}
-                <div className="mt-3">
-                  <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Recipe</span>
-                  <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
-                    <div className="text-xs">
-                      <span className="text-brew-500">Dose:</span>{' '}
-                      <span className="font-mono text-brew-700">{brew.coffeeGrams}g</span>
-                    </div>
-                    <div className="text-xs">
-                      <span className="text-brew-500">Water:</span>{' '}
-                      <span className="font-mono text-brew-700">{brew.waterGrams}g</span>
-                    </div>
-                    <div className="text-xs">
-                      <span className="text-brew-500">Grind:</span>{' '}
-                      <span className="font-mono text-brew-700">{brew.grindSetting}</span>
-                    </div>
-                    <div className="text-xs">
-                      <span className="text-brew-500">Temp:</span>{' '}
-                      <span className="font-mono text-brew-700">{brew.waterTemp}{'\u00B0'}F</span>
-                    </div>
-                    {(brew.targetTimeRange || brew.targetTime) && (
-                      <div className="text-xs">
-                        <span className="text-brew-500">Target Time:</span>{' '}
-                        <span className="font-mono text-brew-700">{brew.targetTimeRange || formatTime(brew.targetTime)}</span>
-                      </div>
-                    )}
+
+                {/* === SUMMARY (always visible on expand) === */}
+                <div className="mt-3 grid grid-cols-3 gap-x-4 gap-y-1">
+                  <div className="text-xs">
+                    <span className="text-brew-500">Dose:</span>{' '}
+                    <span className="font-mono text-brew-700">{brew.coffeeGrams}g</span>
                   </div>
-                  {/* Equipment */}
-                  {(brew.method || brew.grinder || brew.dripper) && (
-                    <div className="mt-1.5 text-xs col-span-2">
-                      <span className="text-brew-500">Equipment:</span>{' '}
-                      <span className="text-brew-700">
-                        {[
-                          getMethodName(brew.method),
-                          getGrinderName(brew.grinder),
-                          brew.dripper,
-                          brew.filterType?.replace('-', ' '),
-                        ].filter(Boolean).join(' \u00b7 ')}
+                  <div className="text-xs">
+                    <span className="text-brew-500">Water:</span>{' '}
+                    <span className="font-mono text-brew-700">{brew.waterGrams}g</span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-brew-500">Grind:</span>{' '}
+                    <span className="font-mono text-brew-700">{brew.grindSetting}</span>
+                  </div>
+                </div>
+                {brew.totalTime && (
+                  <div className="mt-1 text-xs">
+                    <span className="text-brew-500">Time:</span>{' '}
+                    <span className="font-mono text-brew-700">{formatTime(brew.totalTime)}</span>
+                  </div>
+                )}
+
+                {/* Flavors in summary */}
+                {brew.flavors?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {brew.flavors.map(f => (
+                      <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-600 rounded-full text-[10px]">
+                        {f}
                       </span>
-                    </div>
-                  )}
-                  {/* Recipe name */}
-                  {brew.recipeId && recipes?.find(r => r.id === brew.recipeId) && (
-                    <div className="mt-1 text-xs col-span-2">
-                      <span className="text-brew-500">Recipe:</span>{' '}
-                      <span className="text-brew-700">{recipes.find(r => r.id === brew.recipeId).name}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* --- BREW --- */}
-                <div className="mt-3">
-                  <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Brew</span>
-                  {brew.totalTime && (
-                    <div className="mt-1.5 text-xs">
-                      <span className="text-brew-500">Total Time:</span>{' '}
-                      <span className="font-mono text-brew-700">{formatTime(brew.totalTime)}</span>
-                    </div>
-                  )}
-                  {/* Time deviation — only shown if actual differs from target */}
-                  {(brew.targetTimeRange || brew.targetTime) && brew.totalTime && brew.totalTime !== brew.targetTime && (
-                    <div className="mt-1 text-xs">
-                      <span className="text-amber-600">Target {brew.targetTimeRange || formatTime(brew.targetTime)}, actual {formatTime(brew.totalTime)}</span>
-                    </div>
-                  )}
-                  {actualSteps.length > 0 && (
-                    <div className="mt-1.5">
-                      <span className="text-xs text-brew-500">Actual Pour Steps:</span>
-                      <div className="mt-1 space-y-1">
-                        {actualSteps.map((step, idx) => {
-                          const result = brew.stepResults?.[step.id]
-                          const notReached = !result?.skipped && result?.tappedAt == null
-                            && brew.totalTime != null && step.time > brew.totalTime
-                          return (
-                            <div key={`${brew.id}-actual-${idx}`} className={`text-xs font-mono ${notReached ? 'text-brew-400' : 'text-brew-700'}`}>
-                              {notReached
-                                ? <>{step.name || `Step ${idx + 1}`} · <span className="text-brew-400">not reached</span></>
-                                : <>{step.time != null ? formatTime(step.time) : '—'} · {step.name || `Step ${idx + 1}`}
-                                  {step.waterTo != null ? ` · ${step.waterTo}g` : ''}
-                                  {result?.tappedAt != null && (
-                                    <span className="text-brew-400"> (tapped {formatTime(result.tappedAt)})</span>
-                                  )}
-                                  {result?.skipped && (
-                                    <span className="text-amber-500"> skipped</span>
-                                  )}
-                                </>
-                              }
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {recipeSteps.length > 0 && brew.recipeSnapshot?.steps && stepsChanged(brew.recipeSnapshot.steps, brew.steps) && (
-                    <div className="mt-1 text-xs">
-                      <span className="text-amber-600">Actual pour steps differed from recipe plan</span>
-                    </div>
-                  )}
-                  {brew.issues?.length > 0 && (
-                    <div className="mt-1.5">
-                      <span className="text-xs text-brew-500">Issues: </span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {brew.issues.map(i => (
-                          <span key={i} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-xs">
-                            {i}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {brew.notes && (
-                    <div className="mt-2 p-3 bg-brew-50 rounded-xl">
-                      <span className="text-xs font-medium text-brew-500">Notes:</span>
-                      <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto">{brew.notes}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* --- TASTING --- */}
-                {(brew.flavors?.length > 0 || brew.body || brew.rating) && (
-                  <div className="mt-3">
-                    <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Tasting</span>
-                    {brew.flavors?.length > 0 && (
-                      <div className="mt-1.5">
-                        <span className="text-xs text-brew-500">Flavors: </span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {brew.flavors.map(f => (
-                            <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-600 rounded-full text-xs">
-                              {f}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {brew.body && (
-                      <div className="mt-1.5 text-xs">
-                        <span className="text-brew-500">Body: </span>
-                        <span className="text-brew-700">{brew.body}</span>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 )}
 
-                {/* Changes from previous brew */}
-                {diff && (
-                  <div className="mt-3 p-3 bg-amber-50/50 rounded-xl">
-                    <span className="text-xs font-medium text-amber-700">Changes from previous:</span>
-                    <div className="mt-1 space-y-0.5">
-                      {diff.map((d, i) => (
-                        <div key={i} className="text-xs text-amber-600">{'\u2192'} {d}</div>
-                      ))}
-                    </div>
+                {/* Notes preview in summary */}
+                {brew.notes && (
+                  <div className="mt-2 text-xs text-brew-600 italic">
+                    {brew.notes.length > 80 ? brew.notes.slice(0, 80) + '...' : brew.notes}
                   </div>
                 )}
 
-                {/* Edit & Delete */}
+                {/* Edit & Delete (moved up to summary) */}
                 <div className="mt-3 flex items-center gap-2">
                   {onEditBrew && (
                     <button
@@ -746,7 +635,143 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                   >
                     Delete
                   </button>
+                  <button
+                    onClick={() => setShowDetails(!showDetails)}
+                    aria-expanded={showDetails}
+                    className="ml-auto text-xs text-brew-400 hover:text-brew-600 transition-colors py-2 min-h-[44px]"
+                  >
+                    {showDetails ? 'Hide details' : 'Show details'}
+                  </button>
                 </div>
+
+                {/* === DETAILS (behind toggle) === */}
+                <Collapsible open={showDetails}>
+                  {showDetails && <div className="mt-3 border-t border-brew-50 pt-3">
+                    {/* --- RECIPE DETAILS --- */}
+                    <div>
+                      <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Recipe Details</span>
+                      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div className="text-xs">
+                          <span className="text-brew-500">Temp:</span>{' '}
+                          <span className="font-mono text-brew-700">{brew.waterTemp}{'\u00B0'}F</span>
+                        </div>
+                        {(brew.targetTimeRange || brew.targetTime) && (
+                          <div className="text-xs">
+                            <span className="text-brew-500">Target Time:</span>{' '}
+                            <span className="font-mono text-brew-700">{brew.targetTimeRange || formatTime(brew.targetTime)}</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Equipment */}
+                      {(brew.method || brew.grinder || brew.dripper) && (
+                        <div className="mt-1.5 text-xs">
+                          <span className="text-brew-500">Equipment:</span>{' '}
+                          <span className="text-brew-700">
+                            {[
+                              getMethodName(brew.method),
+                              getGrinderName(brew.grinder),
+                              brew.dripper,
+                              brew.filterType?.replace('-', ' '),
+                            ].filter(Boolean).join(' \u00b7 ')}
+                          </span>
+                        </div>
+                      )}
+                      {/* Recipe name */}
+                      {brew.recipeId && recipes?.find(r => r.id === brew.recipeId) && (
+                        <div className="mt-1 text-xs">
+                          <span className="text-brew-500">Recipe:</span>{' '}
+                          <span className="text-brew-700">{recipes.find(r => r.id === brew.recipeId).name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* --- BREW DETAILS --- */}
+                    <div className="mt-3">
+                      <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Brew Details</span>
+                      {/* Time deviation */}
+                      {(brew.targetTimeRange || brew.targetTime) && brew.totalTime && brew.totalTime !== brew.targetTime && (
+                        <div className="mt-1.5 text-xs">
+                          <span className="text-amber-600">Target {brew.targetTimeRange || formatTime(brew.targetTime)}, actual {formatTime(brew.totalTime)}</span>
+                        </div>
+                      )}
+                      {actualSteps.length > 0 && (
+                        <div className="mt-1.5">
+                          <span className="text-xs text-brew-500">Actual Pour Steps:</span>
+                          <div className="mt-1 space-y-1">
+                            {actualSteps.map((step, idx) => {
+                              const result = brew.stepResults?.[step.id]
+                              const notReached = !result?.skipped && result?.tappedAt == null
+                                && brew.totalTime != null && step.time > brew.totalTime
+                              return (
+                                <div key={`${brew.id}-actual-${idx}`} className={`text-xs font-mono ${notReached ? 'text-brew-400' : 'text-brew-700'}`}>
+                                  {notReached
+                                    ? <>{step.name || `Step ${idx + 1}`} · <span className="text-brew-400">not reached</span></>
+                                    : <>{step.time != null ? formatTime(step.time) : '—'} · {step.name || `Step ${idx + 1}`}
+                                      {step.waterTo != null ? ` · ${step.waterTo}g` : ''}
+                                      {result?.tappedAt != null && (
+                                        <span className="text-brew-400"> (tapped {formatTime(result.tappedAt)})</span>
+                                      )}
+                                      {result?.skipped && (
+                                        <span className="text-amber-500"> skipped</span>
+                                      )}
+                                    </>
+                                  }
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {recipeSteps.length > 0 && brew.recipeSnapshot?.steps && stepsChanged(brew.recipeSnapshot.steps, brew.steps) && (
+                        <div className="mt-1 text-xs">
+                          <span className="text-amber-600">Actual pour steps differed from recipe plan</span>
+                        </div>
+                      )}
+                      {brew.issues?.length > 0 && (
+                        <div className="mt-1.5">
+                          <span className="text-xs text-brew-500">Issues: </span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {brew.issues.map(i => (
+                              <span key={i} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-xs">
+                                {i}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Full notes (only if truncated in summary) */}
+                      {brew.notes && brew.notes.length > 80 && (
+                        <div className="mt-2 p-3 bg-brew-50 rounded-xl">
+                          <span className="text-xs font-medium text-brew-500">Full Notes:</span>
+                          <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto">{brew.notes}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* --- TASTING DETAILS --- */}
+                    {brew.body && (
+                      <div className="mt-3">
+                        <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Tasting</span>
+                        <div className="mt-1.5 text-xs">
+                          <span className="text-brew-500">Body: </span>
+                          <span className="text-brew-700">{brew.body}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Changes from previous brew */}
+                    {diff && (
+                      <div className="mt-3 p-3 bg-amber-50/50 rounded-xl">
+                        <span className="text-xs font-medium text-amber-700">Changes from previous:</span>
+                        <div className="mt-1 space-y-0.5">
+                          {diff.map((d, i) => (
+                            <div key={i} className="text-xs text-amber-600">{'\u2192'} {d}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>}
+                </Collapsible>
               </div>}
             </Collapsible>
           </div>
