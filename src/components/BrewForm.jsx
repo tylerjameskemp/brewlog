@@ -414,7 +414,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
                   : [...form.issues, issue]
                 update('issues', issues)
               }}
-              className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
+              className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all min-h-[44px]
                 ${form.issues.includes(issue)
                   ? 'border-red-300 bg-red-50 text-red-600'
                   : 'border-brew-200 text-brew-500 hover:border-brew-300'
@@ -468,7 +468,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
               <button
                 key={body}
                 onClick={() => update('body', form.body === body ? '' : body)}
-                className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
+                className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all min-h-[44px]
                   ${form.body === body
                     ? 'border-brew-500 bg-brew-500 text-white'
                     : 'border-brew-200 text-brew-500 hover:border-brew-300'
@@ -495,7 +495,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
                   }`}
               >
                 <div className="text-xl">{emoji}</div>
-                <div className="text-[10px] text-brew-500 mt-0.5">{label}</div>
+                <div className="text-xs text-brew-500 mt-0.5">{label}</div>
               </button>
             ))}
           </div>

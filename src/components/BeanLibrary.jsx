@@ -370,7 +370,8 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
               {deletingRecipeId !== recipe.id && editingNameId !== recipe.id && (
                 <button
                   onClick={() => setDeletingRecipeId(recipe.id)}
-                  className="text-brew-300 hover:text-red-400 transition-colors flex-shrink-0 p-1"
+                  className="text-brew-300 hover:text-red-400 transition-colors flex-shrink-0 p-1
+                             min-w-[44px] min-h-[44px] flex items-center justify-center"
                   title="Delete recipe"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -483,7 +484,7 @@ function TagSelectWithOther({ label, options, value, onChange }) {
             key={option}
             type="button"
             onClick={() => handleTagClick(option)}
-            className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
+            className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all min-h-[44px]
               ${value === option
                 ? 'border-brew-500 bg-brew-500 text-white'
                 : 'border-brew-200 text-brew-500 hover:border-brew-300'
@@ -495,7 +496,7 @@ function TagSelectWithOther({ label, options, value, onChange }) {
         <button
           type="button"
           onClick={handleOtherClick}
-          className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
+          className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all min-h-[44px]
             ${showOtherInput
               ? 'border-brew-500 bg-brew-500 text-white'
               : 'border-brew-200 text-brew-500 hover:border-brew-300'

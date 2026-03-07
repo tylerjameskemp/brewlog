@@ -246,21 +246,21 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
 
       <button
         onClick={() => { onEquipmentClick(); onClose() }}
-        className="w-full px-4 py-3 text-left text-sm text-brew-700 hover:bg-brew-50 transition-colors flex items-center gap-3"
+        className="w-full px-4 py-3 text-left text-sm text-brew-700 hover:bg-brew-50 transition-colors flex items-center gap-3 min-h-[44px]"
       >
         <span className="text-base">🔧</span>
         Equipment Setup
       </button>
       <button
         onClick={handleExport}
-        className="w-full px-4 py-3 text-left text-sm text-brew-700 hover:bg-brew-50 transition-colors flex items-center gap-3 border-t border-brew-50"
+        className="w-full px-4 py-3 text-left text-sm text-brew-700 hover:bg-brew-50 transition-colors flex items-center gap-3 border-t border-brew-50 min-h-[44px]"
       >
         <span className="text-base">📤</span>
         Export Data
       </button>
       <button
         onClick={handleImportClick}
-        className="w-full px-4 py-3 text-left text-sm text-brew-700 hover:bg-brew-50 transition-colors flex items-center gap-3 border-t border-brew-50"
+        className="w-full px-4 py-3 text-left text-sm text-brew-700 hover:bg-brew-50 transition-colors flex items-center gap-3 border-t border-brew-50 min-h-[44px]"
       >
         <span className="text-base">📥</span>
         Import Data
