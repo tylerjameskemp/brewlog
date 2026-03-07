@@ -403,9 +403,16 @@ describe('parseFlexTime', () => {
 // --- computeTimeStatus ---
 
 describe('computeTimeStatus', () => {
-  it('returns on-target when elapsed is within range', () => {
-    const result = computeTimeStatus(200, 180, 210, null, null)
+  it('returns on-target when elapsed is safely within range', () => {
+    const result = computeTimeStatus(185, 180, 210, null, null)
     expect(result).toEqual({ status: 'on-target', delta: 0 })
+  })
+
+  it('returns approaching when near target max', () => {
+    // Range 180-210, threshold = min(15, floor(30/2)) = 15. secsLeft at 200 = 10 <= 15
+    const result = computeTimeStatus(200, 180, 210, null, null)
+    expect(result.status).toBe('approaching')
+    expect(result.delta).toBe(10)
   })
 
   it('returns under when elapsed is below min', () => {
@@ -419,15 +426,16 @@ describe('computeTimeStatus', () => {
   })
 
   it('applies 10s tolerance when min equals max (single target)', () => {
-    // Single target of 210. Tolerance = 10s, so 200-220 is on-target.
-    expect(computeTimeStatus(200, 210, 210, null, null)).toEqual({ status: 'on-target', delta: 0 })
-    expect(computeTimeStatus(220, 210, 210, null, null)).toEqual({ status: 'on-target', delta: 0 })
+    // Single target of 210. Tolerance = 10s, so 200-220 is the valid range.
+    // Approaching threshold = min(15, floor(20/2)) = 10
+    expect(computeTimeStatus(205, 210, 210, null, null)).toEqual({ status: 'on-target', delta: 0 })
+    expect(computeTimeStatus(215, 210, 210, null, null).status).toBe('approaching') // near max boundary
     expect(computeTimeStatus(199, 210, 210, null, null)).toEqual({ status: 'under', delta: 11 })
     expect(computeTimeStatus(221, 210, 210, null, null)).toEqual({ status: 'over', delta: 11 })
   })
 
   it('falls back to targetTime when min/max are null', () => {
-    const result = computeTimeStatus(200, null, null, 210, null)
+    const result = computeTimeStatus(205, null, null, 210, null)
     expect(result).toEqual({ status: 'on-target', delta: 0 })
   })
 
@@ -653,7 +661,7 @@ describe('updateBrew — tasting data merge', () => {
 
 describe('computeTimeStatus — recomputation on correction', () => {
   it('changes status when corrected totalTime moves from on-target to over', () => {
-    const original = computeTimeStatus(200, 180, 210, null, null)
+    const original = computeTimeStatus(185, 180, 210, null, null)
     expect(original.status).toBe('on-target')
 
     const corrected = computeTimeStatus(250, 180, 210, null, null)
@@ -665,8 +673,15 @@ describe('computeTimeStatus — recomputation on correction', () => {
     const original = computeTimeStatus(250, 180, 210, null, null)
     expect(original.status).toBe('over')
 
-    const corrected = computeTimeStatus(195, 180, 210, null, null)
+    const corrected = computeTimeStatus(185, 180, 210, null, null)
     expect(corrected.status).toBe('on-target')
+  })
+
+  it('returns approaching when near target max', () => {
+    // Range 180-210, approaching threshold = min(15, 15) = 15
+    const result = computeTimeStatus(200, 180, 210, null, null)
+    expect(result.status).toBe('approaching')
+    expect(result.delta).toBe(10) // 210 - 200 = 10s left
   })
 })
 
