@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { deleteBrew, getUIPref, setUIPref, normalizeSteps, formatTime } from '../data/storage'
-import { RATING_SCALE, BREW_METHODS, GRINDERS, grindNotationToNumeric, getMethodName, getGrinderName } from '../data/defaults'
+import { RATING_SCALE, grindNotationToNumeric, getMethodName, getGrinderName } from '../data/defaults'
 import Collapsible from './Collapsible'
 import EmptyState from './EmptyState'
 
@@ -264,7 +264,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
     if (!compareMode) {
       const newId = expandedId === brew.id ? null : brew.id
       setExpandedId(newId)
-      if (newId !== expandedId) setShowDetails(false)
+      setShowDetails(false)
       return
     }
 

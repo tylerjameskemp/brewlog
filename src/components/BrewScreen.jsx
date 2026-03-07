@@ -34,7 +34,6 @@ const getTotalDuration = (steps) =>
     ? steps[steps.length - 1].time + steps[steps.length - 1].duration
     : 210
 
-// ─── Phase Indicator ────────────────────────────────────────
 // ─── Phase 0: Bean Picker ───────────────────────────────────
 function BeanPicker({ beans, onSelect }) {
   const [search, setSearch] = useState('')

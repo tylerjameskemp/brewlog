@@ -444,16 +444,13 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       <PhaseHeader number={3} title="Tasting" subtitle="How did it taste?" phase="tasting" />
 
       {/* ---- TASTING NOTES ---- */}
-      <Section title="Tasting" preview={(() => {
-        const parts = []
-        if (form.flavors?.length > 0) parts.push(`${form.flavors.length} flavor${form.flavors.length !== 1 ? 's' : ''}`)
-        if (form.body) parts.push(form.body)
-        if (form.rating != null) {
-          const r = RATING_SCALE.find(s => s.value === form.rating)
-          if (r) parts.push(r.emoji)
-        }
-        return parts.length > 0 ? parts.join(' · ') : null
-      })()}>
+      <Section title="Tasting" preview={
+        [
+          form.flavors?.length > 0 && `${form.flavors.length} flavor${form.flavors.length !== 1 ? 's' : ''}`,
+          form.body,
+          form.rating != null && RATING_SCALE.find(s => s.value === form.rating)?.emoji,
+        ].filter(Boolean).join(' \u00b7 ') || null
+      }>
         {/* Flavor picker */}
         <div className="mb-4">
           <label className="text-xs font-medium text-brew-500 mb-2 block">Flavors</label>

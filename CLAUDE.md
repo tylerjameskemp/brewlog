@@ -163,9 +163,9 @@ pick → recipe → brew → rate → success
 **Extracted component layout wrappers:** When extracting an inline component into a shared file, don't bake in wrapper `<div>`s that were specific to the original parent's layout. Make wrappers conditional on the prop that justifies them (e.g., `label`). See `docs/solutions/react-patterns/extracted-component-should-not-bake-layout-wrapper.md`.
 
 ## Bugs & Lessons Learned
-36 documented solutions in `docs/solutions/` across 6 categories:
+39 documented solutions in `docs/solutions/` across 6 categories:
 - **logic-errors/** (16): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence, cache mutation breaks sort invariant, entity-form field mapping divergence, new entity CRUD missing defensive patterns, redundant step fields diverge, split operation accumulates name suffixes, boolean state classifications must be mutually exclusive, standalone component references parent scope, nullish coalescing required for numeric form state, positional array access creates implicit ordering contract
-- **react-patterns/** (14): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective, primary action must flush pending edits, extracted component should not bake layout wrapper, subtractive refactor leaves dead-prop halo
+- **react-patterns/** (17): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective, primary action must flush pending edits, extracted component should not bake layout wrapper, subtractive refactor leaves dead-prop halo, progressive disclosure summary vs details split, shared toggle must reset on card switch, content indicators on collapsed sections
 - **performance/** (2): per-keystroke localStorage writes, edit-mode gate removal exposes ungated render computation
 - **state-management/** (1): lazy init state goes stale on prop change
 - **test-failures/** (1): Node 22 localStorage shadows browser mock
