@@ -531,28 +531,46 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                 {ratingInfo?.emoji || '☕'}
               </div>
 
-              {/* Main info */}
+              {/* Main info + params — stacked on mobile, side-by-side on sm+ */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 min-w-0">
-                  <span className="text-sm font-semibold text-brew-800 truncate">
+                {/* Mobile: stacked layout */}
+                <div className="sm:hidden">
+                  <div className="text-sm font-semibold text-brew-800">
                     {brew.beanName || 'Unknown beans'}
-                  </span>
-                  {brew.roaster && (
-                    <span className="text-xs text-brew-400 truncate">{brew.roaster}</span>
-                  )}
+                    {brew.roaster && (
+                      <span className="text-xs text-brew-400 font-normal ml-1.5">{brew.roaster}</span>
+                    )}
+                  </div>
+                  <div className="text-xs font-mono text-brew-500 mt-0.5">
+                    {brew.coffeeGrams}g / {brew.waterGrams}g · grind {brew.grindSetting} · {formatTime(brew.totalTime)}
+                  </div>
+                  <div className="text-xs text-brew-400 mt-0.5">
+                    {formatDate(brew.brewedAt)}
+                  </div>
                 </div>
-                <div className="text-xs text-brew-400 mt-0.5">
-                  {formatDate(brew.brewedAt)}
-                </div>
-              </div>
-
-              {/* Key params */}
-              <div className="text-right flex-shrink-0">
-                <div className="text-xs font-mono text-brew-600">
-                  {brew.coffeeGrams}g / {brew.waterGrams}g
-                </div>
-                <div className="text-xs font-mono text-brew-400">
-                  grind {brew.grindSetting} • {formatTime(brew.totalTime)}
+                {/* Desktop: side-by-side layout */}
+                <div className="hidden sm:flex sm:items-center sm:gap-2 sm:min-w-0">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 min-w-0">
+                      <span className="text-sm font-semibold text-brew-800 truncate">
+                        {brew.beanName || 'Unknown beans'}
+                      </span>
+                      {brew.roaster && (
+                        <span className="text-xs text-brew-400 truncate">{brew.roaster}</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-brew-400 mt-0.5">
+                      {formatDate(brew.brewedAt)}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xs font-mono text-brew-600">
+                      {brew.coffeeGrams}g / {brew.waterGrams}g
+                    </div>
+                    <div className="text-xs font-mono text-brew-400">
+                      grind {brew.grindSetting} · {formatTime(brew.totalTime)}
+                    </div>
+                  </div>
                 </div>
               </div>
             </button>

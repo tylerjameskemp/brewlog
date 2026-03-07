@@ -45,6 +45,8 @@ All brews use one canonical format (`schemaVersion: 2`). Legacy brews are migrat
 
 **Flags:** `isManualEntry` (true for skip-timer brews, no stepResults/timeStatus).
 
+**`timeStatus` values:** `null | 'under' | 'on-target' | 'over'`. Computed by `computeTimeStatus()` in storage.js. During live brewing, an additional transient `'approaching'` status (amber warning near target max) is used for UI display only — normalized to `'on-target'` before persisting to brew records.
+
 ### Bean
 ```json
 { "id": "uuid", "name": "string", "roaster": "string", "origin": "string",
@@ -162,10 +164,12 @@ pick → recipe → brew → rate → success
 
 **Extracted component layout wrappers:** When extracting an inline component into a shared file, don't bake in wrapper `<div>`s that were specific to the original parent's layout. Make wrappers conditional on the prop that justifies them (e.g., `label`). See `docs/solutions/react-patterns/extracted-component-should-not-bake-layout-wrapper.md`.
 
+**Ref-tracked previous value for onBlur cascades:** Use `useRef` (not `useState`) to track the "last committed" value when you need to detect changes on blur and trigger a prompt (e.g., water scaling). Sync the ref when the source entity changes (via `useEffect` keyed on entity ID, not value) to prevent stale comparisons. See `docs/solutions/react-patterns/ref-tracked-previous-value-enables-onblur-cascade.md`.
+
 ## Bugs & Lessons Learned
-39 documented solutions in `docs/solutions/` across 6 categories:
+40 documented solutions in `docs/solutions/` across 6 categories:
 - **logic-errors/** (16): string reference orphans, dual field names, edit overwrites, dedup bypass, dropped side effects, dual brew format schema, duplicated computation divergence, cache mutation breaks sort invariant, entity-form field mapping divergence, new entity CRUD missing defensive patterns, redundant step fields diverge, split operation accumulates name suffixes, boolean state classifications must be mutually exclusive, standalone component references parent scope, nullish coalescing required for numeric form state, positional array access creates implicit ordering contract
-- **react-patterns/** (17): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective, primary action must flush pending edits, extracted component should not bake layout wrapper, subtractive refactor leaves dead-prop halo, progressive disclosure summary vs details split, shared toggle must reset on card switch, content indicators on collapsed sections
+- **react-patterns/** (18): timer flush, terminal state, persist/restore, filter patterns, reset handler, derived booleans, UI state leaking to domain objects, render-path localStorage gating, unconstrained flex scroll, immediate-save-then-rate flow, synchronous ref guard ineffective, primary action must flush pending edits, extracted component should not bake layout wrapper, subtractive refactor leaves dead-prop halo, progressive disclosure summary vs details split, shared toggle must reset on card switch, content indicators on collapsed sections, ref-tracked previous value enables onBlur cascade
 - **performance/** (2): per-keystroke localStorage writes, edit-mode gate removal exposes ungated render computation
 - **state-management/** (1): lazy init state goes stale on prop change
 - **test-failures/** (1): Node 22 localStorage shadows browser mock

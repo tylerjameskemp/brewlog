@@ -35,7 +35,7 @@ const getTotalDuration = (steps) =>
     : 210
 
 // ─── Phase 0: Bean Picker ───────────────────────────────────
-function BeanPicker({ beans, onSelect }) {
+function BeanPicker({ beans, previews, onSelect }) {
   const [search, setSearch] = useState('')
 
   const filtered = beans.filter(b => {
@@ -78,9 +78,12 @@ function BeanPicker({ beans, onSelect }) {
                        min-h-[44px]"
           >
             <div className="flex justify-between items-start">
-              <div>
+              <div className="min-w-0">
                 <div className="font-semibold text-brew-800">{bean.name}</div>
                 <div className="text-sm text-brew-400 mt-0.5">{bean.roaster || 'Unknown roaster'}</div>
+                {previews?.get(bean.id) && (
+                  <div className="text-xs text-brew-400 mt-0.5 truncate">{previews.get(bean.id)}</div>
+                )}
               </div>
               <div className="text-xs text-brew-400 bg-brew-50 px-2.5 py-1 rounded-lg shrink-0 ml-2">
                 {bean.origin || '—'}
@@ -94,7 +97,7 @@ function BeanPicker({ beans, onSelect }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onRecipeRenamed }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onRecipeRenamed, templates }) {
 
   const [showRecipePicker, setShowRecipePicker] = useState(false)
   const [renamingRecipeId, setRenamingRecipeId] = useState(null)
@@ -105,6 +108,44 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
   const [stepsOpen, setStepsOpen] = useState(false)
   const [equipmentOpen, setEquipmentOpen] = useState(false)
+  const [showScaleBanner, setShowScaleBanner] = useState(false)
+  const prevWaterRef = useRef(recipe.waterGrams)
+  const scalingOldWaterRef = useRef(null)
+
+  // Sync prevWaterRef when recipe entity changes (not user typing)
+  useEffect(() => {
+    prevWaterRef.current = recipe.waterGrams
+    setShowScaleBanner(false)
+  }, [selectedRecipeId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleWaterBlur = () => {
+    const newWater = recipe.waterGrams
+    const oldWater = prevWaterRef.current
+    if (newWater > 0 && oldWater > 0 && newWater !== oldWater &&
+        recipe.steps.some(s => s.waterTo != null)) {
+      scalingOldWaterRef.current = oldWater
+      setShowScaleBanner(true)
+      setStepsOpen(true) // auto-expand steps so user can see
+    }
+    prevWaterRef.current = newWater
+  }
+
+  const applyWaterScaling = () => {
+    const oldWater = scalingOldWaterRef.current
+    const newWater = recipe.waterGrams
+    if (!oldWater || !newWater) return
+    const ratio = newWater / oldWater
+    const scaled = recipe.steps.map((s, i, arr) => {
+      if (s.waterTo == null) return s
+      // Snap last step with waterTo to exact newWater
+      const isLastWithWater = !arr.slice(i + 1).some(ns => ns.waterTo != null)
+      return { ...s, waterTo: isLastWithWater ? newWater : Math.round(s.waterTo * ratio) }
+    })
+    setRecipe(prev => ({ ...prev, steps: scaled }))
+    setShowScaleBanner(false)
+  }
+
+  const dismissScaleBanner = () => { setShowScaleBanner(false); scalingOldWaterRef.current = null }
 
   const grinder = GRINDERS.find(g => g.id === recipe.grinder) || GRINDERS[0]
   const methodObj = BREW_METHODS.find(m => m.id === recipe.method) || BREW_METHODS[0]
@@ -172,8 +213,24 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         <h1 className="text-xl font-semibold text-brew-800">Prepare Your Brew</h1>
       </div>
 
+      {/* Changes from last brew — top position for maximum visibility */}
+      {changes.length > 0 && (
+        <div className="px-4 mt-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="text-xs font-semibold text-brew-500 mb-2 flex items-center gap-1.5">
+              Notes from last brew
+            </div>
+            {changes.map((c, i) => (
+              <div key={i} className={`text-sm text-brew-800 leading-relaxed ${i < changes.length - 1 ? 'mb-1.5' : ''}`}>
+                {c}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recipe Indicator */}
-      {beanRecipes.length > 0 && (
+      {(beanRecipes.length > 0 || (templates && templates.length > 0)) && (
         <div className="px-4 mt-3">
           <button
             onClick={() => setShowRecipePicker(!showRecipePicker)}
@@ -258,6 +315,29 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                   )}
                 </div>
               ))}
+              {/* Starter recipes (templates) */}
+              {templates && templates.length > 0 && (
+                <>
+                  <div className="px-4 py-2 text-[10px] uppercase tracking-wider text-brew-300 border-t border-brew-100">
+                    {beanRecipes.length > 0 ? 'or start fresh' : 'Starter recipes'}
+                  </div>
+                  {templates.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        onRecipeSelect({ ...t, _isStarter: true })
+                        setShowRecipePicker(false)
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm text-brew-600 hover:bg-brew-50 min-h-[44px]"
+                    >
+                      <div className="font-medium">{t.name}</div>
+                      <div className="text-xs text-brew-400 mt-0.5">
+                        {t.steps?.length || 0} steps
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
               <button
                 onClick={() => {
                   onRecipeSelect(null) // null = new recipe
@@ -286,22 +366,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         )
       })()}
 
-      {/* Changes from last brew */}
-      {changes.length > 0 && (
-        <div className="px-4 mt-3">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="text-xs font-semibold text-brew-500 mb-2 flex items-center gap-1.5">
-              Notes from last brew
-            </div>
-            {changes.map((c, i) => (
-              <div key={i} className={`text-sm text-brew-800 leading-relaxed ${i < changes.length - 1 ? 'mb-1.5' : ''}`}>
-                {c}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Bean + Brew Params — always editable, no card wrapper */}
       <div className="px-4 mt-4">
         <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
@@ -319,27 +383,59 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
           {/* Coffee / Water / Ratio */}
           <div className="grid grid-cols-3 gap-2 mt-5">
-            {[
-              { label: 'Coffee', field: 'coffeeGrams', type: 'number', min: 1, max: 100 },
-              { label: 'Water', field: 'waterGrams', type: 'number', min: 1, max: 2000 },
-            ].map(item => (
-              <div key={item.label} className="text-center p-3 bg-brew-50 rounded-xl">
-                <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">{item.label}</div>
-                <input
-                  type={item.type}
-                  value={recipe[item.field]}
-                  onChange={e => updateField(item.field, Number(e.target.value))}
-                  min={item.min} max={item.max}
-                  className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
-                             border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
-                />
-              </div>
-            ))}
+            <div className="text-center p-3 bg-brew-50 rounded-xl">
+              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Coffee</div>
+              <input
+                type="number"
+                value={recipe.coffeeGrams}
+                onChange={e => updateField('coffeeGrams', Number(e.target.value))}
+                min={1} max={100}
+                className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
+                           border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+              />
+            </div>
+            <div className="text-center p-3 bg-brew-50 rounded-xl">
+              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Water</div>
+              <input
+                type="number"
+                value={recipe.waterGrams}
+                onChange={e => updateField('waterGrams', Number(e.target.value))}
+                onBlur={handleWaterBlur}
+                min={1} max={2000}
+                className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
+                           border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+              />
+            </div>
             <div className="text-center p-3 bg-brew-50 rounded-xl">
               <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Ratio</div>
               <div className="text-lg font-medium text-brew-800">{ratio(recipe.coffeeGrams, recipe.waterGrams)}</div>
             </div>
           </div>
+
+          {/* Water scaling banner */}
+          {showScaleBanner && (
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in motion-reduce:animate-none">
+              <div className="text-sm text-blue-800">
+                Water changed from {scalingOldWaterRef.current}g → {recipe.waterGrams}g. Scale pour steps to match?
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={applyWaterScaling}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium
+                             hover:bg-blue-700 min-h-[44px]"
+                >
+                  Scale
+                </button>
+                <button
+                  onClick={dismissScaleBanner}
+                  className="px-3 py-1.5 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium
+                             hover:bg-blue-100 min-h-[44px]"
+                >
+                  Keep
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Grind / Temp */}
           <div className="grid grid-cols-2 gap-2 mt-2">
@@ -573,14 +669,22 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
   const steps = recipe.steps
   const totalDuration = getTotalDuration(steps)
 
-  // Determine current step
-  let currentStepIdx = 0
-  for (let i = steps.length - 1; i >= 0; i--) {
-    if (timer.elapsed >= steps[i].time && !skippedSteps[steps[i].id]) {
-      currentStepIdx = i
-      break
+  // Determine current step (memoized to stabilize useEffect deps)
+  const currentStepIdx = useMemo(() => {
+    for (let i = steps.length - 1; i >= 0; i--) {
+      if (timer.elapsed >= steps[i].time && !skippedSteps[steps[i].id]) return i
     }
-  }
+    return 0
+  }, [timer.elapsed, steps, skippedSteps])
+
+  // Pre-compute next non-skipped step index (O(S) once, not O(S²) inside map)
+  const nextStepIdx = useMemo(() => {
+    if (!hasStarted) return -1
+    for (let j = currentStepIdx + 1; j < steps.length; j++) {
+      if (!skippedSteps[steps[j].id]) return j
+    }
+    return -1
+  }, [hasStarted, currentStepIdx, steps, skippedSteps])
 
   // Auto-scroll to current step within the steps container
   useEffect(() => {
@@ -636,7 +740,9 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 
   const targetMax = recipe.targetTimeMax || recipe.targetTime || totalDuration
   const progress = Math.min(timer.elapsed / targetMax, 1)
-  const overTime = timer.elapsed > targetMax
+  const timeStatus = hasStarted
+    ? computeTimeStatus(timer.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
+    : null
 
   // top-12/md:top-14 must match Header h-12/md:h-14 in Header.jsx
   return (
@@ -647,12 +753,30 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
         <div className="px-5 pt-6 pb-3">
           <div className="flex items-baseline justify-between">
             <div className={`font-mono text-7xl font-medium leading-none tabular-nums tracking-tight ${
-              overTime ? 'text-red-600' : 'text-gray-900'
+              timeStatus?.status === 'over' ? 'text-red-600'
+                : timeStatus?.status === 'approaching' ? 'text-amber-600'
+                : timeStatus?.status === 'on-target' ? 'text-green-600'
+                : 'text-gray-900'
             }`}>
               {formatTime(timer.elapsed)}
             </div>
-            <div className="text-sm text-brew-400">
-              Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
+            <div className="text-right">
+              <div className="text-sm text-brew-400">
+                Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
+              </div>
+              {timeStatus && hasStarted && (
+                <div className={`text-xs mt-0.5 font-medium ${
+                  timeStatus.status === 'over' ? 'text-red-500'
+                    : timeStatus.status === 'approaching' ? 'text-amber-500'
+                    : timeStatus.status === 'on-target' ? 'text-green-500'
+                    : 'text-brew-300'
+                }`}>
+                  {timeStatus.status === 'under' && `${timeStatus.delta}s to go`}
+                  {timeStatus.status === 'on-target' && 'On target'}
+                  {timeStatus.status === 'approaching' && `${timeStatus.delta}s left`}
+                  {timeStatus.status === 'over' && `${timeStatus.delta}s over`}
+                </div>
+              )}
             </div>
           </div>
 
@@ -660,7 +784,10 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
           <div className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-[width,background-color] duration-1000 linear ${
-                overTime ? 'bg-red-500' : 'bg-brew-500'
+                timeStatus?.status === 'over' ? 'bg-red-500'
+                  : timeStatus?.status === 'approaching' ? 'bg-amber-500'
+                  : timeStatus?.status === 'on-target' ? 'bg-green-500'
+                  : 'bg-brew-500'
               }`}
               style={{ width: `${progress * 100}%` }}
             />
@@ -717,7 +844,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
             const isCurrent = i === currentStepIdx && hasStarted && !skipped
             const isPast = hasStarted && !skipped && timer.elapsed >= step.time + step.duration
             const isFuture = !isCurrent && !isPast && !skipped
-            const isNext = isFuture && i === currentStepIdx + 1 && hasStarted
+            const isNext = i === nextStepIdx
             const tappedAt = tappedSteps[step.id]
             const variance = tappedAt !== undefined ? tappedAt - step.time : null
             const stepEndTime = (step.time || 0) + (step.duration || 0)
@@ -800,20 +927,20 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
                     )}
 
                     <div className="flex justify-between items-center pr-8">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-sm font-bold">{step.name}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl font-bold leading-snug">{step.name}</span>
                         {step.waterTo != null && (
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md text-brew-500 bg-brew-50">
+                          <span className="text-base font-semibold px-2.5 py-1 rounded-md text-brew-500 bg-brew-50 flex-shrink-0">
                             &rarr; {step.waterTo}g
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="text-xs font-mono text-brew-500 mt-1">{timeRange}</div>
+                    <div className="text-sm font-mono text-brew-500 mt-1">{timeRange}</div>
 
                     {step.note && (
-                      <div className="text-sm mt-1.5 opacity-80 leading-snug">{step.note}</div>
+                      <div className="text-base mt-1.5 opacity-80 leading-snug">{step.note}</div>
                     )}
 
                     {/* Mini progress bar */}
@@ -837,7 +964,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 
                     {/* Tap prompt */}
                     {timer.running && tappedAt === undefined && (
-                      <div className="mt-2 text-[11px] text-brew-400">
+                      <div className="mt-2 text-xs text-brew-400">
                         Tap when you start this step
                       </div>
                     )}
@@ -846,15 +973,41 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
               )
             }
 
-            // Future steps — compact one-liner, dimmed
+            // Future steps — "up next" gets card treatment, others are dimmed one-liners
+            if (isNext) {
+              return (
+                <div
+                  key={step.id}
+                  ref={el => (stepRefs.current[step.id] = el)}
+                  onClick={() => timer.running && handleTapStep(step)}
+                  className={`flex gap-2 pl-1 py-2 mb-1 min-h-[44px]
+                             ${timer.running ? 'cursor-pointer' : ''}`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-brew-300 flex-shrink-0 mt-2.5" />
+                  <div className="flex-1 px-3 py-2 rounded-lg bg-brew-50/50 border border-brew-200/50">
+                    <span className="text-[10px] uppercase tracking-wider text-brew-400 font-semibold">Up next</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-base font-medium text-brew-700">{step.name}</span>
+                      {step.waterTo != null && (
+                        <span className="text-sm font-semibold text-brew-400">&rarr; {step.waterTo}g</span>
+                      )}
+                    </div>
+                    <div className="text-xs font-mono text-brew-400 mt-0.5">{timeRange}</div>
+                    {step.note && (
+                      <div className="text-sm mt-1 text-brew-500 opacity-80 leading-snug">{step.note}</div>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div
                 key={step.id}
                 ref={el => (stepRefs.current[step.id] = el)}
                 onClick={() => timer.running && handleTapStep(step)}
                 className={`flex items-center gap-2 py-2 pl-1 mb-0.5 min-h-[44px]
-                           transition-opacity duration-300 motion-reduce:transition-none
-                           ${isNext ? 'opacity-70' : 'opacity-40'}
+                           transition-opacity duration-300 motion-reduce:transition-none opacity-40
                            ${timer.running ? 'cursor-pointer' : ''}`}
               >
                 <span className="w-2.5 h-2.5 rounded-full border-2 border-brew-200 flex-shrink-0" />
@@ -938,7 +1091,8 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       // Recompute timeStatus if totalTime was corrected
       if (resolvedTime != null && resolvedTime !== brew.totalTime) {
         const newTimeResult = computeTimeStatus(resolvedTime, brew.targetTimeMin, brew.targetTimeMax, brew.targetTime, totalDuration)
-        updates.timeStatus = newTimeResult?.status || null
+        const status = newTimeResult?.status || null
+        updates.timeStatus = status === 'approaching' ? 'on-target' : status
       }
 
       const updatedBrews = updateBrew(brew.id, updates)
@@ -1330,6 +1484,40 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
 
   const templates = useMemo(() => getPourTemplates(), [])
 
+  // Pre-compute recipe previews for BeanPicker
+  const beanPreviews = useMemo(() => {
+    const formatPreview = (obj, timeField) => {
+      const parts = []
+      if (obj.coffeeGrams && obj.waterGrams) parts.push(`${obj.coffeeGrams}g / ${obj.waterGrams}g`)
+      if (obj.grindSetting) parts.push(`grind ${obj.grindSetting}`)
+      if (obj[timeField]) parts.push(formatTime(obj[timeField]))
+      return parts.length > 0 ? parts.join(' \u00b7 ') : null
+    }
+    // Build last-brew-per-bean index in a single O(B) pass
+    const brews = getBrews()
+    const lastBrewByBean = new Map()
+    for (const b of brews) {
+      const key = normalizeName(b.beanName)
+      if (key && !lastBrewByBean.has(key)) lastBrewByBean.set(key, b)
+    }
+    const map = new Map()
+    for (const bean of beans) {
+      const beanRecipes = (recipes || []).filter(r => r.beanId === bean.id)
+        .sort((a, b) => (b.lastUsedAt || '').localeCompare(a.lastUsedAt || ''))
+      const recipe = beanRecipes[0]
+      if (recipe) {
+        const preview = formatPreview(recipe, 'targetTime')
+        if (preview) { map.set(bean.id, preview); continue }
+      }
+      const lastBrew = lastBrewByBean.get(normalizeName(bean.name))
+      if (lastBrew) {
+        const preview = formatPreview(lastBrew, 'totalTime')
+        if (preview) map.set(bean.id, preview)
+      }
+    }
+    return map
+  }, [beans, recipes])
+
   // Build recipe defaults from equipment profile
   const getRecipeDefaults = useCallback(() => {
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
@@ -1533,10 +1721,12 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     const totalDuration = getTotalDuration(recipe.steps)
     const timeResult = computeTimeStatus(elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
 
+    // Normalize 'approaching' → 'on-target' at persist time (approaching is transient, only meaningful during live timer)
+    const persistedStatus = timeResult?.status === 'approaching' ? 'on-target' : (timeResult?.status || null)
     const brew = buildBrewRecord({
       totalTime: elapsed,
       stepResults,
-      timeStatus: timeResult?.status || null,
+      timeStatus: persistedStatus,
     })
 
     // Link recipe (create if needed) and stamp recipeId on brew
@@ -1637,7 +1827,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   return (
     <div>
       {phase === 'pick' && (
-        <BeanPicker beans={beans} onSelect={handleBeanSelect} />
+        <BeanPicker beans={beans} previews={beanPreviews} onSelect={handleBeanSelect} />
       )}
 
       {phase === 'recipe' && selectedBean && (
@@ -1648,11 +1838,18 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           changes={changes}
           beanRecipes={(recipes || []).filter(r => r.beanId === selectedBean.id)}
           selectedRecipeId={selectedRecipeId}
+          templates={templates}
           onRecipeSelect={(recipeEntity) => {
             if (recipeEntity === null) {
               // "+ New Recipe" — reset to defaults
               setSelectedRecipeId(null)
               setRecipe(getRecipeDefaults())
+            } else if (recipeEntity._isStarter) {
+              // Starter recipe (template) — pre-fill steps + defaults, no recipe entity yet
+              setSelectedRecipeId(null)
+              const defaults = getRecipeDefaults()
+              const steps = normalizeSteps(recipeEntity.steps || [])
+              setRecipe({ ...defaults, steps })
             } else {
               // Select an existing recipe
               setSelectedRecipeId(recipeEntity.id)

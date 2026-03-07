@@ -746,6 +746,7 @@ export function formatTimeRange(min, max) {
 }
 
 const SINGLE_TARGET_TOLERANCE_SECS = 10
+const APPROACHING_THRESHOLD_SECS = 15
 
 export function computeTimeStatus(elapsed, targetTimeMin, targetTimeMax, targetTime, fallbackDuration) {
   const tMin = targetTimeMin || targetTime || fallbackDuration
@@ -754,6 +755,10 @@ export function computeTimeStatus(elapsed, targetTimeMin, targetTimeMax, targetT
   const tolerance = tMin === tMax ? SINGLE_TARGET_TOLERANCE_SECS : 0
   if (elapsed < tMin - tolerance) return { status: 'under', delta: tMin - elapsed }
   if (elapsed > tMax + tolerance) return { status: 'over', delta: elapsed - tMax }
+  // Approaching: on-target but within threshold of max
+  const secsLeft = (tMax + tolerance) - elapsed
+  const approachThreshold = Math.min(APPROACHING_THRESHOLD_SECS, Math.floor((tMax + tolerance - tMin + tolerance) / 2))
+  if (secsLeft <= approachThreshold) return { status: 'approaching', delta: secsLeft }
   return { status: 'on-target', delta: 0 }
 }
 
