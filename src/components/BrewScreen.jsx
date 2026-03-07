@@ -225,7 +225,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
             </svg>
             <span className="text-sm font-medium">Back</span>
           </button>
-          <div className="text-xs text-brew-400 uppercase tracking-widest">Recipe</div>
+          <div className="text-xs text-brew-400 uppercase tracking-wider">Recipe</div>
         </div>
         <h1 className="text-2xl font-semibold text-brew-800">Prepare Your Brew</h1>
       </div>
@@ -515,7 +515,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           onClick={() => setStepsOpen(!stepsOpen)}
           className="w-full flex items-center justify-between py-2 min-h-[44px]"
         >
-          <div className="text-xs text-brew-400 uppercase tracking-widest">Pour Steps</div>
+          <div className="text-xs text-brew-400 uppercase tracking-wider">Pour Steps</div>
           {!stepsOpen && recipe.steps.length > 0 && (
             <div className="text-xs text-brew-500">
               {recipe.steps.length} steps{recipe.waterGrams ? ` · ${recipe.waterGrams}g` : ''}
@@ -542,7 +542,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           onClick={() => setEquipmentOpen(!equipmentOpen)}
           className="w-full flex items-center justify-between py-2 min-h-[44px]"
         >
-          <div className="text-xs text-brew-400 uppercase tracking-widest">Equipment</div>
+          <div className="text-xs text-brew-400 uppercase tracking-wider">Equipment</div>
           {!equipmentOpen && (
             <div className="text-xs text-brew-500">
               {methodObj.name} · {grinder.name}{recipe.filterType ? ` · ${recipe.filterType.replace('-', ' ')}` : ''}
@@ -773,7 +773,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
               timeStatus?.status === 'over' ? 'text-red-600'
                 : timeStatus?.status === 'approaching' ? 'text-amber-600'
                 : timeStatus?.status === 'on-target' ? 'text-green-600'
-                : 'text-gray-900'
+                : 'text-gray-900'  // Intentional — neutral near-black for idle timer; status colors (red/amber/green) are semantic, not brand
             }`}>
               {formatTime(timer.elapsed)}
             </div>
@@ -1132,7 +1132,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
     <div className="px-4 pt-4 pb-28">
       {/* Summary */}
       <div className="text-center mb-6">
-        <div className="text-xs text-brew-400 uppercase tracking-widest mb-1">
+        <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">
           {isManual ? 'Log Brew' : 'Brew Complete'}
         </div>
         <h1 className="text-2xl font-semibold text-brew-800">Rate This Brew</h1>
@@ -1161,9 +1161,10 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
         )}
       </div>
 
+      <div className="space-y-4">
       {/* Step Results — hidden for manual brews (no timer data) */}
       {!isManual && steps.length > 0 && (
-        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
+        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
           <h3 className="text-lg font-semibold text-brew-800 mb-3">Step Timing</h3>
           {steps.map(step => {
             const result = stepResults[step.id]
@@ -1207,7 +1208,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       )}
 
       {/* Brew Details — actuals, notes, next-brew changes */}
-      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
+      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
         <h3 className="text-lg font-semibold text-brew-800 mb-1">Brew Details</h3>
         <p className="text-xs text-brew-400 mb-3">
           {isManual ? 'Enter the details for this brew.' : 'Adjust if the actual values differed from planned.'}
@@ -1281,7 +1282,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       </div>
 
       {/* Tasting — FlavorPicker, Body, Rating, Issues */}
-      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
+      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
         <h3 className="text-lg font-semibold text-brew-800 mb-3">Tasting</h3>
 
         {/* Flavors */}
@@ -1323,7 +1324,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                 }`}
               >
                 <div className="text-lg">{r.emoji}</div>
-                <div className="text-[10px] mt-0.5">{r.label}</div>
+                <div className="text-xs mt-0.5">{r.label}</div>
               </button>
             ))}
           </div>
@@ -1350,6 +1351,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
             ))}
           </div>
         </div>
+      </div>
       </div>
 
       {/* Done Button */}

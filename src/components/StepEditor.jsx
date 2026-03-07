@@ -237,7 +237,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
           placeholder="Technique note (optional)"
           disabled={disabled}
           className="w-full px-2 py-1.5 rounded-lg border border-brew-100 text-base text-brew-700
-                     placeholder:text-brew-300 focus:outline-none focus:ring-1 focus:ring-brew-300
+                     placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
                      disabled:bg-brew-50 disabled:text-brew-500"
         />
       </div>
