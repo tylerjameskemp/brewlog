@@ -637,6 +637,9 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
   const targetMax = recipe.targetTimeMax || recipe.targetTime || totalDuration
   const progress = Math.min(timer.elapsed / targetMax, 1)
   const overTime = timer.elapsed > targetMax
+  const timeStatus = hasStarted
+    ? computeTimeStatus(timer.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
+    : null
 
   // top-12/md:top-14 must match Header h-12/md:h-14 in Header.jsx
   return (
@@ -647,12 +650,30 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
         <div className="px-5 pt-6 pb-3">
           <div className="flex items-baseline justify-between">
             <div className={`font-mono text-7xl font-medium leading-none tabular-nums tracking-tight ${
-              overTime ? 'text-red-600' : 'text-gray-900'
+              timeStatus?.status === 'over' ? 'text-red-600'
+                : timeStatus?.status === 'approaching' ? 'text-amber-600'
+                : timeStatus?.status === 'on-target' ? 'text-green-600'
+                : 'text-gray-900'
             }`}>
               {formatTime(timer.elapsed)}
             </div>
-            <div className="text-sm text-brew-400">
-              Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
+            <div className="text-right">
+              <div className="text-sm text-brew-400">
+                Target: {recipe.targetTimeRange || formatTime(recipe.targetTime)}
+              </div>
+              {timeStatus && hasStarted && (
+                <div className={`text-xs mt-0.5 font-medium ${
+                  timeStatus.status === 'over' ? 'text-red-500'
+                    : timeStatus.status === 'approaching' ? 'text-amber-500'
+                    : timeStatus.status === 'on-target' ? 'text-green-500'
+                    : 'text-brew-300'
+                }`}>
+                  {timeStatus.status === 'under' && `${timeStatus.delta}s to go`}
+                  {timeStatus.status === 'on-target' && 'On target'}
+                  {timeStatus.status === 'approaching' && `${timeStatus.delta}s left`}
+                  {timeStatus.status === 'over' && `${timeStatus.delta}s over`}
+                </div>
+              )}
             </div>
           </div>
 
@@ -660,7 +681,10 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
           <div className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-[width,background-color] duration-1000 linear ${
-                overTime ? 'bg-red-500' : 'bg-brew-500'
+                timeStatus?.status === 'over' ? 'bg-red-500'
+                  : timeStatus?.status === 'approaching' ? 'bg-amber-500'
+                  : timeStatus?.status === 'on-target' ? 'bg-green-500'
+                  : 'bg-brew-500'
               }`}
               style={{ width: `${progress * 100}%` }}
             />
@@ -717,7 +741,13 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
             const isCurrent = i === currentStepIdx && hasStarted && !skipped
             const isPast = hasStarted && !skipped && timer.elapsed >= step.time + step.duration
             const isFuture = !isCurrent && !isPast && !skipped
-            const isNext = isFuture && i === currentStepIdx + 1 && hasStarted
+            // Find the first non-skipped step after current — that's "up next"
+            const isNext = isFuture && hasStarted && (() => {
+              for (let j = currentStepIdx + 1; j < steps.length; j++) {
+                if (!skippedSteps[steps[j].id]) return j === i
+              }
+              return false
+            })()
             const tappedAt = tappedSteps[step.id]
             const variance = tappedAt !== undefined ? tappedAt - step.time : null
             const stepEndTime = (step.time || 0) + (step.duration || 0)
@@ -800,20 +830,20 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
                     )}
 
                     <div className="flex justify-between items-center pr-8">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-sm font-bold">{step.name}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl font-bold leading-snug">{step.name}</span>
                         {step.waterTo != null && (
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md text-brew-500 bg-brew-50">
+                          <span className="text-base font-semibold px-2.5 py-1 rounded-md text-brew-500 bg-brew-50 flex-shrink-0">
                             &rarr; {step.waterTo}g
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="text-xs font-mono text-brew-500 mt-1">{timeRange}</div>
+                    <div className="text-sm font-mono text-brew-500 mt-1">{timeRange}</div>
 
                     {step.note && (
-                      <div className="text-sm mt-1.5 opacity-80 leading-snug">{step.note}</div>
+                      <div className="text-base mt-1.5 opacity-80 leading-snug">{step.note}</div>
                     )}
 
                     {/* Mini progress bar */}
@@ -837,7 +867,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 
                     {/* Tap prompt */}
                     {timer.running && tappedAt === undefined && (
-                      <div className="mt-2 text-[11px] text-brew-400">
+                      <div className="mt-2 text-xs text-brew-400">
                         Tap when you start this step
                       </div>
                     )}
@@ -846,15 +876,41 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
               )
             }
 
-            // Future steps — compact one-liner, dimmed
+            // Future steps — "up next" gets card treatment, others are dimmed one-liners
+            if (isNext) {
+              return (
+                <div
+                  key={step.id}
+                  ref={el => (stepRefs.current[step.id] = el)}
+                  onClick={() => timer.running && handleTapStep(step)}
+                  className={`flex gap-2 pl-1 py-2 mb-1 min-h-[44px]
+                             ${timer.running ? 'cursor-pointer' : ''}`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-brew-300 flex-shrink-0 mt-2.5" />
+                  <div className="flex-1 px-3 py-2 rounded-lg bg-brew-50/50 border border-brew-200/50">
+                    <span className="text-[10px] uppercase tracking-wider text-brew-400 font-semibold">Up next</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-base font-medium text-brew-700">{step.name}</span>
+                      {step.waterTo != null && (
+                        <span className="text-sm font-semibold text-brew-400">&rarr; {step.waterTo}g</span>
+                      )}
+                    </div>
+                    <div className="text-xs font-mono text-brew-400 mt-0.5">{timeRange}</div>
+                    {step.note && (
+                      <div className="text-sm mt-1 text-brew-500 opacity-80 leading-snug">{step.note}</div>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div
                 key={step.id}
                 ref={el => (stepRefs.current[step.id] = el)}
                 onClick={() => timer.running && handleTapStep(step)}
                 className={`flex items-center gap-2 py-2 pl-1 mb-0.5 min-h-[44px]
-                           transition-opacity duration-300 motion-reduce:transition-none
-                           ${isNext ? 'opacity-70' : 'opacity-40'}
+                           transition-opacity duration-300 motion-reduce:transition-none opacity-40
                            ${timer.running ? 'cursor-pointer' : ''}`}
               >
                 <span className="w-2.5 h-2.5 rounded-full border-2 border-brew-200 flex-shrink-0" />
