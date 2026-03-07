@@ -568,7 +568,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       {brew.coffeeGrams}g / {brew.waterGrams}g
                     </div>
                     <div className="text-xs font-mono text-brew-400">
-                      grind {brew.grindSetting} • {formatTime(brew.totalTime)}
+                      grind {brew.grindSetting} · {formatTime(brew.totalTime)}
                     </div>
                   </div>
                 </div>

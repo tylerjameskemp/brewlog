@@ -677,11 +677,14 @@ describe('computeTimeStatus — recomputation on correction', () => {
     expect(corrected.status).toBe('on-target')
   })
 
-  it('returns approaching when near target max', () => {
-    // Range 180-210, approaching threshold = min(15, 15) = 15
-    const result = computeTimeStatus(200, 180, 210, null, null)
-    expect(result.status).toBe('approaching')
-    expect(result.delta).toBe(10) // 210 - 200 = 10s left
+  it('changes status from over to approaching when corrected into approaching zone', () => {
+    const original = computeTimeStatus(250, 180, 210, null, null)
+    expect(original.status).toBe('over')
+
+    // Corrected to 200s: within range but near max (secsLeft=10 <= threshold 15)
+    const corrected = computeTimeStatus(200, 180, 210, null, null)
+    expect(corrected.status).toBe('approaching')
+    expect(corrected.delta).toBe(10)
   })
 })
 

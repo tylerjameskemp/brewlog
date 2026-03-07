@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import {
   getBrews, getChangesForBean, getChangesForRecipe,
   normalizeSteps, formatTime, parseTimeRange, formatTimeRange,
-  computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans, getLastBrewOfBean,
+  computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
   updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
   normalizeName, getRecipes, saveRecipe, updateRecipe,
   generateRecipeCopyName,
@@ -110,14 +110,20 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
   const [equipmentOpen, setEquipmentOpen] = useState(false)
   const [showScaleBanner, setShowScaleBanner] = useState(false)
   const prevWaterRef = useRef(recipe.waterGrams)
-  const scalingOldWater = useRef(null)
+  const scalingOldWaterRef = useRef(null)
+
+  // Sync prevWaterRef when recipe entity changes (not user typing)
+  useEffect(() => {
+    prevWaterRef.current = recipe.waterGrams
+    setShowScaleBanner(false)
+  }, [selectedRecipeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleWaterBlur = () => {
     const newWater = recipe.waterGrams
     const oldWater = prevWaterRef.current
     if (newWater > 0 && oldWater > 0 && newWater !== oldWater &&
         recipe.steps.some(s => s.waterTo != null)) {
-      scalingOldWater.current = oldWater
+      scalingOldWaterRef.current = oldWater
       setShowScaleBanner(true)
       setStepsOpen(true) // auto-expand steps so user can see
     }
@@ -125,7 +131,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
   }
 
   const applyWaterScaling = () => {
-    const oldWater = scalingOldWater.current
+    const oldWater = scalingOldWaterRef.current
     const newWater = recipe.waterGrams
     if (!oldWater || !newWater) return
     const ratio = newWater / oldWater
@@ -139,7 +145,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
     setShowScaleBanner(false)
   }
 
-  const dismissScaleBanner = () => setShowScaleBanner(false)
+  const dismissScaleBanner = () => { setShowScaleBanner(false); scalingOldWaterRef.current = null }
 
   const grinder = GRINDERS.find(g => g.id === recipe.grinder) || GRINDERS[0]
   const methodObj = BREW_METHODS.find(m => m.id === recipe.method) || BREW_METHODS[0]
@@ -410,20 +416,20 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           {showScaleBanner && (
             <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in motion-reduce:animate-none">
               <div className="text-sm text-blue-800">
-                Water changed from {scalingOldWater.current}g → {recipe.waterGrams}g. Scale pour steps to match?
+                Water changed from {scalingOldWaterRef.current}g → {recipe.waterGrams}g. Scale pour steps to match?
               </div>
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={applyWaterScaling}
                   className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium
-                             hover:bg-blue-700 min-h-[32px]"
+                             hover:bg-blue-700 min-h-[44px]"
                 >
                   Scale
                 </button>
                 <button
                   onClick={dismissScaleBanner}
                   className="px-3 py-1.5 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium
-                             hover:bg-blue-100 min-h-[32px]"
+                             hover:bg-blue-100 min-h-[44px]"
                 >
                   Keep
                 </button>
@@ -663,14 +669,22 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
   const steps = recipe.steps
   const totalDuration = getTotalDuration(steps)
 
-  // Determine current step
-  let currentStepIdx = 0
-  for (let i = steps.length - 1; i >= 0; i--) {
-    if (timer.elapsed >= steps[i].time && !skippedSteps[steps[i].id]) {
-      currentStepIdx = i
-      break
+  // Determine current step (memoized to stabilize useEffect deps)
+  const currentStepIdx = useMemo(() => {
+    for (let i = steps.length - 1; i >= 0; i--) {
+      if (timer.elapsed >= steps[i].time && !skippedSteps[steps[i].id]) return i
     }
-  }
+    return 0
+  }, [timer.elapsed, steps, skippedSteps])
+
+  // Pre-compute next non-skipped step index (O(S) once, not O(S²) inside map)
+  const nextStepIdx = useMemo(() => {
+    if (!hasStarted) return -1
+    for (let j = currentStepIdx + 1; j < steps.length; j++) {
+      if (!skippedSteps[steps[j].id]) return j
+    }
+    return -1
+  }, [hasStarted, currentStepIdx, steps, skippedSteps])
 
   // Auto-scroll to current step within the steps container
   useEffect(() => {
@@ -726,7 +740,6 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 
   const targetMax = recipe.targetTimeMax || recipe.targetTime || totalDuration
   const progress = Math.min(timer.elapsed / targetMax, 1)
-  const overTime = timer.elapsed > targetMax
   const timeStatus = hasStarted
     ? computeTimeStatus(timer.elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
     : null
@@ -831,13 +844,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
             const isCurrent = i === currentStepIdx && hasStarted && !skipped
             const isPast = hasStarted && !skipped && timer.elapsed >= step.time + step.duration
             const isFuture = !isCurrent && !isPast && !skipped
-            // Find the first non-skipped step after current — that's "up next"
-            const isNext = isFuture && hasStarted && (() => {
-              for (let j = currentStepIdx + 1; j < steps.length; j++) {
-                if (!skippedSteps[steps[j].id]) return j === i
-              }
-              return false
-            })()
+            const isNext = i === nextStepIdx
             const tappedAt = tappedSteps[step.id]
             const variance = tappedAt !== undefined ? tappedAt - step.time : null
             const stepEndTime = (step.time || 0) + (step.duration || 0)
@@ -1084,7 +1091,8 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       // Recompute timeStatus if totalTime was corrected
       if (resolvedTime != null && resolvedTime !== brew.totalTime) {
         const newTimeResult = computeTimeStatus(resolvedTime, brew.targetTimeMin, brew.targetTimeMax, brew.targetTime, totalDuration)
-        updates.timeStatus = newTimeResult?.status || null
+        const status = newTimeResult?.status || null
+        updates.timeStatus = status === 'approaching' ? 'on-target' : status
       }
 
       const updatedBrews = updateBrew(brew.id, updates)
@@ -1478,25 +1486,33 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
 
   // Pre-compute recipe previews for BeanPicker
   const beanPreviews = useMemo(() => {
+    const formatPreview = (obj, timeField) => {
+      const parts = []
+      if (obj.coffeeGrams && obj.waterGrams) parts.push(`${obj.coffeeGrams}g / ${obj.waterGrams}g`)
+      if (obj.grindSetting) parts.push(`grind ${obj.grindSetting}`)
+      if (obj[timeField]) parts.push(formatTime(obj[timeField]))
+      return parts.length > 0 ? parts.join(' \u00b7 ') : null
+    }
+    // Build last-brew-per-bean index in a single O(B) pass
+    const brews = getBrews()
+    const lastBrewByBean = new Map()
+    for (const b of brews) {
+      const key = normalizeName(b.beanName)
+      if (key && !lastBrewByBean.has(key)) lastBrewByBean.set(key, b)
+    }
     const map = new Map()
     for (const bean of beans) {
       const beanRecipes = (recipes || []).filter(r => r.beanId === bean.id)
         .sort((a, b) => (b.lastUsedAt || '').localeCompare(a.lastUsedAt || ''))
       const recipe = beanRecipes[0]
       if (recipe) {
-        const parts = []
-        if (recipe.coffeeGrams && recipe.waterGrams) parts.push(`${recipe.coffeeGrams}g / ${recipe.waterGrams}g`)
-        if (recipe.grindSetting) parts.push(`grind ${recipe.grindSetting}`)
-        if (recipe.targetTime) parts.push(formatTime(recipe.targetTime))
-        if (parts.length > 0) { map.set(bean.id, parts.join(' \u00b7 ')); continue }
+        const preview = formatPreview(recipe, 'targetTime')
+        if (preview) { map.set(bean.id, preview); continue }
       }
-      const lastBrew = getLastBrewOfBean(bean.name)
+      const lastBrew = lastBrewByBean.get(normalizeName(bean.name))
       if (lastBrew) {
-        const parts = []
-        if (lastBrew.coffeeGrams && lastBrew.waterGrams) parts.push(`${lastBrew.coffeeGrams}g / ${lastBrew.waterGrams}g`)
-        if (lastBrew.grindSetting) parts.push(`grind ${lastBrew.grindSetting}`)
-        if (lastBrew.totalTime) parts.push(formatTime(lastBrew.totalTime))
-        if (parts.length > 0) map.set(bean.id, parts.join(' \u00b7 '))
+        const preview = formatPreview(lastBrew, 'totalTime')
+        if (preview) map.set(bean.id, preview)
       }
     }
     return map
@@ -1705,10 +1721,12 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
     const totalDuration = getTotalDuration(recipe.steps)
     const timeResult = computeTimeStatus(elapsed, recipe.targetTimeMin, recipe.targetTimeMax, recipe.targetTime, totalDuration)
 
+    // Normalize 'approaching' → 'on-target' at persist time (approaching is transient, only meaningful during live timer)
+    const persistedStatus = timeResult?.status === 'approaching' ? 'on-target' : (timeResult?.status || null)
     const brew = buildBrewRecord({
       totalTime: elapsed,
       stepResults,
-      timeStatus: timeResult?.status || null,
+      timeStatus: persistedStatus,
     })
 
     // Link recipe (create if needed) and stamp recipeId on brew
