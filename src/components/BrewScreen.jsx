@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import {
   getBrews, getChangesForBean, getChangesForRecipe,
   normalizeSteps, formatTime, parseTimeRange, formatTimeRange,
-  computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
+  computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans, getLastBrewOfBean,
   updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
   normalizeName, getRecipes, saveRecipe, updateRecipe,
   generateRecipeCopyName,
@@ -35,7 +35,7 @@ const getTotalDuration = (steps) =>
     : 210
 
 // ─── Phase 0: Bean Picker ───────────────────────────────────
-function BeanPicker({ beans, onSelect }) {
+function BeanPicker({ beans, previews, onSelect }) {
   const [search, setSearch] = useState('')
 
   const filtered = beans.filter(b => {
@@ -78,9 +78,12 @@ function BeanPicker({ beans, onSelect }) {
                        min-h-[44px]"
           >
             <div className="flex justify-between items-start">
-              <div>
+              <div className="min-w-0">
                 <div className="font-semibold text-brew-800">{bean.name}</div>
                 <div className="text-sm text-brew-400 mt-0.5">{bean.roaster || 'Unknown roaster'}</div>
+                {previews?.get(bean.id) && (
+                  <div className="text-xs text-brew-400 mt-0.5 truncate">{previews.get(bean.id)}</div>
+                )}
               </div>
               <div className="text-xs text-brew-400 bg-brew-50 px-2.5 py-1 rounded-lg shrink-0 ml-2">
                 {bean.origin || '—'}
@@ -171,6 +174,22 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         </div>
         <h1 className="text-xl font-semibold text-brew-800">Prepare Your Brew</h1>
       </div>
+
+      {/* Changes from last brew — top position for maximum visibility */}
+      {changes.length > 0 && (
+        <div className="px-4 mt-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="text-xs font-semibold text-brew-500 mb-2 flex items-center gap-1.5">
+              Notes from last brew
+            </div>
+            {changes.map((c, i) => (
+              <div key={i} className={`text-sm text-brew-800 leading-relaxed ${i < changes.length - 1 ? 'mb-1.5' : ''}`}>
+                {c}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recipe Indicator */}
       {beanRecipes.length > 0 && (
@@ -285,22 +304,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           </div>
         )
       })()}
-
-      {/* Changes from last brew */}
-      {changes.length > 0 && (
-        <div className="px-4 mt-3">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="text-xs font-semibold text-brew-500 mb-2 flex items-center gap-1.5">
-              Notes from last brew
-            </div>
-            {changes.map((c, i) => (
-              <div key={i} className={`text-sm text-brew-800 leading-relaxed ${i < changes.length - 1 ? 'mb-1.5' : ''}`}>
-                {c}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Bean + Brew Params — always editable, no card wrapper */}
       <div className="px-4 mt-4">
@@ -1386,6 +1389,32 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
 
   const templates = useMemo(() => getPourTemplates(), [])
 
+  // Pre-compute recipe previews for BeanPicker
+  const beanPreviews = useMemo(() => {
+    const map = new Map()
+    for (const bean of beans) {
+      const beanRecipes = (recipes || []).filter(r => r.beanId === bean.id)
+        .sort((a, b) => (b.lastUsedAt || '').localeCompare(a.lastUsedAt || ''))
+      const recipe = beanRecipes[0]
+      if (recipe) {
+        const parts = []
+        if (recipe.coffeeGrams && recipe.waterGrams) parts.push(`${recipe.coffeeGrams}g / ${recipe.waterGrams}g`)
+        if (recipe.grindSetting) parts.push(`grind ${recipe.grindSetting}`)
+        if (recipe.targetTime) parts.push(formatTime(recipe.targetTime))
+        if (parts.length > 0) { map.set(bean.id, parts.join(' \u00b7 ')); continue }
+      }
+      const lastBrew = getLastBrewOfBean(bean.name)
+      if (lastBrew) {
+        const parts = []
+        if (lastBrew.coffeeGrams && lastBrew.waterGrams) parts.push(`${lastBrew.coffeeGrams}g / ${lastBrew.waterGrams}g`)
+        if (lastBrew.grindSetting) parts.push(`grind ${lastBrew.grindSetting}`)
+        if (lastBrew.totalTime) parts.push(formatTime(lastBrew.totalTime))
+        if (parts.length > 0) map.set(bean.id, parts.join(' \u00b7 '))
+      }
+    }
+    return map
+  }, [beans, recipes])
+
   // Build recipe defaults from equipment profile
   const getRecipeDefaults = useCallback(() => {
     const method = BREW_METHODS.find(m => m.id === equipment?.brewMethod) || BREW_METHODS[0]
@@ -1693,7 +1722,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   return (
     <div>
       {phase === 'pick' && (
-        <BeanPicker beans={beans} onSelect={handleBeanSelect} />
+        <BeanPicker beans={beans} previews={beanPreviews} onSelect={handleBeanSelect} />
       )}
 
       {phase === 'recipe' && selectedBean && (
