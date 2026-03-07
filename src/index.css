@@ -13,8 +13,13 @@ html {
 
 /* Custom global styles */
 body {
-  @apply bg-brew-50 text-brew-900 font-sans;
+  @apply text-brew-900 font-sans;
   -webkit-font-smoothing: antialiased;
+  /* Parchment background with subtle paper-grain texture */
+  background-color: #faf7f2;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
 }
 
 /* Subtle transitions on interactive elements */
@@ -33,7 +38,7 @@ input[type="range"] {
   appearance: none;
   height: 6px;
   border-radius: 3px;
-  background: #f5e6d0;
+  background: #f3ece0;
   outline: none;
 }
 
@@ -42,15 +47,28 @@ input[type="range"]::-webkit-slider-thumb {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #a0673c;
+  background: #c15f3c;
   cursor: pointer;
+  box-shadow: 0 1px 4px rgba(193, 95, 60, 0.3);
 }
 
 input[type="range"]::-moz-range-thumb {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #a0673c;
+  background: #c15f3c;
   border: none;
   cursor: pointer;
+  box-shadow: 0 1px 4px rgba(193, 95, 60, 0.3);
+}
+
+/* Warm card backgrounds — slightly off-white for depth against parchment */
+.card-warm {
+  background-color: #fffefb;
+}
+
+/* Display font utility — for headings that deserve character */
+.font-display {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
 }

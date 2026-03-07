@@ -20,11 +20,52 @@ export default {
           700: '#5c3a22',
           800: '#3d2718',
           900: '#2a1a10',
-        }
+        },
+        // Semantic palette — named after coffee craft materials
+        crema: {
+          50: '#fef6ee',
+          100: '#fdeadb',
+          200: '#f9d1b0',
+          300: '#f4b07c',
+          400: '#ee8c4e',
+          500: '#c15f3c',   // Primary CTA — terracotta
+          600: '#a44a30',
+          700: '#863a28',
+          800: '#6c3024',
+          900: '#5a2820',
+        },
+        sage: {
+          50: '#f4f6ef',
+          100: '#e6eadb',
+          200: '#cfd8bb',
+          300: '#b0c093',
+          400: '#93a872',
+          500: '#7d8966',   // Success — muted, earthy green
+          600: '#606c4d',
+          700: '#4b543e',
+          800: '#3e4534',
+          900: '#353c2e',
+        },
+        parchment: {
+          50: '#fefdfb',
+          100: '#faf7f2',   // App background
+          200: '#f3ece0',
+          300: '#e8dbc9',
+          400: '#d9c5a9',
+        },
+        ceramic: {
+          50: '#f9f8f7',
+          100: '#f1efed',
+          200: '#e3dfdb',
+          300: '#d0cac4',
+          400: '#b5ada5',
+        },
       },
       fontFamily: {
         // Clean, readable fonts
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        // Display serif — for headings and emotional moments
+        display: ['"Fraunces"', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       keyframes: {
@@ -44,12 +85,36 @@ export default {
           '0%, 100%': { opacity: '1', transform: 'scale(1)' },
           '50%': { opacity: '0.6', transform: 'scale(1.3)' },
         },
+        // Completion moment — elastic bounce for the checkmark
+        'brew-complete': {
+          '0%': { opacity: '0', transform: 'scale(0.6)' },
+          '40%': { opacity: '1', transform: 'scale(1.08)' },
+          '65%': { opacity: '1', transform: 'scale(0.96)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        // Warm radial glow that pulses once
+        'warm-glow': {
+          '0%': { boxShadow: '0 0 0 0 rgba(193, 95, 60, 0)' },
+          '40%': { boxShadow: '0 0 48px 16px rgba(193, 95, 60, 0.18)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(193, 95, 60, 0)' },
+        },
+        // Staggered slide-up for content blocks
+        'slide-up': {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 300ms ease-out',
         'fade-in-up': 'fade-in-up 300ms ease-out',
         'scale-in': 'scale-in 200ms ease-out',
         'pulse-dot': 'pulse-dot 2s ease-in-out infinite',
+        'brew-complete': 'brew-complete 800ms cubic-bezier(0.34, 1.56, 0.64, 1) both',
+        'warm-glow': 'warm-glow 1.5s ease-out both',
+        'slide-up': 'slide-up 500ms ease-out both',
+        'slide-up-d1': 'slide-up 500ms ease-out 150ms both',
+        'slide-up-d2': 'slide-up 500ms ease-out 300ms both',
+        'slide-up-d3': 'slide-up 500ms ease-out 450ms both',
       },
     },
   },

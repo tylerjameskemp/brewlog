@@ -76,7 +76,7 @@ function App() {
   const needsSetup = !equipment
 
   return (
-    <div className="min-h-screen bg-brew-50">
+    <div className="min-h-screen">
       <Header
         view={view}
         setView={setView}
@@ -101,18 +101,19 @@ function App() {
       <main className={`max-w-2xl mx-auto px-4 ${brewFlowActive ? 'pb-24' : 'pb-32'} md:pb-24`}>
         {/* First-time setup prompt */}
         {needsSetup && (
-          <div className="mt-8 p-6 bg-white rounded-2xl shadow-sm border border-brew-100 animate-fade-in-up motion-reduce:animate-none">
-            <h2 className="text-xl font-semibold text-brew-800 mb-2">
+          <div className="mt-8 p-6 bg-parchment-50 rounded-2xl shadow-sm border border-ceramic-200/40 animate-fade-in-up motion-reduce:animate-none">
+            <h2 className="font-display text-xl font-semibold text-brew-800 mb-2">
               Welcome to BrewLog
             </h2>
             <p className="text-brew-600 mb-4">
-              Let's start by setting up your brewing gear. This only takes a minute
+              Let&rsquo;s start by setting up your brewing gear. This only takes a minute
               and helps pre-fill your brew sessions.
             </p>
             <button
               onClick={() => setShowSetup(true)}
-              className="px-6 py-3 bg-brew-600 text-white rounded-xl font-medium
-                         hover:bg-brew-700 active:scale-[0.98] transition-all"
+              className="px-6 py-3 bg-crema-500 text-white rounded-xl font-medium
+                         hover:bg-crema-600 active:scale-[0.98] transition-all
+                         shadow-md shadow-crema-500/20"
             >
               Set Up My Gear
             </button>

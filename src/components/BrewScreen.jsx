@@ -48,8 +48,8 @@ function BeanPicker({ beans, previews, onSelect, onNavigate }) {
   return (
     <div className="px-4 pt-4 pb-32">
       <div className="mb-4">
-        <h1 className="text-2xl font-semibold text-brew-800">Start a Brew</h1>
-        <p className="text-sm text-brew-400 mt-1">Select a bean from your library</p>
+        <h1 className="font-display text-2xl font-semibold text-brew-800">Start a Brew</h1>
+        <p className="text-sm text-ceramic-400 mt-1">Select a bean from your library</p>
       </div>
 
       <input
@@ -763,17 +763,17 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 
   // top-12/md:top-14 must match Header h-12/md:h-14 in Header.jsx
   return (
-    <div className="fixed top-12 md:top-14 left-0 right-0 bottom-0 flex flex-col bg-white z-10">
+    <div className="fixed top-12 md:top-14 left-0 right-0 bottom-0 flex flex-col bg-parchment-50 z-10">
       {/* Pinned timer area */}
-      <div className="bg-white shadow-md shrink-0">
+      <div className="bg-parchment-50 shadow-md shrink-0">
         {/* Timer Display */}
         <div className="px-5 pt-6 pb-3">
           <div className="flex items-baseline justify-between">
             <div className={`font-mono text-7xl font-medium leading-none tabular-nums tracking-tight ${
               timeStatus?.status === 'over' ? 'text-red-600'
                 : timeStatus?.status === 'approaching' ? 'text-amber-600'
-                : timeStatus?.status === 'on-target' ? 'text-green-600'
-                : 'text-gray-900'  // Intentional — neutral near-black for idle timer; status colors (red/amber/green) are semantic, not brand
+                : timeStatus?.status === 'on-target' ? 'text-sage-500'
+                : 'text-brew-900'  // Intentional — neutral espresso dark for idle timer; status colors are semantic, not brand
             }`}>
               {formatTime(timer.elapsed)}
             </div>
@@ -785,8 +785,8 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
                 <div className={`text-xs mt-0.5 font-medium ${
                   timeStatus.status === 'over' ? 'text-red-500'
                     : timeStatus.status === 'approaching' ? 'text-amber-500'
-                    : timeStatus.status === 'on-target' ? 'text-green-500'
-                    : 'text-brew-300'
+                    : timeStatus.status === 'on-target' ? 'text-sage-500'
+                    : 'text-ceramic-400'
                 }`}>
                   {timeStatus.status === 'under' && `${timeStatus.delta}s to go`}
                   {timeStatus.status === 'on-target' && 'On target'}
@@ -798,13 +798,13 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
           </div>
 
           {/* Progress bar */}
-          <div className="mt-3 h-1 bg-brew-200 rounded-full overflow-hidden">
+          <div className="mt-3 h-1 bg-ceramic-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-[width,background-color] duration-1000 linear ${
                 timeStatus?.status === 'over' ? 'bg-red-500'
                   : timeStatus?.status === 'approaching' ? 'bg-amber-500'
-                  : timeStatus?.status === 'on-target' ? 'bg-green-500'
-                  : 'bg-brew-500'
+                  : timeStatus?.status === 'on-target' ? 'bg-sage-500'
+                  : 'bg-crema-500'
               }`}
               style={{ width: `${progress * 100}%` }}
             />
@@ -817,14 +817,16 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
             <>
               <button
                 onClick={() => timer.play()}
-                className="w-[72px] h-[72px] rounded-full bg-brew-800 text-white text-2xl
-                           shadow-xl flex items-center justify-center
-                           hover:bg-brew-700 active:scale-95 transition-all"
+                className="w-[72px] h-[72px] rounded-full bg-crema-500 text-white text-2xl
+                           shadow-xl shadow-crema-500/30 flex items-center justify-center
+                           hover:bg-crema-600 active:scale-95 transition-all"
                 aria-label="Start brew"
               >
-                ▶
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
               </button>
-              <div className="text-xs text-brew-400 mt-1.5">Tap to start brewing</div>
+              <div className="text-xs text-ceramic-400 mt-1.5">Tap to start brewing</div>
             </>
           )}
           {timer.running && (
@@ -839,8 +841,9 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
           {!timer.running && hasStarted && (
             <button
               onClick={() => timer.play()}
-              className="bg-brew-800 text-white rounded-full px-6 py-2 text-sm font-semibold
-                         hover:bg-brew-700 active:scale-95 transition-all min-h-[44px]"
+              className="bg-crema-500 text-white rounded-full px-6 py-2 text-sm font-semibold
+                         hover:bg-crema-600 active:scale-95 transition-all min-h-[44px]
+                         shadow-md shadow-crema-500/20"
             >
               Resume
             </button>
@@ -1132,10 +1135,10 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
     <div className="px-4 pt-4 pb-28">
       {/* Summary */}
       <div className="text-center mb-6">
-        <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">
+        <div className="text-xs text-ceramic-400 uppercase tracking-wider mb-1">
           {isManual ? 'Log Brew' : 'Brew Complete'}
         </div>
-        <h1 className="text-2xl font-semibold text-brew-800">Rate This Brew</h1>
+        <h1 className="font-display text-2xl font-semibold text-brew-800">Rate This Brew</h1>
         {isManual && brew.totalTime == null ? (
           <div className="text-sm text-brew-400 mt-2">Enter your brew time below</div>
         ) : (
@@ -1150,7 +1153,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
               <div className={`text-sm font-semibold mt-1 ${
                 timeResult.status === 'under' ? 'text-amber-500'
                   : timeResult.status === 'over' ? 'text-red-500'
-                  : 'text-green-600'
+                  : 'text-sage-500'
               }`}>
                 {timeResult.status === 'under' ? `${timeResult.delta}s under target`
                   : timeResult.status === 'over' ? `${timeResult.delta}s over target`
@@ -1192,7 +1195,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                   </div>
                   {variance != null && !skipped && (
                     <div className={`text-xs font-semibold ${
-                      Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
+                      Math.abs(variance) <= 3 ? 'text-sage-500' : 'text-amber-500'
                     }`}>
                       {variance > 0 ? '+' : ''}{variance}s
                     </div>
@@ -1413,26 +1416,42 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
 
   return (
     <div className="flex flex-col items-center justify-center p-10 pb-32 text-center
-                    animate-fade-in motion-reduce:animate-none min-h-[calc(100vh-3rem)]">
-      <div className="w-20 h-20 rounded-full bg-brew-50 flex items-center justify-center
-                      text-4xl text-brew-500 mb-5">
-        ✓
+                    min-h-[calc(100vh-3rem)]">
+      {/* Completion moment — animated checkmark with warm glow */}
+      <div className="relative mb-6 motion-reduce:animate-none">
+        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-crema-50 to-parchment-200
+                        flex items-center justify-center border border-crema-200/50
+                        animate-brew-complete motion-reduce:animate-none">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+               className="text-crema-500">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        </div>
+        {/* Glow ring */}
+        <div className="absolute inset-0 rounded-full animate-warm-glow motion-reduce:animate-none" />
       </div>
-      <h2 className="text-2xl font-semibold text-brew-800 mb-2">Brew Saved</h2>
-      <p className="text-sm text-brew-400 leading-relaxed max-w-[260px]">
+
+      <h2 className="font-display text-3xl font-semibold text-brew-800 mb-2
+                     animate-slide-up motion-reduce:animate-none">
+        Brew Saved
+      </h2>
+      <p className="text-sm text-ceramic-400 leading-relaxed max-w-[260px]
+                    animate-slide-up-d1 motion-reduce:animate-none">
         Your brew is saved. You can edit it anytime from your brew history.
       </p>
 
       {showForkPrompt && (
-        <div className="mt-6 w-full max-w-[320px] bg-white border border-amber-200 rounded-2xl p-5 text-left">
+        <div className="mt-6 w-full max-w-[320px] bg-parchment-50 border border-crema-200/60 rounded-2xl p-5 text-left
+                        shadow-lg shadow-crema-500/5 animate-slide-up-d2 motion-reduce:animate-none">
           <p className="text-sm font-semibold text-brew-800 mb-2">
-            Your settings differed from "{sourceRecipe.name}"
+            Your settings differed from &ldquo;{sourceRecipe.name}&rdquo;
           </p>
           <ul className="text-xs text-brew-500 mb-4 space-y-1">
             {changedFields.filter(({ field }) => !SKIP_DISPLAY_FIELDS.has(field)).map(({ field, brewVal, recipeVal }) => (
               <li key={field}>
                 <span className="font-medium text-brew-600">{FIELD_LABELS[field] || field}:</span>{' '}
-                {String(recipeVal ?? '–')} → {String(brewVal ?? '–')}
+                {String(recipeVal ?? '–')} <span className="text-crema-500">&rarr;</span> {String(brewVal ?? '–')}
               </li>
             ))}
           </ul>
@@ -1442,8 +1461,8 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
                 onUpdateRecipe(selectedRecipeId)
                 setForkDismissed(true)
               }}
-              className="bg-brew-800 text-white rounded-xl px-4 py-3 text-sm font-semibold
-                         hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
+              className="bg-crema-500 text-white rounded-xl px-4 py-3 text-sm font-semibold
+                         hover:bg-crema-600 active:scale-[0.98] transition-all min-h-[44px]"
             >
               Update Recipe
             </button>
@@ -1452,14 +1471,14 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
                 onSaveAsNewRecipe(selectedRecipeId)
                 setForkDismissed(true)
               }}
-              className="border border-brew-200 text-brew-600 rounded-xl px-4 py-3 text-sm font-semibold
-                         hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
+              className="border border-ceramic-300 text-brew-600 rounded-xl px-4 py-3 text-sm font-semibold
+                         hover:bg-parchment-200/60 active:scale-[0.98] transition-all min-h-[44px]"
             >
               Save as New Recipe
             </button>
             <button
               onClick={() => setForkDismissed(true)}
-              className="text-brew-400 text-xs mt-1 hover:text-brew-600 transition-colors"
+              className="text-ceramic-400 text-xs mt-1 hover:text-brew-600 transition-colors"
             >
               Keep Original
             </button>
@@ -1467,18 +1486,20 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
         </div>
       )}
 
-      <div className="flex flex-col gap-3 mt-6 w-full max-w-[260px]">
+      <div className="flex flex-col gap-3 mt-6 w-full max-w-[260px]
+                      animate-slide-up-d2 motion-reduce:animate-none">
         <button
           onClick={onStartNewBrew}
-          className="bg-brew-800 text-white rounded-xl px-8 py-3.5 text-sm font-semibold
-                     hover:bg-brew-700 active:scale-[0.98] transition-all min-h-[44px]"
+          className="bg-crema-500 text-white rounded-xl px-8 py-3.5 text-sm font-semibold
+                     hover:bg-crema-600 active:scale-[0.98] transition-all min-h-[44px]
+                     shadow-md shadow-crema-500/20"
         >
           Start New Brew
         </button>
         <button
           onClick={onViewHistory}
-          className="border border-brew-200 text-brew-600 rounded-xl px-8 py-3.5 text-sm font-semibold
-                     hover:bg-brew-50 active:scale-[0.98] transition-all min-h-[44px]"
+          className="border border-ceramic-300 text-brew-600 rounded-xl px-8 py-3.5 text-sm font-semibold
+                     hover:bg-parchment-200/60 active:scale-[0.98] transition-all min-h-[44px]"
         >
           View in History
         </button>

@@ -50,24 +50,31 @@ export default function MobileNav({ activeView, onChangeView }) {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-brew-100 z-10 md:hidden pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 bg-parchment-100/85 backdrop-blur-lg border-t border-ceramic-200/50 z-10 md:hidden pb-safe">
       <div className="flex h-16">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => onChangeView(tab.id)}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[44px] transition-colors ${
-              activeView === tab.id
-                ? 'text-brew-600'
-                : 'text-brew-400'
-            }`}
-          >
-            {tab.icon}
-            <span className={`text-[10px] ${activeView === tab.id ? 'font-semibold' : 'font-medium'}`}>
-              {tab.label}
-            </span>
-          </button>
-        ))}
+        {tabs.map(tab => {
+          const isActive = activeView === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onChangeView(tab.id)}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[44px] transition-colors ${
+                isActive
+                  ? 'text-crema-500'
+                  : 'text-ceramic-400'
+              }`}
+            >
+              {tab.icon}
+              <span className={`text-[10px] leading-none ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                {tab.label}
+              </span>
+              {/* Active indicator dot */}
+              {isActive && (
+                <span className="absolute bottom-[calc(env(safe-area-inset-bottom,0px)+6px)] w-1 h-1 rounded-full bg-crema-500" />
+              )}
+            </button>
+          )
+        })}
       </div>
     </nav>
   )
