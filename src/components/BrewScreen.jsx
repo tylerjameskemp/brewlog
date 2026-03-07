@@ -97,7 +97,7 @@ function BeanPicker({ beans, previews, onSelect }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onRecipeRenamed }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onRecipeRenamed, templates }) {
 
   const [showRecipePicker, setShowRecipePicker] = useState(false)
   const [renamingRecipeId, setRenamingRecipeId] = useState(null)
@@ -108,6 +108,38 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
   const [stepsOpen, setStepsOpen] = useState(false)
   const [equipmentOpen, setEquipmentOpen] = useState(false)
+  const [showScaleBanner, setShowScaleBanner] = useState(false)
+  const prevWaterRef = useRef(recipe.waterGrams)
+  const scalingOldWater = useRef(null)
+
+  const handleWaterBlur = () => {
+    const newWater = recipe.waterGrams
+    const oldWater = prevWaterRef.current
+    if (newWater > 0 && oldWater > 0 && newWater !== oldWater &&
+        recipe.steps.some(s => s.waterTo != null)) {
+      scalingOldWater.current = oldWater
+      setShowScaleBanner(true)
+      setStepsOpen(true) // auto-expand steps so user can see
+    }
+    prevWaterRef.current = newWater
+  }
+
+  const applyWaterScaling = () => {
+    const oldWater = scalingOldWater.current
+    const newWater = recipe.waterGrams
+    if (!oldWater || !newWater) return
+    const ratio = newWater / oldWater
+    const scaled = recipe.steps.map((s, i, arr) => {
+      if (s.waterTo == null) return s
+      // Snap last step with waterTo to exact newWater
+      const isLastWithWater = !arr.slice(i + 1).some(ns => ns.waterTo != null)
+      return { ...s, waterTo: isLastWithWater ? newWater : Math.round(s.waterTo * ratio) }
+    })
+    setRecipe(prev => ({ ...prev, steps: scaled }))
+    setShowScaleBanner(false)
+  }
+
+  const dismissScaleBanner = () => setShowScaleBanner(false)
 
   const grinder = GRINDERS.find(g => g.id === recipe.grinder) || GRINDERS[0]
   const methodObj = BREW_METHODS.find(m => m.id === recipe.method) || BREW_METHODS[0]
@@ -192,7 +224,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
       )}
 
       {/* Recipe Indicator */}
-      {beanRecipes.length > 0 && (
+      {(beanRecipes.length > 0 || (templates && templates.length > 0)) && (
         <div className="px-4 mt-3">
           <button
             onClick={() => setShowRecipePicker(!showRecipePicker)}
@@ -277,6 +309,29 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                   )}
                 </div>
               ))}
+              {/* Starter recipes (templates) */}
+              {templates && templates.length > 0 && (
+                <>
+                  <div className="px-4 py-2 text-[10px] uppercase tracking-wider text-brew-300 border-t border-brew-100">
+                    {beanRecipes.length > 0 ? 'or start fresh' : 'Starter recipes'}
+                  </div>
+                  {templates.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        onRecipeSelect({ ...t, _isStarter: true })
+                        setShowRecipePicker(false)
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm text-brew-600 hover:bg-brew-50 min-h-[44px]"
+                    >
+                      <div className="font-medium">{t.name}</div>
+                      <div className="text-xs text-brew-400 mt-0.5">
+                        {t.steps?.length || 0} steps
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
               <button
                 onClick={() => {
                   onRecipeSelect(null) // null = new recipe
@@ -322,27 +377,59 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
           {/* Coffee / Water / Ratio */}
           <div className="grid grid-cols-3 gap-2 mt-5">
-            {[
-              { label: 'Coffee', field: 'coffeeGrams', type: 'number', min: 1, max: 100 },
-              { label: 'Water', field: 'waterGrams', type: 'number', min: 1, max: 2000 },
-            ].map(item => (
-              <div key={item.label} className="text-center p-3 bg-brew-50 rounded-xl">
-                <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">{item.label}</div>
-                <input
-                  type={item.type}
-                  value={recipe[item.field]}
-                  onChange={e => updateField(item.field, Number(e.target.value))}
-                  min={item.min} max={item.max}
-                  className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
-                             border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
-                />
-              </div>
-            ))}
+            <div className="text-center p-3 bg-brew-50 rounded-xl">
+              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Coffee</div>
+              <input
+                type="number"
+                value={recipe.coffeeGrams}
+                onChange={e => updateField('coffeeGrams', Number(e.target.value))}
+                min={1} max={100}
+                className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
+                           border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+              />
+            </div>
+            <div className="text-center p-3 bg-brew-50 rounded-xl">
+              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Water</div>
+              <input
+                type="number"
+                value={recipe.waterGrams}
+                onChange={e => updateField('waterGrams', Number(e.target.value))}
+                onBlur={handleWaterBlur}
+                min={1} max={2000}
+                className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
+                           border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+              />
+            </div>
             <div className="text-center p-3 bg-brew-50 rounded-xl">
               <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Ratio</div>
               <div className="text-lg font-medium text-brew-800">{ratio(recipe.coffeeGrams, recipe.waterGrams)}</div>
             </div>
           </div>
+
+          {/* Water scaling banner */}
+          {showScaleBanner && (
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in motion-reduce:animate-none">
+              <div className="text-sm text-blue-800">
+                Water changed from {scalingOldWater.current}g → {recipe.waterGrams}g. Scale pour steps to match?
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={applyWaterScaling}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium
+                             hover:bg-blue-700 min-h-[32px]"
+                >
+                  Scale
+                </button>
+                <button
+                  onClick={dismissScaleBanner}
+                  className="px-3 py-1.5 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium
+                             hover:bg-blue-100 min-h-[32px]"
+                >
+                  Keep
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Grind / Temp */}
           <div className="grid grid-cols-2 gap-2 mt-2">
@@ -1733,11 +1820,18 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           changes={changes}
           beanRecipes={(recipes || []).filter(r => r.beanId === selectedBean.id)}
           selectedRecipeId={selectedRecipeId}
+          templates={templates}
           onRecipeSelect={(recipeEntity) => {
             if (recipeEntity === null) {
               // "+ New Recipe" — reset to defaults
               setSelectedRecipeId(null)
               setRecipe(getRecipeDefaults())
+            } else if (recipeEntity._isStarter) {
+              // Starter recipe (template) — pre-fill steps + defaults, no recipe entity yet
+              setSelectedRecipeId(null)
+              const defaults = getRecipeDefaults()
+              const steps = normalizeSteps(recipeEntity.steps || [])
+              setRecipe({ ...defaults, steps })
             } else {
               // Select an existing recipe
               setSelectedRecipeId(recipeEntity.id)
