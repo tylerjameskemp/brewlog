@@ -49,7 +49,7 @@ function buildDiffMap(actualSteps, plannedSteps) {
 
 function DiffTag({ children }) {
   return (
-    <span className="text-[9px] text-amber-500 font-medium ml-1">
+    <span className="text-[10px] text-amber-500 font-medium ml-1">
       {children}
     </span>
   )
@@ -99,7 +99,7 @@ function StepOneLiner({ step, index, diff, onClick, disabled }) {
         )}
       </span>
       {diff?.isAdded && (
-        <span className="text-[9px] text-green-600 font-medium bg-green-100 px-1.5 py-0.5 rounded flex-shrink-0">
+        <span className="text-[10px] text-green-600 font-medium bg-green-100 px-1.5 py-0.5 rounded flex-shrink-0">
           added
         </span>
       )}
@@ -155,7 +155,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
           )}
         </div>
         {diff?.isAdded && (
-          <span className="text-[9px] text-green-600 font-medium bg-green-100 px-1.5 py-0.5 rounded flex-shrink-0">
+          <span className="text-[10px] text-green-600 font-medium bg-green-100 px-1.5 py-0.5 rounded flex-shrink-0">
             added
           </span>
         )}
@@ -170,7 +170,8 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
         {!disabled && (
           <button
             onClick={onRemove}
-            className="text-brew-300 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+            className="text-brew-300 hover:text-red-400 transition-colors p-1 flex-shrink-0
+                       min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Remove step"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -236,7 +237,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
           placeholder="Technique note (optional)"
           disabled={disabled}
           className="w-full px-2 py-1.5 rounded-lg border border-brew-100 text-base text-brew-700
-                     placeholder:text-brew-300 focus:outline-none focus:ring-1 focus:ring-brew-300
+                     placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
                      disabled:bg-brew-50 disabled:text-brew-500"
         />
       </div>
@@ -246,7 +247,8 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
         <div className="ml-8">
           <button
             onClick={onSplit}
-            className="text-[10px] text-brew-400 hover:text-brew-600 transition-colors py-1"
+            className="text-[10px] text-brew-400 hover:text-brew-600 transition-colors py-1 min-h-[44px]
+                       flex items-center"
           >
             Split step
           </button>
@@ -275,7 +277,7 @@ function RemovedStepOneLiner({ step }) {
           </>
         )}
       </span>
-      <span className="text-[9px] text-red-400 font-medium bg-red-100 px-1.5 py-0.5 rounded flex-shrink-0">
+      <span className="text-[10px] text-red-400 font-medium bg-red-100 px-1.5 py-0.5 rounded flex-shrink-0">
         removed
       </span>
     </div>
@@ -422,7 +424,7 @@ export default function StepEditor({ steps = [], onChange, disabled = false, hin
           onClick={handleAdd}
           className="w-full py-2.5 rounded-xl border-2 border-dashed border-brew-200 text-sm
                      font-medium text-brew-400 hover:border-brew-300 hover:text-brew-500
-                     transition-colors"
+                     transition-colors min-h-[44px]"
         >
           + Add Step
         </button>

@@ -16,6 +16,7 @@ import StepEditor from './StepEditor'
 import TimeInput from './TimeInput'
 import useTimer from '../hooks/useTimer'
 import useWakeLock from '../hooks/useWakeLock'
+import EmptyState from './EmptyState'
 
 // ============================================================
 // BREW SCREEN — Guided brewing experience
@@ -35,7 +36,7 @@ const getTotalDuration = (steps) =>
     : 210
 
 // ─── Phase 0: Bean Picker ───────────────────────────────────
-function BeanPicker({ beans, previews, onSelect }) {
+function BeanPicker({ beans, previews, onSelect, onNavigate }) {
   const [search, setSearch] = useState('')
 
   const filtered = beans.filter(b => {
@@ -57,15 +58,31 @@ function BeanPicker({ beans, previews, onSelect }) {
         onChange={e => setSearch(e.target.value)}
         placeholder="Search beans or roasters..."
         className="w-full text-base px-4 py-3 rounded-xl border border-brew-200 bg-white
-                   focus:outline-none focus:border-brew-500 mb-4"
+                   focus:outline-none focus:ring-2 focus:ring-brew-400 mb-4"
       />
 
-      {filtered.length === 0 && (
-        <div className="text-center py-12 text-brew-400">
-          {beans.length === 0
-            ? 'No beans in your library yet. Add some from the Beans tab!'
-            : 'No beans match your search.'}
-        </div>
+      {filtered.length === 0 && beans.length === 0 && (
+        <EmptyState
+          emoji="🫘"
+          title="No Beans Yet"
+          description="Add beans from the Beans tab to start brewing."
+          action={onNavigate && (
+            <button
+              onClick={() => onNavigate('beans')}
+              className="mt-4 px-6 py-3 bg-brew-600 text-white rounded-xl text-sm font-semibold
+                         hover:bg-brew-700 transition-colors min-h-[44px]"
+            >
+              Go to Beans
+            </button>
+          )}
+        />
+      )}
+      {filtered.length === 0 && beans.length > 0 && (
+        <EmptyState
+          emoji="🔍"
+          title="No Matches"
+          description="No beans match your search."
+        />
       )}
 
       <div className="flex flex-col gap-2">
@@ -208,9 +225,9 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
             </svg>
             <span className="text-sm font-medium">Back</span>
           </button>
-          <div className="text-[11px] text-brew-400 uppercase tracking-widest">Recipe</div>
+          <div className="text-xs text-brew-400 uppercase tracking-wider">Recipe</div>
         </div>
-        <h1 className="text-xl font-semibold text-brew-800">Prepare Your Brew</h1>
+        <h1 className="text-2xl font-semibold text-brew-800">Prepare Your Brew</h1>
       </div>
 
       {/* Changes from last brew — top position for maximum visibility */}
@@ -235,7 +252,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           <button
             onClick={() => setShowRecipePicker(!showRecipePicker)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                        border transition-all min-h-[32px]
+                        border transition-all min-h-[44px]
                         border-brew-300 bg-brew-50 text-brew-600 hover:border-brew-400 cursor-pointer"
           >
             <span>{beanRecipes.find(r => r.id === selectedRecipeId)?.name || 'Recipe'}</span>
@@ -382,20 +399,20 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           </div>
 
           {/* Coffee / Water / Ratio */}
-          <div className="grid grid-cols-3 gap-2 mt-5">
+          <div className="grid grid-cols-3 gap-3 mt-5">
             <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Coffee</div>
+              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Coffee</div>
               <input
                 type="number"
                 value={recipe.coffeeGrams}
                 onChange={e => updateField('coffeeGrams', Number(e.target.value))}
                 min={1} max={100}
                 className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
-                           border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+                           border-b border-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
               />
             </div>
             <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Water</div>
+              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Water</div>
               <input
                 type="number"
                 value={recipe.waterGrams}
@@ -403,11 +420,11 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                 onBlur={handleWaterBlur}
                 min={1} max={2000}
                 className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
-                           border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base"
+                           border-b border-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
               />
             </div>
             <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Ratio</div>
+              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Ratio</div>
               <div className="text-lg font-medium text-brew-800">{ratio(recipe.coffeeGrams, recipe.waterGrams)}</div>
             </div>
           </div>
@@ -438,9 +455,9 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           )}
 
           {/* Grind / Temp */}
-          <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="grid grid-cols-2 gap-3 mt-2">
             <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Grind</div>
+              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Grind</div>
               {grinder.settingType === 'ode' ? (
                 <select
                   value={recipe.grindSetting}
@@ -464,7 +481,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
               )}
             </div>
             <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Temp</div>
+              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Temp</div>
               <input
                 type="number"
                 value={recipe.waterTemp}
@@ -477,7 +494,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           </div>
 
           <div className="mt-4 text-center">
-            <div className="text-[11px] text-brew-400 uppercase tracking-wider mb-1">Target Time</div>
+            <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Target Time</div>
             <input
               type="text"
               value={targetTimeInput}
@@ -486,7 +503,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
               placeholder="3:00 - 3:30"
               maxLength={15}
               className="w-32 mx-auto text-center text-lg font-medium text-brew-800 bg-transparent
-                         border-b border-brew-300 focus:outline-none focus:border-brew-500 text-base block"
+                         border-b border-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400 text-base block"
             />
           </div>
         </div>
@@ -498,7 +515,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           onClick={() => setStepsOpen(!stepsOpen)}
           className="w-full flex items-center justify-between py-2 min-h-[44px]"
         >
-          <div className="text-[11px] text-brew-400 uppercase tracking-widest">Pour Steps</div>
+          <div className="text-xs text-brew-400 uppercase tracking-wider">Pour Steps</div>
           {!stepsOpen && recipe.steps.length > 0 && (
             <div className="text-xs text-brew-500">
               {recipe.steps.length} steps{recipe.waterGrams ? ` · ${recipe.waterGrams}g` : ''}
@@ -525,7 +542,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           onClick={() => setEquipmentOpen(!equipmentOpen)}
           className="w-full flex items-center justify-between py-2 min-h-[44px]"
         >
-          <div className="text-[11px] text-brew-400 uppercase tracking-widest">Equipment</div>
+          <div className="text-xs text-brew-400 uppercase tracking-wider">Equipment</div>
           {!equipmentOpen && (
             <div className="text-xs text-brew-500">
               {methodObj.name} · {grinder.name}{recipe.filterType ? ` · ${recipe.filterType.replace('-', ' ')}` : ''}
@@ -540,7 +557,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           <div className="space-y-4 pb-2 animate-fade-in motion-reduce:animate-none">
             {/* Method */}
             <div>
-              <div className="text-[11px] text-brew-400 mb-1.5">Method</div>
+              <div className="text-xs text-brew-400 mb-1.5">Method</div>
               <div className="flex flex-wrap gap-2">
                 {BREW_METHODS.map(m => (
                   <button
@@ -561,7 +578,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
             {/* Dripper — only for pour-over methods */}
             {methodHasDripper && (
               <div>
-                <div className="text-[11px] text-brew-400 mb-1.5">Dripper</div>
+                <div className="text-xs text-brew-400 mb-1.5">Dripper</div>
                 <div className="flex flex-wrap gap-2">
                   {DRIPPER_MATERIALS.map(mat => (
                     <button
@@ -582,7 +599,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
             {/* Grinder */}
             <div>
-              <div className="text-[11px] text-brew-400 mb-1.5">Grinder</div>
+              <div className="text-xs text-brew-400 mb-1.5">Grinder</div>
               <select
                 value={recipe.grinder}
                 onChange={e => handleGrinderChange(e.target.value)}
@@ -597,7 +614,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
             {/* Filter Type */}
             <div>
-              <div className="text-[11px] text-brew-400 mb-1.5">Filter</div>
+              <div className="text-xs text-brew-400 mb-1.5">Filter</div>
               <div className="flex flex-wrap gap-2">
                 {FILTER_TYPES.map(f => (
                   <button
@@ -756,7 +773,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
               timeStatus?.status === 'over' ? 'text-red-600'
                 : timeStatus?.status === 'approaching' ? 'text-amber-600'
                 : timeStatus?.status === 'on-target' ? 'text-green-600'
-                : 'text-gray-900'
+                : 'text-gray-900'  // Intentional — neutral near-black for idle timer; status colors (red/amber/green) are semantic, not brand
             }`}>
               {formatTime(timer.elapsed)}
             </div>
@@ -781,7 +798,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
           </div>
 
           {/* Progress bar */}
-          <div className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div className="mt-3 h-1 bg-brew-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-[width,background-color] duration-1000 linear ${
                 timeStatus?.status === 'over' ? 'bg-red-500'
@@ -858,8 +875,8 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
                   ref={el => (stepRefs.current[step.id] = el)}
                   className="flex items-center gap-2 py-1.5 pl-1 mb-0.5 opacity-40"
                 >
-                  <span className="w-2.5 h-2.5 rounded-full border border-gray-300 flex-shrink-0" />
-                  <span className="text-sm text-gray-300 line-through truncate">{step.name}</span>
+                  <span className="w-2.5 h-2.5 rounded-full border border-brew-300 flex-shrink-0" />
+                  <span className="text-sm text-brew-300 line-through truncate">{step.name}</span>
                 </div>
               )
             }
@@ -874,7 +891,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
                              animate-fade-in motion-reduce:animate-none"
                 >
                   <span className="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0" />
-                  <span className="text-sm text-gray-400 truncate flex-1 min-w-0">
+                  <span className="text-sm text-brew-400 truncate flex-1 min-w-0">
                     <span className="font-mono">{timeRange}</span>
                     <span className="mx-1">&middot;</span>
                     <span>{step.name}</span>
@@ -885,7 +902,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
                       </>
                     )}
                   </span>
-                  <span className="text-xs tabular-nums text-gray-300 flex-shrink-0">
+                  <span className="text-xs tabular-nums text-brew-300 flex-shrink-0">
                     {tappedAt !== undefined ? formatTime(tappedAt) : ''}
                   </span>
                 </div>
@@ -955,7 +972,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 
                     {/* Variance indicator */}
                     {variance !== null && (
-                      <div className={`mt-1.5 text-[11px] font-semibold ${
+                      <div className={`mt-1.5 text-xs font-semibold ${
                         Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
                       }`}>
                         Tapped at {formatTime(tappedAt)} ({variance > 0 ? '+' : ''}{variance}s)
@@ -1037,8 +1054,8 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
               const finalElapsed = timer.stop()
               onFinish({ elapsed: finalElapsed, tappedSteps, skippedSteps })
             }}
-            className="w-full py-4 bg-brew-500 text-white rounded-2xl text-base font-semibold
-                       shadow-lg hover:bg-brew-600 active:scale-[0.98] transition-all
+            className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
+                       shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
                        pointer-events-auto min-h-[44px]"
           >
             Finish Brew
@@ -1115,7 +1132,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
     <div className="px-4 pt-4 pb-28">
       {/* Summary */}
       <div className="text-center mb-6">
-        <div className="text-[11px] text-brew-400 uppercase tracking-widest mb-1">
+        <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">
           {isManual ? 'Log Brew' : 'Brew Complete'}
         </div>
         <h1 className="text-2xl font-semibold text-brew-800">Rate This Brew</h1>
@@ -1144,9 +1161,10 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
         )}
       </div>
 
+      <div className="space-y-4">
       {/* Step Results — hidden for manual brews (no timer data) */}
       {!isManual && steps.length > 0 && (
-        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
+        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
           <h3 className="text-lg font-semibold text-brew-800 mb-3">Step Timing</h3>
           {steps.map(step => {
             const result = stepResults[step.id]
@@ -1165,22 +1183,22 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                   <span className={`font-semibold text-sm ${skipped ? 'line-through' : ''} text-brew-800`}>
                     {step.name}
                   </span>
-                  {skipped && <span className="text-[11px] text-red-500 ml-2">Skipped</span>}
-                  {notReached && <span className="text-[11px] text-brew-400 ml-2">Not reached</span>}
+                  {skipped && <span className="text-xs text-red-500 ml-2">Skipped</span>}
+                  {notReached && <span className="text-xs text-brew-400 ml-2">Not reached</span>}
                 </div>
                 <div className="text-right">
                   <div className="text-sm tabular-nums text-brew-800">
                     {skipped || notReached ? '—' : tappedAt != null ? formatTime(tappedAt) : formatTime(step.time)}
                   </div>
                   {variance != null && !skipped && (
-                    <div className={`text-[11px] font-semibold ${
+                    <div className={`text-xs font-semibold ${
                       Math.abs(variance) <= 3 ? 'text-green-600' : 'text-amber-500'
                     }`}>
                       {variance > 0 ? '+' : ''}{variance}s
                     </div>
                   )}
                   {!skipped && !notReached && tappedAt == null && (
-                    <div className="text-[11px] text-brew-300">as planned</div>
+                    <div className="text-xs text-brew-300">as planned</div>
                   )}
                 </div>
               </div>
@@ -1189,11 +1207,9 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
         </div>
       )}
 
-      {/* Correct Actuals */}
-      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
-        <h3 className="text-lg font-semibold text-brew-800 mb-1">
-          {isManual ? 'Brew Details' : 'Correct Actuals'}
-        </h3>
+      {/* Brew Details — actuals, notes, next-brew changes */}
+      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
+        <h3 className="text-lg font-semibold text-brew-800 mb-1">Brew Details</h3>
         <p className="text-xs text-brew-400 mb-3">
           {isManual ? 'Enter the details for this brew.' : 'Adjust if the actual values differed from planned.'}
         </p>
@@ -1205,8 +1221,8 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
               onChange={setTotalTimeSeconds}
               placeholder="3:30"
               className="w-full p-3 rounded-xl border border-brew-300 bg-brew-50
-                         text-lg text-brew-800 font-mono text-center
-                         focus:outline-none focus:border-brew-500 focus:ring-2 focus:ring-brew-400 text-base"
+                         text-base text-brew-800 font-mono text-center
+                         focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
         )}
@@ -1218,7 +1234,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
               value={grindSetting}
               onChange={e => setGrindSetting(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-brew-200 bg-brew-50
-                         text-sm text-brew-800 focus:outline-none focus:border-brew-500 text-base"
+                         text-base text-brew-800 focus:outline-none focus:ring-2 focus:ring-brew-400"
             />
           </div>
           {!isManual && (
@@ -1229,48 +1245,48 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                 onChange={setTotalTimeSeconds}
                 placeholder="3:30"
                 className="w-full p-2.5 rounded-xl border border-brew-200 bg-brew-50
-                           text-sm text-brew-800 font-mono focus:outline-none focus:border-brew-500 text-base"
+                           text-base text-brew-800 font-mono focus:outline-none focus:ring-2 focus:ring-brew-400"
               />
             </div>
           )}
         </div>
-      </div>
 
-      {/* Brew Notes */}
-      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
-        <h3 className="text-lg font-semibold text-brew-800 mb-1">Brew Notes</h3>
-        <p className="text-xs text-brew-400 mb-2.5">What happened during this brew?</p>
-        <textarea
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          placeholder="Bed looked uneven after bloom, water temp dropped fast..."
-          maxLength={2000}
-          className="w-full min-h-[80px] p-3 rounded-xl border border-brew-200 bg-brew-50
-                     text-sm text-brew-800 resize-y focus:outline-none focus:border-brew-500 text-base"
-        />
-      </div>
+        {/* Notes divider */}
+        <div className="border-t border-brew-100 mt-4 pt-4">
+          <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Notes</div>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Bed looked uneven after bloom, water temp dropped fast..."
+            maxLength={2000}
+            className="w-full min-h-[80px] p-3 rounded-xl border border-brew-200 bg-brew-50
+                       text-base text-brew-800 resize-y focus:outline-none focus:ring-2 focus:ring-brew-400"
+          />
+        </div>
 
-      {/* Changes for Next Brew */}
-      <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5 mb-4">
-        <h3 className="text-lg font-semibold text-brew-500 mb-1">Changes for Next Brew</h3>
-        <p className="text-xs text-brew-400 mb-2.5">
-          These notes will appear as suggestions next time you brew this bean.
-        </p>
-        <textarea
-          value={nextBrewChanges}
-          onChange={e => setNextBrewChanges(e.target.value)}
-          placeholder="Try coarser grind, extend bloom to 45s..."
-          maxLength={500}
-          className="w-full min-h-[80px] p-3 rounded-xl border border-amber-200 bg-white
-                     text-sm text-brew-800 resize-y focus:outline-none focus:border-brew-500 text-base"
-        />
+        {/* Try Next Time — amber inset */}
+        <div className="bg-amber-50 rounded-xl border border-amber-200 mt-4 p-4">
+          <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Try Next Time</div>
+          <p className="text-xs text-brew-400 mb-2">
+            These notes will appear as suggestions next time you brew this bean.
+          </p>
+          <textarea
+            value={nextBrewChanges}
+            onChange={e => setNextBrewChanges(e.target.value)}
+            placeholder="Try coarser grind, extend bloom to 45s..."
+            maxLength={500}
+            className="w-full min-h-[80px] p-3 rounded-xl border border-amber-200 bg-white
+                       text-base text-brew-800 resize-y focus:outline-none focus:ring-2 focus:ring-brew-400"
+          />
+        </div>
       </div>
 
       {/* Tasting — FlavorPicker, Body, Rating, Issues */}
-      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5 mb-4">
+      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
         <h3 className="text-lg font-semibold text-brew-800 mb-3">Tasting</h3>
 
         {/* Flavors */}
+        <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Flavors</div>
         <FlavorPicker selected={flavors} onChange={setFlavors} />
 
         {/* Body */}
@@ -1308,7 +1324,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                 }`}
               >
                 <div className="text-lg">{r.emoji}</div>
-                <div className="text-[10px] mt-0.5">{r.label}</div>
+                <div className="text-xs mt-0.5">{r.label}</div>
               </button>
             ))}
           </div>
@@ -1335,6 +1351,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
             ))}
           </div>
         </div>
+      </div>
       </div>
 
       {/* Done Button */}
@@ -1827,7 +1844,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   return (
     <div>
       {phase === 'pick' && (
-        <BeanPicker beans={beans} previews={beanPreviews} onSelect={handleBeanSelect} />
+        <BeanPicker beans={beans} previews={beanPreviews} onSelect={handleBeanSelect} onNavigate={onNavigate} />
       )}
 
       {phase === 'recipe' && selectedBean && (

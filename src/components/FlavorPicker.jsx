@@ -72,6 +72,7 @@ export default function FlavorPicker({ selected = [], onChange }) {
               expandedCategory === category ? null : category
             )}
             className={`px-4 py-2.5 rounded-lg text-xs font-medium border transition-all
+              min-h-[44px] flex items-center justify-center
               ${expandedCategory === category
                 ? 'border-brew-400 bg-brew-50 text-brew-700'
                 : 'border-brew-100 text-brew-500 hover:border-brew-200'
@@ -92,6 +93,7 @@ export default function FlavorPicker({ selected = [], onChange }) {
               key={flavor}
               onClick={() => toggleFlavor(flavor)}
               className={`px-4 py-2.5 rounded-full text-xs font-medium border transition-all
+                min-h-[44px] flex items-center justify-center
                 ${selected.includes(flavor)
                   ? 'border-brew-500 bg-brew-500 text-white'
                   : 'border-brew-200 bg-white text-brew-600 hover:border-brew-300'
@@ -124,7 +126,7 @@ export default function FlavorPicker({ selected = [], onChange }) {
         <button
           onClick={addCustom}
           className="px-4 py-3 bg-brew-100 text-brew-600 rounded-lg text-sm
-                     font-medium hover:bg-brew-200 transition-colors"
+                     font-medium hover:bg-brew-200 transition-colors min-h-[44px]"
         >
           Add
         </button>

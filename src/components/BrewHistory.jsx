@@ -305,7 +305,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
               setSelectedIds([])
               setExpandedId(null)
             }}
-            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px] ${
               compareMode
                 ? 'bg-amber-100 text-amber-700'
                 : 'bg-brew-100 text-brew-600 hover:bg-brew-200'

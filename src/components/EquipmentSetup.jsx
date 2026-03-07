@@ -151,6 +151,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                           key={mat}
                           onClick={() => update('dripper', mat)}
                           className={`px-4 py-2.5 rounded-lg border text-sm capitalize
+                            min-h-[44px] flex items-center justify-center
                             ${form.dripper === mat
                               ? 'border-brew-500 bg-brew-50 text-brew-800'
                               : 'border-brew-100 text-brew-500 hover:border-brew-200'
@@ -196,6 +197,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                         key={filter}
                         onClick={() => update('filterType', filter)}
                         className={`px-4 py-2.5 rounded-lg border text-sm capitalize
+                          min-h-[44px] flex items-center justify-center
                           ${form.filterType === filter
                             ? 'border-brew-500 bg-brew-50 text-brew-800'
                             : 'border-brew-100 text-brew-500 hover:border-brew-200'
