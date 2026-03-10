@@ -120,6 +120,12 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(-3px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'countdown-tick': {
+          '0%': { opacity: '0', transform: 'scale(1.5)' },
+          '20%': { opacity: '1', transform: 'scale(1)' },
+          '80%': { opacity: '1', transform: 'scale(1)' },
+          '100%': { opacity: '0.3', transform: 'scale(0.8)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 300ms ease-out',
@@ -133,6 +139,7 @@ export default {
         'slide-up-d2': 'slide-up 500ms ease-out 300ms both',
         'slide-up-d3': 'slide-up 500ms ease-out 450ms both',
         'board-slide': 'board-slide 200ms ease-out',
+        'countdown-tick': 'countdown-tick 1s ease-out forwards',
       },
     },
   },
