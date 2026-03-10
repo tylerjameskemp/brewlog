@@ -47,23 +47,23 @@ function BeanPicker({ beans, previews, onSelect, onNavigate }) {
   return (
     <div className="-mx-4 bg-felt-900 pb-32">
       <FeltBoard fullPage>
-        <div className="px-6 pt-8 pb-6">
-          <p className="font-condensed text-sm font-semibold text-felt-200 uppercase tracking-[3px] mb-1">{GREETING}</p>
-          <h1 className="font-condensed text-2xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress mb-5">Hone Your Cup</h1>
+        <div className="px-6 pt-10 pb-6">
+          <p className="font-condensed text-lg font-semibold text-felt-200 uppercase tracking-[3px] text-letterpress-dim mb-1">{GREETING}</p>
+          <h1 className="font-condensed text-4xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress-lg mb-8">Hone Your Cup</h1>
 
           {beans.length === 0 && (
-            <div className="text-center py-12">
-              <p className="font-condensed text-lg font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress">
+            <div className="text-center py-16">
+              <p className="font-condensed text-2xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress-lg">
                 No Beans Yet
               </p>
-              <p className="text-sm mt-2 text-felt-500 max-w-xs mx-auto">
+              <p className="text-base mt-3 text-felt-500 max-w-xs mx-auto">
                 Add beans from the Beans tab to start brewing.
               </p>
               {onNavigate && (
                 <button
                   onClick={() => onNavigate('beans')}
-                  className="mt-4 px-6 py-3 bg-felt-200 text-felt-900 rounded-lg text-sm font-semibold
-                             hover:bg-felt-200/80 transition-colors min-h-[44px]"
+                  className="mt-6 px-8 py-4 bg-felt-200 text-felt-900 rounded-lg text-base font-semibold
+                             hover:bg-felt-200/80 transition-colors min-h-[48px]"
                 >
                   Go to Beans
                 </button>
@@ -76,21 +76,21 @@ function BeanPicker({ beans, previews, onSelect, onNavigate }) {
               <button
                 key={bean.id}
                 onClick={() => onSelect(bean)}
-                className={`w-full text-left py-3 bg-transparent border-none flex flex-col gap-1
-                           transition-colors hover:bg-felt-700/30 active:bg-felt-700/50 min-h-[44px]
+                className={`w-full text-left py-4 bg-transparent border-none flex flex-col gap-1.5
+                           transition-colors hover:bg-felt-700/30 active:bg-felt-700/50 min-h-[56px]
                            ${i < beans.length - 1 ? 'border-b border-felt-700/30' : ''}`}
               >
                 <div className="flex items-baseline justify-between w-full">
-                  <span className="font-condensed text-base font-bold text-felt-100 uppercase
+                  <span className="font-condensed text-xl font-bold text-felt-100 uppercase
                                    tracking-[3.5px] text-letterpress truncate">
                     {bean.name}
                   </span>
-                  <span className="font-condensed text-[11px] font-semibold text-felt-500 uppercase
+                  <span className="font-condensed text-sm font-semibold text-felt-500 uppercase
                                    tracking-[2px] text-letterpress-dim flex-shrink-0 ml-3">
                     {bean.origin || '—'}
                   </span>
                 </div>
-                <div className="font-condensed text-[11px] font-semibold text-felt-500 uppercase
+                <div className="font-condensed text-sm font-semibold text-felt-500 uppercase
                                 tracking-[3px] text-letterpress-dim">
                   {[bean.roaster, previews?.get(bean.id)].filter(Boolean).join(' · ') || 'Unknown roaster'}
                 </div>

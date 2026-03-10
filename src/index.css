@@ -73,20 +73,30 @@ input[type="range"]::-moz-range-thumb {
   font-optical-sizing: auto;
 }
 
-/* Felt-board letterpress text effects */
+/* Felt-board letterpress text — plastic letters sitting on ribbed felt.
+   Light catches the top edge, shadow falls below onto the ridged surface.
+   Three tiers scale shadow depth proportional to text size. */
+
+/* Large — headings (text-3xl, text-4xl) — thicker tiles, deeper shadow */
+.text-letterpress-lg {
+  text-shadow:
+    0 -1px 0 rgba(255,255,255,0.2),
+    0 1px 1px rgba(0,0,0,0.6),
+    0 2px 2px rgba(0,0,0,0.4),
+    0 3px 4px rgba(0,0,0,0.25);
+}
+
+/* Medium — bean names, sub-headings (text-lg, text-xl) */
 .text-letterpress {
   text-shadow:
     0 -1px 0 rgba(255,255,255,0.18),
-    0 1px 0 #0A0A0A,
-    0 2px 0 #050505,
-    0 2px 4px rgba(0,0,0,0.5),
-    1px 1px 0 rgba(0,0,0,0.3),
-    -0.5px 0 0 rgba(0,0,0,0.15);
+    0 1px 1px rgba(0,0,0,0.5),
+    0 2px 3px rgba(0,0,0,0.3);
 }
 
+/* Small — metadata, secondary labels (text-sm, text-xs) */
 .text-letterpress-dim {
   text-shadow:
-    0 -0.5px 0 rgba(255,255,255,0.08),
-    0 1px 0 #0A0A0A,
-    0 1px 3px rgba(0,0,0,0.4);
+    0 -0.5px 0 rgba(255,255,255,0.1),
+    0 1px 2px rgba(0,0,0,0.4);
 }

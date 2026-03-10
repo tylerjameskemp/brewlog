@@ -14,15 +14,15 @@ export default function MobileNav({ activeView, onChangeView }) {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-ceramic-200/50 z-10 pb-safe">
-      <div className="flex h-14">
+      <div className="flex h-16">
         {tabs.map(tab => {
           const isActive = activeView === tab.id
           return (
             <button
               key={tab.id}
               onClick={() => onChangeView(tab.id)}
-              className={`flex-1 flex items-center justify-center min-h-[44px] transition-colors
-                font-condensed text-xs font-bold uppercase tracking-[2.5px]
+              className={`flex-1 flex items-center justify-center min-h-[48px] transition-colors
+                font-condensed text-sm font-bold uppercase tracking-[2.5px]
                 ${isActive ? 'text-felt-200' : 'text-felt-700'}`}
             >
               {tab.label}
