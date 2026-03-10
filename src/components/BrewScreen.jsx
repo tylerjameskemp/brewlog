@@ -1104,6 +1104,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
   const [issues, setIssues] = useState(brew.issues || [])
   const [grindSetting, setGrindSetting] = useState(brew.grindSetting || '')
   const [totalTimeSeconds, setTotalTimeSeconds] = useState(brew.totalTime)
+  const [showTasting, setShowTasting] = useState(false)
   const savingRef = useRef(false)
 
   const isManual = brew.isManualEntry === true
@@ -1306,74 +1307,87 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
         </div>
       </div>
 
-      {/* Tasting — FlavorPicker, Body, Rating, Issues */}
-      <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5">
-        <h3 className="text-lg font-semibold text-brew-800 mb-3">Tasting</h3>
-
-        {/* Flavors */}
-        <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Flavors</div>
-        <FlavorPicker selected={flavors} onChange={setFlavors} />
-
-        {/* Body */}
-        <div className="mt-4">
-          <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Body</div>
-          <div className="flex flex-wrap gap-1.5">
-            {BODY_OPTIONS.map(b => (
-              <button
-                key={b}
-                onClick={() => setBody(body === b ? '' : b)}
-                className={`px-3 py-1.5 rounded-full text-sm border transition-colors min-h-[44px] ${
-                  body === b
-                    ? 'border-brew-500 bg-brew-500 text-white'
-                    : 'border-brew-200 text-brew-500 hover:bg-brew-50'
-                }`}
-              >
-                {b}
-              </button>
-            ))}
-          </div>
+      {/* Rating — standalone section (always visible) */}
+      <div>
+        <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Rating</div>
+        <div className="flex gap-2">
+          {RATING_SCALE.map(r => (
+            <button
+              key={r.value}
+              onClick={() => setRating(rating === r.value ? null : r.value)}
+              className={`flex-1 py-2 rounded-xl text-center transition-all border min-h-[44px] ${
+                rating === r.value
+                  ? 'border-brew-500 bg-brew-500 text-white'
+                  : 'border-brew-200 text-brew-600 hover:bg-brew-50'
+              }`}
+            >
+              <div className="text-lg leading-none">{r.emoji}</div>
+              <div className="text-[10px] font-semibold mt-1">{r.label}</div>
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* Rating */}
-        <div className="mt-4">
-          <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Rating</div>
-          <div className="flex gap-2">
-            {RATING_SCALE.map(r => (
-              <button
-                key={r.value}
-                onClick={() => setRating(rating === r.value ? null : r.value)}
-                className={`flex-1 py-2 rounded-xl text-center transition-all border min-h-[44px] ${
-                  rating === r.value
-                    ? 'border-brew-500 bg-brew-500 text-white'
-                    : 'border-brew-200 text-brew-600 hover:bg-brew-50'
-                }`}
-              >
-                <div className="text-lg leading-none">{r.emoji}</div>
-                <div className="text-[10px] font-semibold mt-1">{r.label}</div>
-              </button>
-            ))}
+      {/* Tasting details toggle */}
+      <button
+        onClick={() => setShowTasting(!showTasting)}
+        className="text-brew-500 text-sm font-medium min-h-[44px] flex items-center transition-colors
+                   hover:text-brew-700"
+      >
+        {showTasting ? 'Hide tasting details' : 'Add tasting details \u2192'}
+      </button>
+
+      {/* Tasting details — collapsed by default */}
+      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+        showTasting ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+      }`}>
+        <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5 space-y-4">
+          {/* Flavors */}
+          <div>
+            <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Flavors</div>
+            <FlavorPicker selected={flavors} onChange={setFlavors} />
           </div>
-        </div>
 
-        {/* Issues */}
-        <div className="mt-4">
-          <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Issues</div>
-          <div className="flex flex-wrap gap-1.5">
-            {BREW_ISSUES.map(issue => (
-              <button
-                key={issue}
-                onClick={() => setIssues(prev =>
-                  prev.includes(issue) ? prev.filter(i => i !== issue) : [...prev, issue]
-                )}
-                className={`px-3 py-1.5 rounded-full text-sm border transition-colors min-h-[44px] ${
-                  issues.includes(issue)
-                    ? 'border-red-400 bg-red-50 text-red-600'
-                    : 'border-brew-200 text-brew-500 hover:bg-brew-50'
-                }`}
-              >
-                {issue}
-              </button>
-            ))}
+          {/* Body */}
+          <div>
+            <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Body</div>
+            <div className="flex flex-wrap gap-1.5">
+              {BODY_OPTIONS.map(b => (
+                <button
+                  key={b}
+                  onClick={() => setBody(body === b ? '' : b)}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors min-h-[44px] ${
+                    body === b
+                      ? 'border-brew-500 bg-brew-500 text-white'
+                      : 'border-brew-200 text-brew-500 hover:bg-brew-50'
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Issues */}
+          <div>
+            <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Issues</div>
+            <div className="flex flex-wrap gap-1.5">
+              {BREW_ISSUES.map(issue => (
+                <button
+                  key={issue}
+                  onClick={() => setIssues(prev =>
+                    prev.includes(issue) ? prev.filter(i => i !== issue) : [...prev, issue]
+                  )}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors min-h-[44px] ${
+                    issues.includes(issue)
+                      ? 'border-red-400 bg-red-50 text-red-600'
+                      : 'border-brew-200 text-brew-500 hover:bg-brew-50'
+                  }`}
+                >
+                  {issue}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
