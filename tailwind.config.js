@@ -60,6 +60,18 @@ export default {
           300: '#d0cac4',
           400: '#b5ada5',
         },
+        felt: {
+          900: '#1A1A1A',
+          800: '#222222',
+          700: '#2E2824',
+          600: '#2C2420',
+          500: '#908880',
+          400: '#706858',
+          300: '#5C5047',
+          200: '#B87333',
+          100: '#EFEBE5',
+          50:  '#F5F1EB',
+        },
       },
       fontFamily: {
         // Clean, readable fonts
@@ -67,6 +79,7 @@ export default {
         // Display serif — for headings and emotional moments
         display: ['"Fraunces"', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        condensed: ['"Barlow Condensed"', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         'fade-in': {
@@ -103,6 +116,10 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'board-slide': {
+          '0%': { opacity: '0', transform: 'translateY(-3px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 300ms ease-out',
@@ -115,6 +132,7 @@ export default {
         'slide-up-d1': 'slide-up 500ms ease-out 150ms both',
         'slide-up-d2': 'slide-up 500ms ease-out 300ms both',
         'slide-up-d3': 'slide-up 500ms ease-out 450ms both',
+        'board-slide': 'board-slide 200ms ease-out',
       },
     },
   },

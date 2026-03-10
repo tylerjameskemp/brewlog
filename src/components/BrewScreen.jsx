@@ -16,7 +16,7 @@ import StepEditor from './StepEditor'
 import TimeInput from './TimeInput'
 import useTimer from '../hooks/useTimer'
 import useWakeLock from '../hooks/useWakeLock'
-import EmptyState from './EmptyState'
+import FeltBoard from './FeltBoard'
 
 // ============================================================
 // BREW SCREEN — Guided brewing experience
@@ -36,79 +36,69 @@ const getTotalDuration = (steps) =>
     : 210
 
 // ─── Phase 0: Bean Picker ───────────────────────────────────
+const GREETING = (() => {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good Morning'
+  if (h < 17) return 'Good Afternoon'
+  return 'Good Evening'
+})()
+
 function BeanPicker({ beans, previews, onSelect, onNavigate }) {
-  const [search, setSearch] = useState('')
-
-  const filtered = beans.filter(b => {
-    const q = normalizeName(search)
-    if (!q) return true
-    return (b.name?.toLowerCase().includes(q) || b.roaster?.toLowerCase().includes(q))
-  })
-
   return (
-    <div className="px-4 pt-4 pb-32">
-      <div className="mb-4">
-        <h1 className="font-display text-2xl font-semibold text-brew-800">Start a Brew</h1>
-        <p className="text-sm text-ceramic-400 mt-1">Select a bean from your library</p>
-      </div>
+    <div className="-mx-4 bg-felt-900 pb-32">
+      <FeltBoard fullPage>
+        <div className="px-6 pt-8 pb-6">
+          <p className="font-condensed text-sm font-semibold text-felt-200 uppercase tracking-[3px] mb-1">{GREETING}</p>
+          <h1 className="font-condensed text-2xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress mb-5">Hone Your Cup</h1>
 
-      <input
-        type="text"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Search beans or roasters..."
-        className="w-full text-base px-4 py-3 rounded-xl border border-brew-200 bg-white
-                   focus:outline-none focus:ring-2 focus:ring-brew-400 mb-4"
-      />
-
-      {filtered.length === 0 && beans.length === 0 && (
-        <EmptyState
-          emoji="🫘"
-          title="No Beans Yet"
-          description="Add beans from the Beans tab to start brewing."
-          action={onNavigate && (
-            <button
-              onClick={() => onNavigate('beans')}
-              className="mt-4 px-6 py-3 bg-brew-600 text-white rounded-xl text-sm font-semibold
-                         hover:bg-brew-700 transition-colors min-h-[44px]"
-            >
-              Go to Beans
-            </button>
-          )}
-        />
-      )}
-      {filtered.length === 0 && beans.length > 0 && (
-        <EmptyState
-          emoji="🔍"
-          title="No Matches"
-          description="No beans match your search."
-        />
-      )}
-
-      <div className="flex flex-col gap-2">
-        {filtered.map(bean => (
-          <button
-            key={bean.id}
-            onClick={() => onSelect(bean)}
-            className="w-full text-left p-4 bg-white rounded-2xl border border-brew-100
-                       shadow-sm hover:border-brew-300 active:scale-[0.99] transition-all
-                       min-h-[44px]"
-          >
-            <div className="flex justify-between items-start">
-              <div className="min-w-0">
-                <div className="font-semibold text-brew-800">{bean.name}</div>
-                <div className="text-sm text-brew-400 mt-0.5">{bean.roaster || 'Unknown roaster'}</div>
-                {previews?.get(bean.id) && (
-                  <div className="text-xs text-brew-400 mt-0.5 truncate">{previews.get(bean.id)}</div>
-                )}
-              </div>
-              <div className="text-xs text-brew-400 bg-brew-50 px-2.5 py-1 rounded-lg shrink-0 ml-2">
-                {bean.origin || '—'}
-              </div>
+          {beans.length === 0 && (
+            <div className="text-center py-12">
+              <p className="font-condensed text-lg font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress">
+                No Beans Yet
+              </p>
+              <p className="text-sm mt-2 text-felt-500 max-w-xs mx-auto">
+                Add beans from the Beans tab to start brewing.
+              </p>
+              {onNavigate && (
+                <button
+                  onClick={() => onNavigate('beans')}
+                  className="mt-4 px-6 py-3 bg-felt-200 text-felt-900 rounded-lg text-sm font-semibold
+                             hover:bg-felt-200/80 transition-colors min-h-[44px]"
+                >
+                  Go to Beans
+                </button>
+              )}
             </div>
-          </button>
-        ))}
-      </div>
+          )}
+
+          <div className="flex flex-col">
+            {beans.map((bean, i) => (
+              <button
+                key={bean.id}
+                onClick={() => onSelect(bean)}
+                className={`w-full text-left py-3 bg-transparent border-none flex flex-col gap-1
+                           transition-colors hover:bg-felt-700/30 active:bg-felt-700/50 min-h-[44px]
+                           ${i < beans.length - 1 ? 'border-b border-felt-700/30' : ''}`}
+              >
+                <div className="flex items-baseline justify-between w-full">
+                  <span className="font-condensed text-base font-bold text-felt-100 uppercase
+                                   tracking-[3.5px] text-letterpress truncate">
+                    {bean.name}
+                  </span>
+                  <span className="font-condensed text-[11px] font-semibold text-felt-500 uppercase
+                                   tracking-[2px] text-letterpress-dim flex-shrink-0 ml-3">
+                    {bean.origin || '—'}
+                  </span>
+                </div>
+                <div className="font-condensed text-[11px] font-semibold text-felt-500 uppercase
+                                tracking-[3px] text-letterpress-dim">
+                  {[bean.roaster, previews?.get(bean.id)].filter(Boolean).join(' · ') || 'Unknown roaster'}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </FeltBoard>
     </div>
   )
 }
@@ -1326,8 +1316,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                     : 'border-brew-200 text-brew-600 hover:bg-brew-50'
                 }`}
               >
-                <div className="text-lg">{r.emoji}</div>
-                <div className="text-xs mt-0.5">{r.label}</div>
+                <div className="text-sm font-semibold">{r.label}</div>
               </button>
             ))}
           </div>
