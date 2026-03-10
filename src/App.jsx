@@ -107,7 +107,7 @@ function App() {
             <h2 className="font-display text-xl font-semibold text-brew-800 mb-2">
               Welcome to BrewLog
             </h2>
-            <p className="text-brew-600 mb-4">
+            <p className="text-brew-700 mb-4">
               Let&rsquo;s start by setting up your brewing gear. This only takes a minute
               and helps pre-fill your brew sessions.
             </p>

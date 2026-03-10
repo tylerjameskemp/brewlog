@@ -173,14 +173,14 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
             <div className="space-y-4 mb-6">
               <div className="p-4 bg-brew-50 rounded-xl">
                 <p className="text-sm font-medium text-brew-700 mb-1">File contents</p>
-                <p className="text-sm text-brew-600">
+                <p className="text-sm text-brew-700">
                   Exported on {exportedAt} — {importBrews} brew{importBrews !== 1 ? 's' : ''}, {importBeans} bean{importBeans !== 1 ? 's' : ''}, {hasImportEquipment ? 'has' : 'no'} equipment
                 </p>
               </div>
 
               <div className="p-4 bg-brew-50 rounded-xl">
                 <p className="text-sm font-medium text-brew-700 mb-1">Your current data</p>
-                <p className="text-sm text-brew-600">
+                <p className="text-sm text-brew-700">
                   {localBrews.length} brew{localBrews.length !== 1 ? 's' : ''}, {localBeans.length} bean{localBeans.length !== 1 ? 's' : ''}, {localEquipment ? 'has' : 'no'} equipment
                 </p>
               </div>

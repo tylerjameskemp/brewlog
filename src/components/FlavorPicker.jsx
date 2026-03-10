@@ -119,13 +119,13 @@ export default function FlavorPicker({ selected = [], onChange }) {
           onKeyDown={(e) => e.key === 'Enter' && addCustom()}
           placeholder="Add custom flavor..."
           maxLength={50}
-          className="flex-1 p-3 rounded-lg border border-brew-200 text-base
+          className="flex-1 p-3 rounded-xl border border-brew-200 text-base
                      text-brew-800 placeholder:text-brew-300
                      focus:outline-none focus:ring-2 focus:ring-brew-400"
         />
         <button
           onClick={addCustom}
-          className="px-4 py-3 bg-brew-100 text-brew-600 rounded-lg text-sm
+          className="px-4 py-3 bg-brew-100 text-brew-600 rounded-xl text-sm
                      font-medium hover:bg-brew-200 transition-colors min-h-[44px]"
         >
           Add

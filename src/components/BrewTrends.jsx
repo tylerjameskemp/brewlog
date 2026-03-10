@@ -82,7 +82,7 @@ export default function BrewTrends({ brews, beans }) {
             <select
               value={selectedBean}
               onChange={e => setSelectedBean(e.target.value)}
-              className="border border-brew-200 rounded-lg px-3 py-1.5 bg-parchment-50
+              className="border border-brew-200 rounded-xl px-3 py-1.5 bg-parchment-50
                          text-brew-700 focus:outline-none focus:ring-2 focus:ring-brew-400
                          text-base"
             >
@@ -131,7 +131,7 @@ export default function BrewTrends({ brews, beans }) {
           <select
             value={selectedBean}
             onChange={e => setSelectedBean(e.target.value)}
-            className="border border-brew-200 rounded-lg px-3 py-1.5 bg-parchment-50
+            className="border border-brew-200 rounded-xl px-3 py-1.5 bg-parchment-50
                        text-brew-700 focus:outline-none focus:ring-2 focus:ring-brew-400
                        text-base"
           >
@@ -198,7 +198,7 @@ export default function BrewTrends({ brews, beans }) {
 function StatItem({ label, value }) {
   return (
     <div>
-      <p className="text-xs text-brew-500">{label}</p>
+      <p className="text-xs text-brew-400">{label}</p>
       <p className="text-sm font-medium text-brew-800">{value}</p>
     </div>
   )
@@ -210,7 +210,7 @@ function CustomTooltip({ active, payload, label }) {
   return (
     <div className="bg-brew-50 border border-brew-200 rounded-lg px-3 py-2 shadow-sm">
       <p className="text-xs font-medium text-brew-800">{data.beanName || 'Unknown'}</p>
-      <p className="text-xs text-brew-500">{label}</p>
+      <p className="text-xs text-brew-400">{label}</p>
       {payload.map((entry, i) => (
         <p key={i} className="text-sm font-mono text-brew-700 mt-0.5">
           {entry.value}{entry.dataKey === 'totalTime' ? 's' : ''}

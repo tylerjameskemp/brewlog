@@ -103,7 +103,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
           {step === 'done' && (
             <div className="text-center py-8 animate-scale-in motion-reduce:animate-none">
               <div className="text-5xl mb-4">✓</div>
-              <p className="text-brew-600 mb-6">Your gear is saved. Let's brew!</p>
+              <p className="text-brew-700 mb-6">Your gear is saved. Let's brew!</p>
               <button
                 onClick={dismiss}
                 className="px-8 py-3 bg-crema-500 text-white rounded-xl font-medium

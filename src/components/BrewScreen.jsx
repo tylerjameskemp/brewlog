@@ -224,7 +224,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
       {changes.length > 0 && (
         <div className="px-4 mt-3">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="text-xs font-semibold text-brew-500 mb-2 flex items-center gap-1.5">
+            <div className="text-xs font-semibold text-brew-400 mb-2 flex items-center gap-1.5">
               Notes from last brew
             </div>
             {changes.map((c, i) => (
@@ -285,7 +285,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                         }}
                         autoFocus
                         maxLength={50}
-                        className="w-full px-2 py-1 rounded-lg border border-brew-300 text-base text-brew-800
+                        className="w-full px-2 py-1 rounded-xl border border-brew-300 text-base text-brew-800
                                    focus:outline-none focus:ring-2 focus:ring-brew-400"
                       />
                     </div>
@@ -366,7 +366,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         if (!currentRecipe?.notes) return null
         return (
           <div className="px-4 mt-2">
-            <div className="text-xs text-brew-500 italic leading-relaxed">
+            <div className="text-xs text-brew-400 italic leading-relaxed">
               {currentRecipe.notes}
             </div>
           </div>
@@ -382,7 +382,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
               <p className="text-sm text-brew-400 mt-1">{bean.roaster}</p>
             </div>
             {bean.roastDate && (
-              <div className="text-xs text-brew-500 bg-brew-50 px-2.5 py-1.5 rounded-lg shrink-0">
+              <div className="text-xs text-brew-400 bg-brew-50 px-2.5 py-1.5 rounded-lg shrink-0">
                 Roasted {bean.roastDate}
               </div>
             )}
@@ -507,7 +507,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         >
           <div className="text-xs text-brew-400 uppercase tracking-wider">Pour Steps</div>
           {!stepsOpen && recipe.steps.length > 0 && (
-            <div className="text-xs text-brew-500">
+            <div className="text-xs text-brew-400">
               {recipe.steps.length} steps{recipe.waterGrams ? ` · ${recipe.waterGrams}g` : ''}
             </div>
           )}
@@ -534,7 +534,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         >
           <div className="text-xs text-brew-400 uppercase tracking-wider">Equipment</div>
           {!equipmentOpen && (
-            <div className="text-xs text-brew-500">
+            <div className="text-xs text-brew-400">
               {methodObj.name} · {grinder.name}{recipe.filterType ? ` · ${recipe.filterType.replace('-', ' ')}` : ''}
             </div>
           )}
@@ -1469,7 +1469,7 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
           <p className="text-sm font-semibold text-brew-800 mb-2">
             Your settings differed from &ldquo;{sourceRecipe.name}&rdquo;
           </p>
-          <ul className="text-xs text-brew-500 mb-4 space-y-1">
+          <ul className="text-xs text-brew-400 mb-4 space-y-1">
             {changedFields.filter(({ field }) => !SKIP_DISPLAY_FIELDS.has(field)).map(({ field, brewVal, recipeVal }) => (
               <li key={field}>
                 <span className="font-medium text-brew-600">{FIELD_LABELS[field] || field}:</span>{' '}

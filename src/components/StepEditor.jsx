@@ -146,9 +146,9 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
             onChange={(e) => onChange({ ...step, name: e.target.value })}
             placeholder="e.g., Bloom, First pour"
             disabled={disabled}
-            className="w-full px-2 py-1.5 rounded-lg border border-brew-200 text-base text-brew-800
+            className="w-full px-2 py-1.5 rounded-xl border border-brew-200 text-base text-brew-800
                        placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                       disabled:bg-brew-50 disabled:text-brew-500"
+                       disabled:bg-brew-50 disabled:text-ceramic-400"
           />
           {diff?.fields?.name != null && (
             <DiffTag>planned: {diff.fields.name || '(empty)'}</DiffTag>
@@ -218,9 +218,9 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
           onChange={(e) => onChange({ ...step, waterTo: e.target.value === '' ? null : Number(e.target.value) })}
           placeholder="\u2014"
           disabled={disabled}
-          className="w-16 px-2 py-1.5 rounded-lg border border-brew-200 text-base font-mono text-brew-800 text-center
+          className="w-16 px-2 py-1.5 rounded-xl border border-brew-200 text-base font-mono text-brew-800 text-center
                      placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                     disabled:bg-brew-50 disabled:text-brew-500"
+                     disabled:bg-brew-50 disabled:text-ceramic-400"
         />
         <span className="text-[10px] text-brew-400">g</span>
         {diff?.fields?.waterTo != null && (
@@ -236,9 +236,9 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
           onChange={(e) => onChange({ ...step, note: e.target.value })}
           placeholder="Technique note (optional)"
           disabled={disabled}
-          className="w-full px-2 py-1.5 rounded-lg border border-brew-100 text-base text-brew-700
+          className="w-full px-2 py-1.5 rounded-xl border border-brew-100 text-base text-brew-700
                      placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                     disabled:bg-brew-50 disabled:text-brew-500"
+                     disabled:bg-brew-50 disabled:text-ceramic-400"
         />
       </div>
 
