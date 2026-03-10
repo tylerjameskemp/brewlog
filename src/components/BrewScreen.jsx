@@ -659,6 +659,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
   const timer = useTimer()
   const [tappedSteps, setTappedSteps] = useState(() => savedBrewState?.tappedSteps || {})
   const [skippedSteps, setSkippedSteps] = useState(() => savedBrewState?.skippedSteps || {})
+  const [countdown, setCountdown] = useState(null)
   const stepsContainerRef = useRef(null)
   const stepRefs = useRef({})
   const lastPersistRef = useRef(0)
@@ -672,6 +673,20 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
       timer.restore(savedBrewState.timerState)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Countdown before timer starts
+  useEffect(() => {
+    if (countdown === null || countdown <= 0) return
+    const id = setTimeout(() => {
+      if (countdown === 1) {
+        timer.play()
+        setCountdown(null)
+      } else {
+        setCountdown(countdown - 1)
+      }
+    }, 1000)
+    return () => clearTimeout(id)
+  }, [countdown]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const steps = recipe.steps
   const totalDuration = getTotalDuration(steps)
@@ -803,10 +818,10 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 
         {/* Controls — fixed height container prevents layout shift */}
         <div className="flex flex-col items-center justify-center h-24">
-          {!hasStarted && (
+          {!hasStarted && countdown === null && (
             <>
               <button
-                onClick={() => timer.play()}
+                onClick={() => setCountdown(3)}
                 className="w-[72px] h-[72px] rounded-full bg-crema-500 text-white text-2xl
                            shadow-xl shadow-crema-500/30 flex items-center justify-center
                            hover:bg-crema-600 active:scale-95 transition-all"
@@ -818,6 +833,23 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
               </button>
               <div className="text-xs text-ceramic-400 mt-1.5">Tap to start brewing</div>
             </>
+          )}
+          {countdown !== null && (
+            <div className="flex flex-col items-center justify-center gap-1">
+              <div
+                key={countdown}
+                className="text-7xl font-display font-bold text-crema-500 animate-countdown-tick motion-reduce:animate-none"
+              >
+                {countdown}
+              </div>
+              <p className="text-ceramic-400 text-xs tracking-wide">Get ready...</p>
+              <button
+                onClick={() => setCountdown(null)}
+                className="text-xs text-brew-300 hover:text-brew-500 mt-1 min-h-[44px] flex items-center"
+              >
+                Cancel
+              </button>
+            </div>
           )}
           {timer.running && (
             <button
