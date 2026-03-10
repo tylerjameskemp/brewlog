@@ -182,8 +182,8 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
         action={onNavigate && (
           <button
             onClick={() => onNavigate('brew')}
-            className="mt-5 px-6 py-3 bg-brew-600 text-white rounded-xl font-medium
-                       hover:bg-brew-700 active:scale-[0.98] transition-all"
+            className="mt-5 px-6 py-3 bg-crema-500 text-white rounded-xl font-medium
+                       shadow-md shadow-crema-500/20 hover:bg-crema-600 active:scale-[0.98] transition-all"
           >
             Log Your First Brew
           </button>
@@ -295,7 +295,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
       {/* Header with compare toggle */}
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h2 className="text-lg font-semibold text-brew-800">Brew History</h2>
+          <h2 className="font-display text-xl font-semibold text-brew-800">Brew History</h2>
           <p className="text-xs text-brew-400 mt-0.5">{brews.length} brews logged</p>
         </div>
         {brews.length >= 2 && (
@@ -327,7 +327,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
 
       {/* Comparison panel */}
       {comparison && comparisonBrews && (
-        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm overflow-hidden">
+        <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm overflow-hidden">
           {/* What Changed summary */}
           <div className="px-5 py-4 border-b border-brew-50">
             <h3 className="text-xs font-semibold text-brew-800 uppercase tracking-wide mb-2">What Changed</h3>
@@ -503,7 +503,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
         return (
           <div
             key={brew.id}
-            className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+            className={`bg-parchment-50 rounded-2xl border shadow-sm overflow-hidden transition-colors ${
               isSelected
                 ? 'border-amber-200 bg-amber-50/30'
                 : 'border-brew-100'

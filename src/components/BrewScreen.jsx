@@ -375,7 +375,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
       {/* Bean + Brew Params — always editable, no card wrapper */}
       <div className="px-4 mt-4">
-        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
+        <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5">
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-2xl font-semibold text-brew-800 leading-tight">{bean.name}</h2>
@@ -633,8 +633,8 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
             commitTargetTimeInputs()
             onStartBrew()
           }}
-          className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
-                     shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
+          className="w-full py-4 bg-crema-500 text-white rounded-2xl text-base font-semibold
+                     shadow-lg shadow-crema-500/20 hover:bg-crema-600 active:scale-[0.98] transition-all
                      pointer-events-auto min-h-[44px]"
         >
           Brew This
@@ -1073,14 +1073,14 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
       {/* Finish Brew — fixed relative to viewport (works because parent has no transform/filter/will-change) */}
       {hasStarted && (
         <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
-                        bg-gradient-to-t from-white via-white to-transparent pointer-events-none z-10">
+                        bg-gradient-to-t from-parchment-100 via-parchment-100 to-transparent pointer-events-none z-10">
           <button
             onClick={() => {
               const finalElapsed = timer.stop()
               onFinish({ elapsed: finalElapsed, tappedSteps, skippedSteps })
             }}
-            className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
-                       shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
+            className="w-full py-4 bg-crema-500 text-white rounded-2xl text-base font-semibold
+                       shadow-lg shadow-crema-500/20 hover:bg-crema-600 active:scale-[0.98] transition-all
                        pointer-events-auto min-h-[44px]"
           >
             Finish Brew
@@ -1189,7 +1189,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       <div className="space-y-4">
       {/* Step Results — hidden for manual brews (no timer data) */}
       {!isManual && steps.length > 0 && (
-        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
+        <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5">
           <h3 className="text-lg font-semibold text-brew-800 mb-3">Step Timing</h3>
           {steps.map(step => {
             const result = stepResults[step.id]
@@ -1233,7 +1233,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       )}
 
       {/* Brew Details — actuals, notes, next-brew changes */}
-      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
+      <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5">
         <h3 className="text-lg font-semibold text-brew-800 mb-1">Brew Details</h3>
         <p className="text-xs text-brew-400 mb-3">
           {isManual ? 'Enter the details for this brew.' : 'Adjust if the actual values differed from planned.'}
@@ -1307,7 +1307,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       </div>
 
       {/* Tasting — FlavorPicker, Body, Rating, Issues */}
-      <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-5">
+      <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5">
         <h3 className="text-lg font-semibold text-brew-800 mb-3">Tasting</h3>
 
         {/* Flavors */}
@@ -1348,7 +1348,8 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                     : 'border-brew-200 text-brew-600 hover:bg-brew-50'
                 }`}
               >
-                <div className="text-sm font-semibold">{r.label}</div>
+                <div className="text-lg leading-none">{r.emoji}</div>
+                <div className="text-[10px] font-semibold mt-1">{r.label}</div>
               </button>
             ))}
           </div>
@@ -1383,8 +1384,8 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                       bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
         <button
           onClick={handleDone}
-          className="w-full py-4 bg-brew-800 text-white rounded-2xl text-base font-semibold
-                     shadow-lg hover:bg-brew-700 active:scale-[0.98] transition-all
+          className="w-full py-4 bg-crema-500 text-white rounded-2xl text-base font-semibold
+                     shadow-lg shadow-crema-500/20 hover:bg-crema-600 active:scale-[0.98] transition-all
                      pointer-events-auto min-h-[44px]"
         >
           Done
