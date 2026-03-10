@@ -3,14 +3,14 @@ import { v4 as uuidv4 } from 'uuid'
 import { saveBean, updateBean, deleteBean, renameBrewBean, formatTime, normalizeName, getRecipes, updateRecipe, archiveRecipe } from '../data/storage'
 import { BEAN_ORIGINS, BEAN_PROCESSES, RATING_SCALE, getMethodName } from '../data/defaults'
 import Collapsible from './Collapsible'
-import EmptyState from './EmptyState'
 import Modal from './Modal'
+import FeltBoard from './FeltBoard'
 
 // ============================================================
 // BEAN LIBRARY — Browse, add, edit, and delete your beans
 // ============================================================
-// Shows all saved beans as cards with brew counts.
-// Click a card to expand and see all brews made with that bean.
+// Shows all saved beans as felt-board rows with brew counts.
+// Click a row to expand and see actions + brews for that bean.
 // Add/edit beans via a modal form. Delete with inline confirmation.
 
 export default function BeanLibrary({ beans, setBeans, brews, recipes, setRecipes, onBrewsChange, onBrewBean }) {
@@ -95,196 +95,214 @@ export default function BeanLibrary({ beans, setBeans, brews, recipes, setRecipe
   }
 
   return (
-    <div className="mt-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-brew-800">
-          Your Beans
-          {beans.length > 0 && (
-            <span className="text-xs text-brew-400 font-normal ml-2">{beans.length} bean{beans.length !== 1 ? 's' : ''}</span>
-          )}
-        </h2>
-        <button
-          onClick={handleOpenAdd}
-          className="px-4 py-2 bg-brew-600 text-white rounded-xl text-sm font-medium
-                     hover:bg-brew-700 active:scale-[0.98] transition-all"
-        >
-          + Add Bean
-        </button>
-      </div>
-
-      {beans.length === 0 ? (
-        <EmptyState
-          emoji="🫘"
-          title="Your Bean Library"
-          description="Keep track of every bean you brew. See tasting notes across sessions and build your personal catalog. Beans are added automatically when you log a brew, or tap &quot;+ Add Bean&quot; to add one manually."
-        />
-      ) : (
-      <div className="space-y-3">
-        {beans.map(bean => {
-          const isExpanded = expandedBeanId === bean.id
-          const key = normalizeName(bean.name)
-          const count = brewCounts.get(key) || 0
-          const beanBrews = isExpanded ? expandedBeanBrews : []
-          const meta = [bean.roaster, bean.origin, bean.process].filter(Boolean).join(' · ')
-
-          return (
-            <div
-              key={bean.id}
-              className="bg-white rounded-2xl border border-brew-100 shadow-sm overflow-hidden"
-            >
-              {/* Card header — clickable to expand */}
+    <div className="-mx-4 bg-felt-900">
+      <FeltBoard fullPage>
+        <div className="px-6 py-8">
+          <h1 className="font-condensed text-2xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress mb-6">Bean Inventory</h1>
+          {beans.length === 0 ? (
+            /* Dark empty state — inline instead of shared EmptyState */
+            <div className="text-center py-12 animate-fade-in-up motion-reduce:animate-none">
+              <div className="text-4xl mb-4">&#x1FAD8;</div>
+              <p className="font-condensed text-lg font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress">
+                Your Bean Library
+              </p>
+              <p className="text-sm mt-3 text-felt-500 max-w-xs mx-auto leading-relaxed">
+                Keep track of every bean you brew. Beans are added automatically when you log a brew, or tap below to add one manually.
+              </p>
               <button
-                onClick={() => { setExpandedBeanId(isExpanded ? null : bean.id); setDeletingBeanId(null) }}
-                className="w-full px-5 py-4 flex items-center gap-4 text-left
-                           hover:bg-brew-50/50 transition-colors"
+                onClick={handleOpenAdd}
+                className="mt-6 font-condensed text-sm font-bold text-felt-200 uppercase tracking-[4px] text-letterpress
+                           min-h-[44px] px-6 py-3 hover:opacity-80 transition-opacity"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-brew-800 truncate">
-                      {bean.name}
-                    </span>
-                  </div>
-                  {meta && (
-                    <div className="text-xs text-brew-400 mt-0.5 truncate">{meta}</div>
-                  )}
-                  {bean.roastDate && (
-                    <div className="text-xs text-brew-400 mt-0.5">
-                      Roasted {formatDate(bean.roastDate)}
-                    </div>
-                  )}
-                </div>
-
-                {/* Brew count + chevron */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-xs font-medium text-brew-500">
-                    {count} brew{count !== 1 ? 's' : ''}
-                  </span>
-                  <span className={`text-brew-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-                    ▾
-                  </span>
-                </div>
+                + Add Bean
               </button>
+            </div>
+          ) : (
+            <>
+              {/* Bean list */}
+              <div>
+                {beans.map(bean => {
+                  const isExpanded = expandedBeanId === bean.id
+                  const isDimmed = expandedBeanId !== null && !isExpanded
+                  const key = normalizeName(bean.name)
+                  const count = brewCounts.get(key) || 0
+                  const beanBrews = isExpanded ? expandedBeanBrews : []
+                  const meta = [bean.roaster, bean.origin, bean.process].filter(Boolean).join('  ·  ')
 
-              {/* Expanded content */}
-              <Collapsible open={isExpanded}>
-                {isExpanded && <div className="px-5 pb-5 border-t border-brew-50">
-                  {/* Action buttons */}
-                  <div className="flex gap-2 mt-3 mb-4 flex-wrap">
-                    {onBrewBean && (
+                  return (
+                    <div key={bean.id}>
+                      {/* Bean row — clickable to expand */}
                       <button
-                        onClick={() => onBrewBean(bean)}
-                        className="text-sm px-4 py-2 min-h-[44px] rounded-lg bg-brew-600 text-white
-                                   font-medium hover:bg-brew-700 active:scale-[0.98] transition-all"
+                        onClick={() => { setExpandedBeanId(isExpanded ? null : bean.id); setDeletingBeanId(null) }}
+                        className="w-full py-3 flex flex-col gap-1 text-left transition-opacity duration-[250ms]"
+                        style={{ opacity: isDimmed ? 0.3 : 1 }}
                       >
-                        Brew this bean
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleOpenEdit(bean)}
-                      className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-brew-500
-                                 hover:text-brew-700 hover:bg-brew-50 transition-colors"
-                    >
-                      Edit bean
-                    </button>
-                    {deletingBeanId === bean.id ? (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-red-500 py-2">Delete this bean? Brews won't be affected.</span>
-                        <button
-                          onClick={() => handleDelete(bean.id)}
-                          className="text-sm px-4 py-2.5 min-h-[44px] font-medium text-red-600
-                                     hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          Delete
-                        </button>
-                        <button
-                          onClick={() => setDeletingBeanId(null)}
-                          className="text-sm px-4 py-2.5 min-h-[44px] text-brew-400
-                                     hover:text-brew-600 hover:bg-brew-50 rounded-lg transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setDeletingBeanId(bean.id)}
-                        className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-red-400
-                                   hover:text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        Delete bean
-                      </button>
-                    )}
-                  </div>
+                        {/* Name + brew count row */}
+                        <div className="flex items-baseline justify-between w-full">
+                          <span className="font-condensed text-base font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress truncate">
+                            {bean.name}
+                          </span>
+                          <span className="font-condensed text-base font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress flex-shrink-0 ml-3">
+                            {count > 0 ? `${count} BREW${count !== 1 ? 'S' : ''}` : ''}
+                          </span>
+                        </div>
 
-                  {/* Recipe section */}
-                  {recipes && (() => {
-                    const beanRecipes = recipes.filter(r => r.beanId === bean.id)
-                    if (beanRecipes.length === 0) return null
-                    return (
-                      <RecipeSection
-                        recipes={beanRecipes}
-                        onRename={(id, name) => { updateRecipe(id, { name }); setRecipes(getRecipes()) }}
-                        onDelete={(id) => { archiveRecipe(id); setRecipes(getRecipes()) }}
-                        onNotesUpdate={(id, notes) => { updateRecipe(id, { notes }); setRecipes(getRecipes()) }}
-                        isLastRecipe={beanRecipes.length === 1}
-                      />
-                    )
-                  })()}
+                        {/* Metadata line */}
+                        <div className="font-condensed text-[11px] font-semibold text-felt-500 uppercase tracking-[3px] text-letterpress-dim">
+                          {count === 0 ? (
+                            <span className="text-felt-200">NEW{meta ? `  ·  ${meta}` : ''}</span>
+                          ) : (
+                            meta || '\u00A0'
+                          )}
+                        </div>
 
-                  {/* Brew list */}
-                  {beanBrews.length > 0 ? (
-                    <div className="space-y-2">
-                      <span className="text-xs font-medium text-brew-500">Brews with this bean:</span>
-                      {beanBrews.map(brew => {
-                        const ratingInfo = RATING_SCALE.find(r => r.value === brew.rating)
-                        return (
-                          <div
-                            key={brew.id}
-                            className="p-3 bg-brew-50/50 rounded-xl flex items-center gap-3"
-                          >
-                            <div className="text-xl flex-shrink-0">
-                              {ratingInfo?.emoji || '☕'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs text-brew-400">
-                                {formatBrewDate(brew.brewedAt)}
-                              </div>
-                              {brew.flavors?.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {brew.flavors.slice(0, 4).map(f => (
-                                    <span key={f} className="px-1.5 py-0.5 bg-brew-100 text-brew-600 rounded text-[10px]">
-                                      {f}
-                                    </span>
-                                  ))}
-                                  {brew.flavors.length > 4 && (
-                                    <span className="text-[10px] text-brew-400">+{brew.flavors.length - 4}</span>
-                                  )}
+                        {/* Roast date */}
+                        {bean.roastDate && (
+                          <div className="font-condensed text-[10px] font-semibold text-felt-400 uppercase tracking-[2px] text-letterpress-dim">
+                            Roasted {formatDate(bean.roastDate)}
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Expanded content */}
+                      <Collapsible open={isExpanded}>
+                        {isExpanded && (
+                          <div className="pb-4 animate-board-slide motion-reduce:animate-none">
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-4 py-2 flex-wrap">
+                              {onBrewBean && (
+                                <button
+                                  onClick={() => onBrewBean(bean)}
+                                  className="font-condensed text-sm font-bold text-felt-200 uppercase tracking-[4px] text-letterpress
+                                             min-h-[44px] px-4 py-2 hover:opacity-80 active:scale-[0.98] transition-all"
+                                >
+                                  Brew ›
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleOpenEdit(bean)}
+                                className="font-condensed text-xs font-semibold text-felt-500 uppercase tracking-[2px] text-letterpress-dim
+                                           min-h-[44px] px-3 py-2 hover:text-felt-100 transition-colors"
+                              >
+                                Edit
+                              </button>
+                              {deletingBeanId === bean.id ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs text-red-400 py-2">Delete this bean?</span>
+                                  <button
+                                    onClick={() => handleDelete(bean.id)}
+                                    className="font-condensed text-xs font-semibold text-red-400 uppercase tracking-[2px]
+                                               min-h-[44px] px-3 py-2 hover:text-red-300 transition-colors"
+                                  >
+                                    Delete
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingBeanId(null)}
+                                    className="font-condensed text-xs font-semibold text-felt-400 uppercase tracking-[2px]
+                                               min-h-[44px] px-3 py-2 hover:text-felt-100 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
                                 </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeletingBeanId(bean.id)}
+                                  className="font-condensed text-xs font-semibold text-felt-400 uppercase tracking-[2px] text-letterpress-dim
+                                             min-h-[44px] px-3 py-2 hover:text-red-400 transition-colors"
+                                >
+                                  Delete
+                                </button>
                               )}
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-xs font-mono text-brew-600">
-                                {brew.coffeeGrams}g / {brew.waterGrams}g
+
+                            {/* Recipe section */}
+                            {recipes && (() => {
+                              const beanRecipes = recipes.filter(r => r.beanId === bean.id)
+                              if (beanRecipes.length === 0) return null
+                              return (
+                                <RecipeSection
+                                  recipes={beanRecipes}
+                                  onRename={(id, name) => { updateRecipe(id, { name }); setRecipes(getRecipes()) }}
+                                  onDelete={(id) => { archiveRecipe(id); setRecipes(getRecipes()) }}
+                                  onNotesUpdate={(id, notes) => { updateRecipe(id, { notes }); setRecipes(getRecipes()) }}
+                                  isLastRecipe={beanRecipes.length === 1}
+                                />
+                              )
+                            })()}
+
+                            {/* Brew list */}
+                            {beanBrews.length > 0 ? (
+                              <div className="mt-3 space-y-1.5">
+                                <span className="font-condensed text-[10px] font-semibold text-felt-400 uppercase tracking-[2px] text-letterpress-dim">
+                                  Brews
+                                </span>
+                                {beanBrews.map(brew => {
+                                  const ratingInfo = RATING_SCALE.find(r => r.value === brew.rating)
+                                  return (
+                                    <div
+                                      key={brew.id}
+                                      className="p-3 bg-felt-900/50 rounded-lg flex items-center gap-3"
+                                    >
+                                      <div className="text-xl flex-shrink-0">
+                                        {ratingInfo?.emoji || '\u2615'}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-xs text-felt-500">
+                                          {formatBrewDate(brew.brewedAt)}
+                                        </div>
+                                        {brew.flavors?.length > 0 && (
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            {brew.flavors.slice(0, 4).map(f => (
+                                              <span key={f} className="px-1.5 py-0.5 bg-felt-700/50 text-felt-100 rounded text-[10px]">
+                                                {f}
+                                              </span>
+                                            ))}
+                                            {brew.flavors.length > 4 && (
+                                              <span className="text-[10px] text-felt-400">+{brew.flavors.length - 4}</span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="text-right flex-shrink-0">
+                                        <div className="text-xs font-mono text-felt-100">
+                                          {brew.coffeeGrams}g / {brew.waterGrams}g
+                                        </div>
+                                        <div className="text-xs font-mono text-felt-500">
+                                          grind {brew.grindSetting} · {formatTime(brew.totalTime)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
                               </div>
-                              <div className="text-xs font-mono text-brew-400">
-                                grind {brew.grindSetting} • {formatTime(brew.totalTime)}
+                            ) : (
+                              <div className="text-center text-felt-400 py-4">
+                                <p className="text-sm">No brews yet with this bean</p>
                               </div>
-                            </div>
+                            )}
                           </div>
-                        )
-                      })}
+                        )}
+                      </Collapsible>
                     </div>
-                  ) : (
-                    <div className="text-center text-brew-400 py-4">
-                      <p className="text-sm">No brews yet with this bean</p>
-                    </div>
-                  )}
-                </div>}
-              </Collapsible>
-            </div>
-          )
-        })}
-      </div>
-      )}
+                  )
+                })}
+              </div>
+
+              {/* Add bean button — bottom of list */}
+              <div className="text-center mt-6 pt-4 border-t border-felt-700/50">
+                <button
+                  onClick={handleOpenAdd}
+                  className="font-condensed text-xs font-semibold text-felt-300 uppercase tracking-[3px] text-letterpress-dim
+                             min-h-[44px] px-4 py-2 hover:text-felt-100 transition-colors"
+                >
+                  + Add Bean
+                </button>
+              </div>
+            </>
+          )}
+
+        </div>
+      </FeltBoard>
 
       {/* Add/Edit modal */}
       {showForm && (
@@ -340,11 +358,13 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
   }
 
   return (
-    <div className="mb-4">
-      <span className="text-xs font-medium text-brew-500">Recipes:</span>
+    <div className="mt-3 mb-3">
+      <span className="font-condensed text-[10px] font-semibold text-felt-400 uppercase tracking-[2px] text-letterpress-dim">
+        Recipes
+      </span>
       <div className="mt-2 space-y-2">
         {recipes.map(recipe => (
-          <div key={recipe.id} className="p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+          <div key={recipe.id} className="p-3 bg-felt-900/50 rounded-lg border border-felt-700/50">
             <div className="flex items-center gap-2">
               {editingNameId === recipe.id ? (
                 <input
@@ -355,13 +375,13 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
                   onKeyDown={(e) => { if (e.key === 'Enter') handleFinishRename(recipe.id); if (e.key === 'Escape') setEditingNameId(null) }}
                   maxLength={100}
                   autoFocus
-                  className="flex-1 text-base font-medium text-brew-800 bg-white border border-brew-200 rounded-lg px-2 py-1
-                             focus:outline-none focus:ring-2 focus:ring-brew-400"
+                  className="flex-1 text-base font-medium text-felt-100 bg-felt-800 border border-felt-500/30 rounded-lg px-2 py-1
+                             focus:outline-none focus:ring-2 focus:ring-felt-200/30"
                 />
               ) : (
                 <button
                   onClick={() => handleStartRename(recipe)}
-                  className="flex-1 text-left text-sm font-medium text-brew-800 hover:text-brew-600 transition-colors truncate"
+                  className="flex-1 text-left text-sm font-medium text-felt-100 hover:text-felt-50 transition-colors truncate"
                   title="Click to rename"
                 >
                   {recipe.name}
@@ -370,7 +390,7 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
               {deletingRecipeId !== recipe.id && editingNameId !== recipe.id && (
                 <button
                   onClick={() => setDeletingRecipeId(recipe.id)}
-                  className="text-brew-300 hover:text-red-400 transition-colors flex-shrink-0 p-1
+                  className="text-felt-400 hover:text-red-400 transition-colors flex-shrink-0 p-1
                              min-w-[44px] min-h-[44px] flex items-center justify-center"
                   title="Delete recipe"
                 >
@@ -382,7 +402,7 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
             </div>
 
             {/* Settings summary */}
-            <div className="text-xs text-brew-400 mt-1">
+            <div className="text-xs text-felt-500 mt-1">
               {recipe.coffeeGrams && recipe.waterGrams && (
                 <span className="font-mono">{recipe.coffeeGrams}g / {recipe.waterGrams}g</span>
               )}
@@ -400,13 +420,13 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
                 rows={2}
                 autoFocus
                 placeholder="Add a note about this recipe..."
-                className="mt-2 w-full text-base text-brew-600 bg-white border border-brew-200 rounded-lg px-2 py-1.5
-                           focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
+                className="mt-2 w-full text-base text-felt-100 bg-felt-800 border border-felt-500/30 rounded-lg px-2 py-1.5
+                           focus:outline-none focus:ring-2 focus:ring-felt-200/30 resize-none"
               />
             ) : recipe.notes ? (
               <button
                 onClick={() => handleStartNotes(recipe)}
-                className="mt-1 text-xs text-brew-500 italic text-left line-clamp-2 hover:text-brew-700 transition-colors"
+                className="mt-1 text-xs text-felt-500 italic text-left line-clamp-2 hover:text-felt-100 transition-colors"
                 title="Click to edit note"
               >
                 {recipe.notes}
@@ -414,7 +434,7 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
             ) : (
               <button
                 onClick={() => handleStartNotes(recipe)}
-                className="mt-1 text-xs text-brew-300 hover:text-brew-500 transition-colors"
+                className="mt-1 text-xs text-felt-300 hover:text-felt-100 transition-colors"
               >
                 + Add note
               </button>
@@ -422,8 +442,8 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
 
             {/* Delete confirmation */}
             {deletingRecipeId === recipe.id && (
-              <div className="mt-2 p-2 bg-red-50 rounded-lg border border-red-100">
-                <p className="text-xs text-red-600 mb-2">
+              <div className="mt-2 p-2 bg-red-900/20 rounded-lg border border-red-800/30">
+                <p className="text-xs text-red-400 mb-2">
                   {isLastRecipe
                     ? 'This is the only recipe for this bean. Your next brew will start with default settings.'
                     : 'Delete this recipe? Your brew history won\'t be affected.'}
@@ -431,13 +451,13 @@ function RecipeSection({ recipes, onRename, onDelete, onNotesUpdate, isLastRecip
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleDelete(recipe.id)}
-                    className="text-xs px-3 py-1.5 min-h-[44px] font-medium text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                    className="text-xs px-3 py-1.5 min-h-[44px] font-medium text-red-400 hover:text-red-300 rounded-lg transition-colors"
                   >
                     Delete
                   </button>
                   <button
                     onClick={() => setDeletingRecipeId(null)}
-                    className="text-xs px-3 py-1.5 min-h-[44px] text-brew-400 hover:text-brew-600 rounded-lg transition-colors"
+                    className="text-xs px-3 py-1.5 min-h-[44px] text-felt-400 hover:text-felt-100 rounded-lg transition-colors"
                   >
                     Cancel
                   </button>

@@ -77,26 +77,28 @@ function App() {
 
   return (
     <div className="min-h-screen">
-      <Header
-        view={view}
-        setView={setView}
-        onSettingsClick={() => setShowSettings(prev => !prev)}
-        settingsMenu={showSettings && (
-          <SettingsMenu
-            onEquipmentClick={() => setShowSetup(true)}
-            onImportComplete={() => {
-              migrateToSchemaV2()
-              migrateExtractRecipes()
-              migrateDropRecipeSteps()
-              setBrews(getBrews())
-              setEquipment(getEquipment())
-              setBeans(deduplicateBeans())
-              setRecipes(getRecipes())
-            }}
-            onClose={() => setShowSettings(false)}
-          />
-        )}
-      />
+      {!(view === 'brew' && !editingBrew) && view !== 'beans' && (
+        <Header
+          view={view}
+          setView={setView}
+          onSettingsClick={() => setShowSettings(prev => !prev)}
+          settingsMenu={showSettings && (
+            <SettingsMenu
+              onEquipmentClick={() => setShowSetup(true)}
+              onImportComplete={() => {
+                migrateToSchemaV2()
+                migrateExtractRecipes()
+                migrateDropRecipeSteps()
+                setBrews(getBrews())
+                setEquipment(getEquipment())
+                setBeans(deduplicateBeans())
+                setRecipes(getRecipes())
+              }}
+              onClose={() => setShowSettings(false)}
+            />
+          )}
+        />
+      )}
 
       <main className={`max-w-2xl mx-auto px-4 ${brewFlowActive ? 'pb-24' : 'pb-32'} md:pb-24`}>
         {/* First-time setup prompt */}
