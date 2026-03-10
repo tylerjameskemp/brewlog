@@ -147,7 +147,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
             placeholder="e.g., Bloom, First pour"
             disabled={disabled}
             className="w-full px-2 py-1.5 rounded-xl border border-brew-200 text-base text-brew-800
-                       placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
+                       placeholder:text-ceramic-400 focus:outline-none focus:ring-2 focus:ring-brew-400
                        disabled:bg-brew-50 disabled:text-ceramic-400"
           />
           {diff?.fields?.name != null && (
@@ -161,7 +161,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
         )}
         <button
           onClick={onCollapse}
-          className="text-brew-400 hover:text-brew-600 transition-colors p-1 flex-shrink-0 min-h-[44px] min-w-[44px]
+          className="text-brew-400 hover:text-brew-700 transition-colors p-1 flex-shrink-0 min-h-[44px] min-w-[44px]
                      flex items-center justify-center"
           aria-label="Collapse step"
         >
@@ -219,7 +219,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
           placeholder="\u2014"
           disabled={disabled}
           className="w-16 px-2 py-1.5 rounded-xl border border-brew-200 text-base font-mono text-brew-800 text-center
-                     placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
+                     placeholder:text-ceramic-400 focus:outline-none focus:ring-2 focus:ring-brew-400
                      disabled:bg-brew-50 disabled:text-ceramic-400"
         />
         <span className="text-[10px] text-brew-400">g</span>
@@ -237,7 +237,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
           placeholder="Technique note (optional)"
           disabled={disabled}
           className="w-full px-2 py-1.5 rounded-xl border border-brew-100 text-base text-brew-700
-                     placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
+                     placeholder:text-ceramic-400 focus:outline-none focus:ring-2 focus:ring-brew-400
                      disabled:bg-brew-50 disabled:text-ceramic-400"
         />
       </div>
@@ -247,7 +247,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
         <div className="ml-8">
           <button
             onClick={onSplit}
-            className="text-[10px] text-brew-400 hover:text-brew-600 transition-colors py-1 min-h-[44px]
+            className="text-[10px] text-brew-400 hover:text-brew-700 transition-colors py-1 min-h-[44px]
                        flex items-center"
           >
             Split step

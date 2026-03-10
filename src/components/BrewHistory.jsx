@@ -308,7 +308,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
             className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px] ${
               compareMode
                 ? 'bg-amber-100 text-amber-700'
-                : 'bg-brew-100 text-brew-600 hover:bg-brew-200'
+                : 'bg-brew-100 text-brew-500 hover:bg-brew-200'
             }`}
           >
             {compareMode ? 'Done' : 'Compare'}
@@ -449,7 +449,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
               uniqueA={comparison.flavors.uniqueA}
               uniqueB={comparison.flavors.uniqueB}
               changed={comparison.flavorsChanged}
-              sharedClass="bg-brew-100 text-brew-600"
+              sharedClass="bg-brew-100 text-brew-700"
               uniqueClass="bg-amber-100 text-amber-700"
             />
 
@@ -564,7 +564,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="text-xs font-mono text-brew-600">
+                    <div className="text-xs font-mono text-brew-700">
                       {brew.coffeeGrams}g / {brew.waterGrams}g
                     </div>
                     <div className="text-xs font-mono text-brew-400">
@@ -621,7 +621,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                 {brew.flavors?.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {brew.flavors.map(f => (
-                      <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-600 rounded-full text-[10px]">
+                      <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-700 rounded-full text-[10px]">
                         {f}
                       </span>
                     ))}
@@ -656,7 +656,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                   <button
                     onClick={() => setShowDetails(!showDetails)}
                     aria-expanded={showDetails}
-                    className="ml-auto text-xs text-brew-400 hover:text-brew-600 transition-colors py-2 min-h-[44px]"
+                    className="ml-auto text-xs text-brew-400 hover:text-brew-700 transition-colors py-2 min-h-[44px]"
                   >
                     {showDetails ? 'Hide details' : 'Show details'}
                   </button>

@@ -243,7 +243,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
             onClick={() => setShowRecipePicker(!showRecipePicker)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
                         border transition-all min-h-[44px]
-                        border-brew-300 bg-brew-50 text-brew-600 hover:border-brew-400 cursor-pointer"
+                        border-brew-300 bg-brew-50 text-brew-700 hover:border-brew-400 cursor-pointer"
           >
             <span>{beanRecipes.find(r => r.id === selectedRecipeId)?.name || 'Recipe'}</span>
             <span className={`transition-transform ${showRecipePicker ? 'rotate-180' : ''}`}>{'\u25BE'}</span>
@@ -260,7 +260,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                               transition-colors ${
                     r.id === selectedRecipeId
                       ? 'bg-brew-50 text-brew-700'
-                      : 'text-brew-600 hover:bg-brew-50'
+                      : 'text-brew-500 hover:bg-brew-50'
                   }`}
                 >
                   {renamingRecipeId === r.id ? (
@@ -335,7 +335,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                         onRecipeSelect({ ...t, _isStarter: true })
                         setShowRecipePicker(false)
                       }}
-                      className="w-full text-left px-4 py-3 text-sm text-brew-600 hover:bg-brew-50 min-h-[44px]"
+                      className="w-full text-left px-4 py-3 text-sm text-brew-700 hover:bg-brew-50 min-h-[44px]"
                     >
                       <div className="font-medium">{t.name}</div>
                       <div className="text-xs text-brew-400 mt-0.5">
@@ -633,7 +633,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
             commitTargetTimeInputs()
             onStartBrew()
           }}
-          className="w-full py-4 bg-crema-500 text-white rounded-2xl text-base font-semibold
+          className="w-full py-4 bg-crema-500 text-white rounded-xl text-base font-semibold
                      shadow-lg shadow-crema-500/20 hover:bg-crema-600 active:scale-[0.98] transition-all
                      pointer-events-auto min-h-[44px]"
         >
@@ -1053,7 +1053,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
                            ${timer.running ? 'cursor-pointer' : ''}`}
               >
                 <span className="w-2.5 h-2.5 rounded-full border-2 border-brew-200 flex-shrink-0" />
-                <span className="text-sm text-brew-600 truncate flex-1 min-w-0">
+                <span className="text-sm text-brew-700 truncate flex-1 min-w-0">
                   <span className="font-mono text-brew-400">{timeRange}</span>
                   <span className="text-brew-200 mx-1">&middot;</span>
                   <span className="font-medium">{step.name}</span>
@@ -1079,7 +1079,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
               const finalElapsed = timer.stop()
               onFinish({ elapsed: finalElapsed, tappedSteps, skippedSteps })
             }}
-            className="w-full py-4 bg-crema-500 text-white rounded-2xl text-base font-semibold
+            className="w-full py-4 bg-crema-500 text-white rounded-xl text-base font-semibold
                        shadow-lg shadow-crema-500/20 hover:bg-crema-600 active:scale-[0.98] transition-all
                        pointer-events-auto min-h-[44px]"
           >
@@ -1318,7 +1318,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
               className={`flex-1 py-2 rounded-xl text-center transition-all border min-h-[44px] ${
                 rating === r.value
                   ? 'border-brew-500 bg-brew-500 text-white'
-                  : 'border-brew-200 text-brew-600 hover:bg-brew-50'
+                  : 'border-brew-200 text-brew-500 hover:bg-brew-50'
               }`}
             >
               <div className="text-lg leading-none">{r.emoji}</div>
@@ -1331,17 +1331,28 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
       {/* Tasting details toggle */}
       <button
         onClick={() => setShowTasting(!showTasting)}
-        className="text-brew-500 text-sm font-medium min-h-[44px] flex items-center transition-colors
+        className="text-brew-500 text-sm font-medium min-h-[44px] flex items-center gap-2 transition-colors
                    hover:text-brew-700"
       >
-        {showTasting ? 'Hide tasting details' : 'Add tasting details \u2192'}
+        <span>{showTasting ? 'Hide tasting details' : 'Add tasting details'}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          className={`transition-transform duration-200 ${showTasting ? 'rotate-90' : ''}`}>
+          <polyline points="4 2 8 6 4 10" />
+        </svg>
+        {!showTasting && (flavors.length > 0 || body || issues.length > 0) && (
+          <span className="text-xs text-brew-400 font-normal">
+            ({[
+              flavors.length > 0 && `${flavors.length} flavor${flavors.length !== 1 ? 's' : ''}`,
+              body && body,
+              issues.length > 0 && `${issues.length} issue${issues.length !== 1 ? 's' : ''}`,
+            ].filter(Boolean).join(', ')})
+          </span>
+        )}
       </button>
 
-      {/* Tasting details — collapsed by default */}
-      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
-        showTasting ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-      }`}>
-        <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5 space-y-4">
+      {/* Tasting details */}
+      {showTasting && (
+        <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5 space-y-4 animate-fade-in motion-reduce:animate-none">
           {/* Flavors */}
           <div>
             <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Flavors</div>
@@ -1390,7 +1401,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
             </div>
           </div>
         </div>
-      </div>
+      )}
       </div>
 
       {/* Done Button */}
@@ -1398,7 +1409,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                       bg-gradient-to-t from-parchment-100 via-parchment-100 to-transparent pointer-events-none z-10">
         <button
           onClick={handleDone}
-          className="w-full py-4 bg-crema-500 text-white rounded-2xl text-base font-semibold
+          className="w-full py-4 bg-crema-500 text-white rounded-xl text-base font-semibold
                      shadow-lg shadow-crema-500/20 hover:bg-crema-600 active:scale-[0.98] transition-all
                      pointer-events-auto min-h-[44px]"
         >
@@ -1486,7 +1497,7 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
           <ul className="text-xs text-brew-400 mb-4 space-y-1">
             {changedFields.filter(({ field }) => !SKIP_DISPLAY_FIELDS.has(field)).map(({ field, brewVal, recipeVal }) => (
               <li key={field}>
-                <span className="font-medium text-brew-600">{FIELD_LABELS[field] || field}:</span>{' '}
+                <span className="font-medium text-brew-700">{FIELD_LABELS[field] || field}:</span>{' '}
                 {String(recipeVal ?? '–')} <span className="text-crema-500">&rarr;</span> {String(brewVal ?? '–')}
               </li>
             ))}
@@ -1507,14 +1518,14 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
                 onSaveAsNewRecipe(selectedRecipeId)
                 setForkDismissed(true)
               }}
-              className="border border-ceramic-300 text-brew-600 rounded-xl px-4 py-3 text-sm font-semibold
+              className="border border-ceramic-300 text-brew-500 rounded-xl px-4 py-3 text-sm font-semibold
                          hover:bg-parchment-200/60 active:scale-[0.98] transition-all min-h-[44px]"
             >
               Save as New Recipe
             </button>
             <button
               onClick={() => setForkDismissed(true)}
-              className="text-ceramic-400 text-xs mt-1 hover:text-brew-600 transition-colors"
+              className="text-ceramic-400 text-xs mt-1 hover:text-brew-700 transition-colors"
             >
               Keep Original
             </button>
@@ -1534,7 +1545,7 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
         </button>
         <button
           onClick={onViewHistory}
-          className="border border-ceramic-300 text-brew-600 rounded-xl px-8 py-3.5 text-sm font-semibold
+          className="border border-ceramic-300 text-brew-500 rounded-xl px-8 py-3.5 text-sm font-semibold
                      hover:bg-parchment-200/60 active:scale-[0.98] transition-all min-h-[44px]"
         >
           View in History

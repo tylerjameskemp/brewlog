@@ -45,7 +45,7 @@ export default function Header({ view, setView, onSettingsClick, settingsMenu })
           <div className="relative">
             <button
               onClick={onSettingsClick}
-              className="p-3 text-ceramic-400 hover:text-brew-600 rounded-lg
+              className="p-3 text-ceramic-400 hover:text-brew-700 rounded-lg
                          hover:bg-parchment-200/60 transition-colors"
               title="Settings"
             >

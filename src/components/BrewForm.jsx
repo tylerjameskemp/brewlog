@@ -379,7 +379,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
             onChange={(seconds) => update('totalTime', seconds)}
             placeholder="3:30"
             className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono text-center
-                       placeholder:text-brew-300
+                       placeholder:text-ceramic-400
                        focus:outline-none focus:ring-2 focus:ring-brew-400"
           />
           {form.targetTime && !form.totalTime && (
@@ -435,7 +435,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
           rows={4}
           maxLength={2000}
           className="w-full p-3 rounded-xl border border-brew-200 text-base
-                     text-brew-800 placeholder:text-brew-300
+                     text-brew-800 placeholder:text-ceramic-400
                      focus:outline-none focus:ring-2 focus:ring-brew-400 resize-y"
         />
       </Section>
@@ -549,7 +549,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
       <button
         onClick={onEditComplete}
-        className="w-full py-3 rounded-2xl font-medium text-brew-500
+        className="w-full py-3 rounded-xl font-medium text-brew-500
                    hover:bg-brew-50 transition-colors"
       >
         Cancel

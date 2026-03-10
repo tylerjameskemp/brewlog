@@ -78,7 +78,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
               <button
                 onClick={onClose}
                 className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center
-                           text-brew-400 hover:text-brew-600 text-xl rounded-lg hover:bg-brew-50"
+                           text-brew-400 hover:text-brew-700 text-xl rounded-lg hover:bg-brew-50"
               >
                 ✕
               </button>
@@ -243,7 +243,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                     onChange={(e) => update('scale', e.target.value)}
                     placeholder="e.g., Acaia Pearl, Timemore Black Mirror"
                     className="w-full p-3 rounded-xl border border-brew-200
-                               text-base text-brew-800 placeholder:text-brew-300
+                               text-base text-brew-800 placeholder:text-ceramic-400
                                focus:outline-none focus:ring-2 focus:ring-brew-400"
                   />
                 </div>
@@ -258,7 +258,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                     placeholder="e.g., Fellow Ode has fines issue, kettle holds 900ml..."
                     rows={3}
                     className="w-full p-3 rounded-xl border border-brew-200
-                               text-base text-brew-800 placeholder:text-brew-300
+                               text-base text-brew-800 placeholder:text-ceramic-400
                                focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
                   />
                 </div>
@@ -273,7 +273,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
               {!isEditing && step > 1 && (
                 <button
                   onClick={() => setStep(s => s - 1)}
-                  className="px-6 py-3 border border-brew-200 text-brew-600 rounded-xl font-medium
+                  className="px-6 py-3 border border-brew-200 text-brew-500 rounded-xl font-medium
                              hover:bg-brew-50 active:scale-[0.98] transition-all"
                 >
                   Back

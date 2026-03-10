@@ -214,6 +214,8 @@ Full tracking: `todos/` (97 items, 81 complete). Plans: `docs/plans/`. Solutions
 - Interactive/ghost: text-brew-500 (ghost buttons, text actions, unselected interactive labels)
 - Metadata: text-brew-400 (timestamps, form labels, section labels)
 - Hints/disabled: text-ceramic-400 (placeholders, disabled states)
+- Placeholders: placeholder:text-ceramic-400 (ONLY — never placeholder:text-brew-300)
+- Hover accents: hover:text-brew-700 (close buttons, toggle links, gear icons)
 
 ### Bottom CTA Gradient
 - Always: from-parchment-100 via-parchment-100 to-transparent

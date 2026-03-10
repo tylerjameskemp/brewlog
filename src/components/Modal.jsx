@@ -16,7 +16,7 @@ export default function Modal({ title, onClose, children }) {
             <button
               onClick={onClose}
               className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center
-                         text-ceramic-400 hover:text-brew-600 text-xl rounded-lg hover:bg-parchment-200/60"
+                         text-ceramic-400 hover:text-brew-700 text-xl rounded-lg hover:bg-parchment-200/60"
             >
               &#x2715;
             </button>
