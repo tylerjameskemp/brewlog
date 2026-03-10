@@ -97,22 +97,22 @@ export default function BeanLibrary({ beans, setBeans, brews, recipes, setRecipe
   return (
     <div className="-mx-4 bg-felt-900">
       <FeltBoard fullPage>
-        <div className="px-6 py-8">
-          <h1 className="font-condensed text-2xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress mb-6">Bean Inventory</h1>
+        <div className="px-6 pt-10 pb-8">
+          <h1 className="font-condensed text-4xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress-lg mb-8">Bean Inventory</h1>
           {beans.length === 0 ? (
             /* Dark empty state — inline instead of shared EmptyState */
-            <div className="text-center py-12 animate-fade-in-up motion-reduce:animate-none">
-              <div className="text-4xl mb-4">&#x1FAD8;</div>
-              <p className="font-condensed text-lg font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress">
+            <div className="text-center py-16 animate-fade-in-up motion-reduce:animate-none">
+              <div className="text-5xl mb-4">&#x1FAD8;</div>
+              <p className="font-condensed text-2xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress-lg">
                 Your Bean Library
               </p>
-              <p className="text-sm mt-3 text-felt-500 max-w-xs mx-auto leading-relaxed">
+              <p className="text-base mt-3 text-felt-500 max-w-xs mx-auto leading-relaxed">
                 Keep track of every bean you brew. Beans are added automatically when you log a brew, or tap below to add one manually.
               </p>
               <button
                 onClick={handleOpenAdd}
-                className="mt-6 font-condensed text-sm font-bold text-felt-200 uppercase tracking-[4px] text-letterpress
-                           min-h-[44px] px-6 py-3 hover:opacity-80 transition-opacity"
+                className="mt-6 font-condensed text-base font-bold text-felt-200 uppercase tracking-[4px] text-letterpress
+                           min-h-[48px] px-8 py-4 hover:opacity-80 transition-opacity"
               >
                 + Add Bean
               </button>
@@ -134,21 +134,19 @@ export default function BeanLibrary({ beans, setBeans, brews, recipes, setRecipe
                       {/* Bean row — clickable to expand */}
                       <button
                         onClick={() => { setExpandedBeanId(isExpanded ? null : bean.id); setDeletingBeanId(null) }}
-                        className="w-full py-3 flex flex-col gap-1 text-left transition-opacity duration-[250ms]"
+                        className="w-full py-4 flex flex-col gap-1.5 text-left transition-opacity duration-[250ms]"
                         style={{ opacity: isDimmed ? 0.3 : 1 }}
                       >
-                        {/* Name + brew count row */}
                         <div className="flex items-baseline justify-between w-full">
-                          <span className="font-condensed text-base font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress truncate">
+                          <span className="font-condensed text-xl font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress truncate">
                             {bean.name}
                           </span>
-                          <span className="font-condensed text-base font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress flex-shrink-0 ml-3">
+                          <span className="font-condensed text-lg font-bold text-felt-100 uppercase tracking-[3.5px] text-letterpress flex-shrink-0 ml-3">
                             {count > 0 ? `${count} BREW${count !== 1 ? 'S' : ''}` : ''}
                           </span>
                         </div>
 
-                        {/* Metadata line */}
-                        <div className="font-condensed text-[11px] font-semibold text-felt-500 uppercase tracking-[3px] text-letterpress-dim">
+                        <div className="font-condensed text-sm font-semibold text-felt-500 uppercase tracking-[3px] text-letterpress-dim">
                           {count === 0 ? (
                             <span className="text-felt-200">NEW{meta ? `  ·  ${meta}` : ''}</span>
                           ) : (
@@ -156,9 +154,8 @@ export default function BeanLibrary({ beans, setBeans, brews, recipes, setRecipe
                           )}
                         </div>
 
-                        {/* Roast date */}
                         {bean.roastDate && (
-                          <div className="font-condensed text-[10px] font-semibold text-felt-400 uppercase tracking-[2px] text-letterpress-dim">
+                          <div className="font-condensed text-xs font-semibold text-felt-400 uppercase tracking-[2px] text-letterpress-dim">
                             Roasted {formatDate(bean.roastDate)}
                           </div>
                         )}
@@ -168,21 +165,20 @@ export default function BeanLibrary({ beans, setBeans, brews, recipes, setRecipe
                       <Collapsible open={isExpanded}>
                         {isExpanded && (
                           <div className="pb-4 animate-board-slide motion-reduce:animate-none">
-                            {/* Action buttons */}
                             <div className="flex items-center gap-4 py-2 flex-wrap">
                               {onBrewBean && (
                                 <button
                                   onClick={() => onBrewBean(bean)}
-                                  className="font-condensed text-sm font-bold text-felt-200 uppercase tracking-[4px] text-letterpress
-                                             min-h-[44px] px-4 py-2 hover:opacity-80 active:scale-[0.98] transition-all"
+                                  className="font-condensed text-lg font-bold text-felt-200 uppercase tracking-[4px] text-letterpress
+                                             min-h-[48px] px-4 py-3 hover:opacity-80 active:scale-[0.98] transition-all"
                                 >
                                   Brew ›
                                 </button>
                               )}
                               <button
                                 onClick={() => handleOpenEdit(bean)}
-                                className="font-condensed text-xs font-semibold text-felt-500 uppercase tracking-[2px] text-letterpress-dim
-                                           min-h-[44px] px-3 py-2 hover:text-felt-100 transition-colors"
+                                className="font-condensed text-sm font-semibold text-felt-500 uppercase tracking-[2px] text-letterpress-dim
+                                           min-h-[48px] px-3 py-3 hover:text-felt-100 transition-colors"
                               >
                                 Edit
                               </button>
