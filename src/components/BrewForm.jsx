@@ -509,7 +509,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
         className={`w-full py-4 rounded-2xl font-semibold text-lg transition-all
           ${saved
             ? 'bg-green-500 text-white'
-            : 'bg-brew-600 text-white hover:bg-brew-700 active:scale-[0.98]'
+            : 'bg-crema-500 text-white hover:bg-crema-600 active:scale-[0.98]'
           }`}
       >
         {saved ? '\u2713 Brew Updated!' : 'Update Brew'}

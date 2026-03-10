@@ -82,7 +82,7 @@ export default function BrewTrends({ brews, beans }) {
             <select
               value={selectedBean}
               onChange={e => setSelectedBean(e.target.value)}
-              className="border border-brew-200 rounded-lg px-3 py-1.5 bg-white
+              className="border border-brew-200 rounded-lg px-3 py-1.5 bg-parchment-50
                          text-brew-700 focus:outline-none focus:ring-2 focus:ring-brew-400
                          text-base"
             >
@@ -131,7 +131,7 @@ export default function BrewTrends({ brews, beans }) {
           <select
             value={selectedBean}
             onChange={e => setSelectedBean(e.target.value)}
-            className="border border-brew-200 rounded-lg px-3 py-1.5 bg-white
+            className="border border-brew-200 rounded-lg px-3 py-1.5 bg-parchment-50
                        text-brew-700 focus:outline-none focus:ring-2 focus:ring-brew-400
                        text-base"
           >

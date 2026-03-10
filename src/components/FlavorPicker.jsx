@@ -96,7 +96,7 @@ export default function FlavorPicker({ selected = [], onChange }) {
                 min-h-[44px] flex items-center justify-center
                 ${selected.includes(flavor)
                   ? 'border-brew-500 bg-brew-500 text-white'
-                  : 'border-brew-200 bg-white text-brew-600 hover:border-brew-300'
+                  : 'border-brew-200 bg-parchment-50 text-brew-600 hover:border-brew-300'
                 }
                 ${expandedCategory === 'off' && selected.includes(flavor)
                   ? 'border-red-400 bg-red-400 text-white'

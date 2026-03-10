@@ -251,7 +251,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
           {/* Recipe Picker Dropdown */}
           {showRecipePicker && (
-            <div className="mt-2 bg-white border border-brew-200 rounded-xl shadow-sm overflow-hidden
+            <div className="mt-2 bg-parchment-50 border border-brew-200 rounded-xl shadow-sm overflow-hidden
                             animate-fade-in motion-reduce:animate-none">
               {beanRecipes.map(r => (
                 <div
@@ -627,7 +627,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
 
       {/* Brew This CTA */}
       <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
-                      bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
+                      bg-gradient-to-t from-parchment-100 via-parchment-100 to-transparent pointer-events-none z-10">
         <button
           onClick={() => {
             commitTargetTimeInputs()
@@ -1300,7 +1300,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
             onChange={e => setNextBrewChanges(e.target.value)}
             placeholder="Try coarser grind, extend bloom to 45s..."
             maxLength={500}
-            className="w-full min-h-[80px] p-3 rounded-xl border border-amber-200 bg-white
+            className="w-full min-h-[80px] p-3 rounded-xl border border-amber-200 bg-parchment-50
                        text-base text-brew-800 resize-y focus:outline-none focus:ring-2 focus:ring-brew-400"
           />
         </div>
@@ -1381,7 +1381,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
 
       {/* Done Button */}
       <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
-                      bg-gradient-to-t from-brew-50 via-brew-50 to-transparent pointer-events-none z-10">
+                      bg-gradient-to-t from-parchment-100 via-parchment-100 to-transparent pointer-events-none z-10">
         <button
           onClick={handleDone}
           className="w-full py-4 bg-crema-500 text-white rounded-2xl text-base font-semibold

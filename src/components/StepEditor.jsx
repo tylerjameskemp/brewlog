@@ -129,7 +129,7 @@ function StepExpanded({ step, index, onChange, onRemove, onSplit, onCollapse,
   }
 
   return (
-    <div className={`p-3 rounded-xl border bg-white shadow-sm
+    <div className={`p-3 rounded-xl border bg-parchment-50 shadow-sm
                     animate-fade-in motion-reduce:animate-none ${
       diff?.isAdded ? 'border-green-200' : 'border-brew-200'
     }`}>
