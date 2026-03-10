@@ -13,7 +13,7 @@ export default function MobileNav({ activeView, onChangeView }) {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-ceramic-200/50 z-10 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 bg-parchment-100/80 backdrop-blur-md border-t border-ceramic-200/50 z-10 pb-safe">
       <div className="flex h-16">
         {tabs.map(tab => {
           const isActive = activeView === tab.id

@@ -565,7 +565,7 @@ function Section({ title, defaultOpen = false, preview, collapsible = true, chil
 
   if (!collapsible) {
     return (
-      <div className="bg-white rounded-2xl border border-brew-100 overflow-hidden shadow-sm">
+      <div className="bg-parchment-50 rounded-2xl border border-brew-100 overflow-hidden shadow-sm">
         <div className="px-5 py-4">
           <span className="text-sm font-semibold text-brew-800">{title}</span>
         </div>
@@ -575,7 +575,7 @@ function Section({ title, defaultOpen = false, preview, collapsible = true, chil
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-brew-100 overflow-hidden shadow-sm">
+    <div className="bg-parchment-50 rounded-2xl border border-brew-100 overflow-hidden shadow-sm">
       <button
         onClick={() => setOpen(!open)}
         className="w-full px-5 py-4 flex justify-between items-center text-left

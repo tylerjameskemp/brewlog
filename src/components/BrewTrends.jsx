@@ -77,7 +77,7 @@ export default function BrewTrends({ brews, beans }) {
     return (
       <div className="mt-6 space-y-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-brew-800">Trends</h2>
+          <h2 className="font-display text-xl font-semibold text-brew-800">Trends</h2>
           {beanOptions.length > 0 && (
             <select
               value={selectedBean}
@@ -144,7 +144,7 @@ export default function BrewTrends({ brews, beans }) {
       </div>
 
       {stats && (
-        <div className="bg-white rounded-2xl border border-brew-100 shadow-sm p-4
+        <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-4
                         grid grid-cols-2 gap-3 sm:grid-cols-4
                         animate-fade-in-up motion-reduce:animate-none">
           <StatItem label="Brews" value={stats.brewCount} />
@@ -157,7 +157,7 @@ export default function BrewTrends({ brews, beans }) {
       {charts.map(chart => (
         <div
           key={chart.dataKey}
-          className="bg-white rounded-2xl border border-brew-100 shadow-sm p-4"
+          className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-4"
         >
           <h3 className="text-sm font-medium text-brew-700 mb-2">{chart.title}</h3>
           <ResponsiveContainer width="100%" height={180}>
