@@ -173,14 +173,14 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
             <div className="space-y-4 mb-6">
               <div className="p-4 bg-brew-50 rounded-xl">
                 <p className="text-sm font-medium text-brew-700 mb-1">File contents</p>
-                <p className="text-sm text-brew-600">
+                <p className="text-sm text-brew-700">
                   Exported on {exportedAt} — {importBrews} brew{importBrews !== 1 ? 's' : ''}, {importBeans} bean{importBeans !== 1 ? 's' : ''}, {hasImportEquipment ? 'has' : 'no'} equipment
                 </p>
               </div>
 
               <div className="p-4 bg-brew-50 rounded-xl">
                 <p className="text-sm font-medium text-brew-700 mb-1">Your current data</p>
-                <p className="text-sm text-brew-600">
+                <p className="text-sm text-brew-700">
                   {localBrews.length} brew{localBrews.length !== 1 ? 's' : ''}, {localBeans.length} bean{localBeans.length !== 1 ? 's' : ''}, {localEquipment ? 'has' : 'no'} equipment
                 </p>
               </div>
@@ -190,8 +190,8 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
               {localBrews.length === 0 ? (
                 <button
                   onClick={() => handleImportConfirm('replace')}
-                  className="w-full py-3 bg-brew-600 text-white rounded-xl font-medium
-                             hover:bg-brew-700 active:scale-[0.98] transition-all"
+                  className="w-full py-3 bg-crema-500 text-white rounded-xl font-medium
+                             hover:bg-crema-600 active:scale-[0.98] transition-all"
                 >
                   Import
                 </button>
@@ -199,8 +199,8 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
                 <>
                   <button
                     onClick={() => handleImportConfirm('merge')}
-                    className="w-full py-3 bg-brew-600 text-white rounded-xl font-medium
-                               hover:bg-brew-700 active:scale-[0.98] transition-all"
+                    className="w-full py-3 bg-crema-500 text-white rounded-xl font-medium
+                               hover:bg-crema-600 active:scale-[0.98] transition-all"
                   >
                     Merge — Add new records only
                   </button>
@@ -227,7 +227,7 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
 
   // --- DROPDOWN MENU ---
   return (
-    <div ref={menuRef} className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-brew-100 shadow-lg z-50 overflow-hidden">
+    <div ref={menuRef} className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-2rem)] bg-parchment-50 rounded-xl border border-brew-100 shadow-lg z-50 overflow-hidden">
       <input
         ref={fileInputRef}
         type="file"

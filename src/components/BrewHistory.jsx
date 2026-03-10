@@ -130,7 +130,7 @@ function compareBrews(brewA, brewB) {
 function ComparisonRow({ label, valueA, valueB, changed }) {
   return (
     <div className={`flex items-center py-2 px-3 ${changed ? 'bg-amber-50/50' : ''}`}>
-      <div className="w-[35%] text-xs font-medium text-brew-500">{label}</div>
+      <div className="w-[35%] text-xs font-medium text-brew-400">{label}</div>
       <div className={`w-[32.5%] text-xs font-mono ${changed ? 'text-amber-700 font-semibold' : 'text-brew-700'}`}>
         {valueA}
       </div>
@@ -145,7 +145,7 @@ function TagComparison({ label, shared, uniqueA, uniqueB, changed, sharedClass, 
   if (shared.length === 0 && uniqueA.length === 0 && uniqueB.length === 0) return null
   return (
     <div className={`px-3 py-2 ${changed ? 'bg-amber-50/50' : ''}`}>
-      <div className="text-xs font-medium text-brew-500 mb-1.5">{label}</div>
+      <div className="text-xs font-medium text-brew-400 mb-1.5">{label}</div>
       <div className="flex gap-4">
         {[uniqueA, uniqueB].map((unique, col) => (
           <div key={col} className="flex-1">
@@ -308,7 +308,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
             className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px] ${
               compareMode
                 ? 'bg-amber-100 text-amber-700'
-                : 'bg-brew-100 text-brew-600 hover:bg-brew-200'
+                : 'bg-brew-100 text-brew-500 hover:bg-brew-200'
             }`}
           >
             {compareMode ? 'Done' : 'Compare'}
@@ -419,7 +419,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
             {/* Notes */}
             {(comparisonBrews[0].notes || comparisonBrews[1].notes) && (
               <div className="px-3 py-2">
-                <div className="text-xs font-medium text-brew-500 mb-1.5">Notes</div>
+                <div className="text-xs font-medium text-brew-400 mb-1.5">Notes</div>
                 <div className="flex gap-3">
                   <div className="flex-1 p-2 bg-brew-50 rounded-xl">
                     <p className="text-xs text-brew-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
@@ -449,7 +449,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
               uniqueA={comparison.flavors.uniqueA}
               uniqueB={comparison.flavors.uniqueB}
               changed={comparison.flavorsChanged}
-              sharedClass="bg-brew-100 text-brew-600"
+              sharedClass="bg-brew-100 text-brew-700"
               uniqueClass="bg-amber-100 text-amber-700"
             />
 
@@ -564,7 +564,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="text-xs font-mono text-brew-600">
+                    <div className="text-xs font-mono text-brew-700">
                       {brew.coffeeGrams}g / {brew.waterGrams}g
                     </div>
                     <div className="text-xs font-mono text-brew-400">
@@ -598,21 +598,21 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                 {/* === SUMMARY (always visible on expand) === */}
                 <div className="mt-3 grid grid-cols-3 gap-x-4 gap-y-1">
                   <div className="text-xs">
-                    <span className="text-brew-500">Dose:</span>{' '}
+                    <span className="text-brew-400">Dose:</span>{' '}
                     <span className="font-mono text-brew-700">{brew.coffeeGrams}g</span>
                   </div>
                   <div className="text-xs">
-                    <span className="text-brew-500">Water:</span>{' '}
+                    <span className="text-brew-400">Water:</span>{' '}
                     <span className="font-mono text-brew-700">{brew.waterGrams}g</span>
                   </div>
                   <div className="text-xs">
-                    <span className="text-brew-500">Grind:</span>{' '}
+                    <span className="text-brew-400">Grind:</span>{' '}
                     <span className="font-mono text-brew-700">{brew.grindSetting}</span>
                   </div>
                 </div>
                 {brew.totalTime && (
                   <div className="mt-1 text-xs">
-                    <span className="text-brew-500">Time:</span>{' '}
+                    <span className="text-brew-400">Time:</span>{' '}
                     <span className="font-mono text-brew-700">{formatTime(brew.totalTime)}</span>
                   </div>
                 )}
@@ -621,7 +621,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                 {brew.flavors?.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {brew.flavors.map(f => (
-                      <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-600 rounded-full text-[10px]">
+                      <span key={f} className="px-2 py-0.5 bg-brew-100 text-brew-700 rounded-full text-[10px]">
                         {f}
                       </span>
                     ))}
@@ -630,7 +630,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
 
                 {/* Notes preview in summary */}
                 {brew.notes && (
-                  <div className="mt-2 text-xs text-brew-600 italic">
+                  <div className="mt-2 text-xs text-brew-700 italic">
                     {brew.notes.length > 80 ? brew.notes.slice(0, 80) + '...' : brew.notes}
                   </div>
                 )}
@@ -640,7 +640,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                   {onEditBrew && (
                     <button
                       onClick={() => onEditBrew(brew)}
-                      className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-brew-500
+                      className="text-sm px-3 py-2 min-h-[44px] rounded-xl text-brew-500
                                  hover:text-brew-700 hover:bg-brew-50 transition-colors"
                     >
                       Edit
@@ -648,7 +648,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                   )}
                   <button
                     onClick={() => handleDelete(brew.id)}
-                    className="text-sm px-3 py-2 min-h-[44px] rounded-lg text-red-400
+                    className="text-sm px-3 py-2 min-h-[44px] rounded-xl text-red-400
                                hover:text-red-600 hover:bg-red-50 transition-colors"
                   >
                     Delete
@@ -656,7 +656,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                   <button
                     onClick={() => setShowDetails(!showDetails)}
                     aria-expanded={showDetails}
-                    className="ml-auto text-xs text-brew-400 hover:text-brew-600 transition-colors py-2 min-h-[44px]"
+                    className="ml-auto text-xs text-brew-400 hover:text-brew-700 transition-colors py-2 min-h-[44px]"
                   >
                     {showDetails ? 'Hide details' : 'Show details'}
                   </button>
@@ -670,12 +670,12 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Recipe Details</span>
                       <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
                         <div className="text-xs">
-                          <span className="text-brew-500">Temp:</span>{' '}
+                          <span className="text-brew-400">Temp:</span>{' '}
                           <span className="font-mono text-brew-700">{brew.waterTemp}{'\u00B0'}F</span>
                         </div>
                         {(brew.targetTimeRange || brew.targetTime) && (
                           <div className="text-xs">
-                            <span className="text-brew-500">Target Time:</span>{' '}
+                            <span className="text-brew-400">Target Time:</span>{' '}
                             <span className="font-mono text-brew-700">{brew.targetTimeRange || formatTime(brew.targetTime)}</span>
                           </div>
                         )}
@@ -683,7 +683,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       {/* Equipment */}
                       {(brew.method || brew.grinder || brew.dripper) && (
                         <div className="mt-1.5 text-xs">
-                          <span className="text-brew-500">Equipment:</span>{' '}
+                          <span className="text-brew-400">Equipment:</span>{' '}
                           <span className="text-brew-700">
                             {[
                               getMethodName(brew.method),
@@ -697,7 +697,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       {/* Recipe name */}
                       {brew.recipeId && recipes?.find(r => r.id === brew.recipeId) && (
                         <div className="mt-1 text-xs">
-                          <span className="text-brew-500">Recipe:</span>{' '}
+                          <span className="text-brew-400">Recipe:</span>{' '}
                           <span className="text-brew-700">{recipes.find(r => r.id === brew.recipeId).name}</span>
                         </div>
                       )}
@@ -714,7 +714,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       )}
                       {actualSteps.length > 0 && (
                         <div className="mt-1.5">
-                          <span className="text-xs text-brew-500">Actual Pour Steps:</span>
+                          <span className="text-xs text-brew-400">Actual Pour Steps:</span>
                           <div className="mt-1 space-y-1">
                             {actualSteps.map((step, idx) => {
                               const result = brew.stepResults?.[step.id]
@@ -747,7 +747,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       )}
                       {brew.issues?.length > 0 && (
                         <div className="mt-1.5">
-                          <span className="text-xs text-brew-500">Issues: </span>
+                          <span className="text-xs text-brew-400">Issues: </span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {brew.issues.map(i => (
                               <span key={i} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-xs">
@@ -760,7 +760,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       {/* Full notes (only if truncated in summary) */}
                       {brew.notes && brew.notes.length > 80 && (
                         <div className="mt-2 p-3 bg-brew-50 rounded-xl">
-                          <span className="text-xs font-medium text-brew-500">Full Notes:</span>
+                          <span className="text-xs font-medium text-brew-400">Full Notes:</span>
                           <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto">{brew.notes}</p>
                         </div>
                       )}
@@ -771,7 +771,7 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                       <div className="mt-3">
                         <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Tasting</span>
                         <div className="mt-1.5 text-xs">
-                          <span className="text-brew-500">Body: </span>
+                          <span className="text-brew-400">Body: </span>
                           <span className="text-brew-700">{brew.body}</span>
                         </div>
                       </div>

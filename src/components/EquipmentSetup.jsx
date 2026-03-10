@@ -54,7 +54,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-fade-in motion-reduce:animate-none" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in motion-reduce:animate-none" onClick={e => e.stopPropagation()}>
+      <div className="bg-parchment-50 rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in motion-reduce:animate-none" onClick={e => e.stopPropagation()}>
         <div className="p-6">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
@@ -78,7 +78,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
               <button
                 onClick={onClose}
                 className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center
-                           text-brew-400 hover:text-brew-600 text-xl rounded-lg hover:bg-brew-50"
+                           text-brew-400 hover:text-brew-700 text-xl rounded-lg hover:bg-brew-50"
               >
                 ✕
               </button>
@@ -103,11 +103,11 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
           {step === 'done' && (
             <div className="text-center py-8 animate-scale-in motion-reduce:animate-none">
               <div className="text-5xl mb-4">✓</div>
-              <p className="text-brew-600 mb-6">Your gear is saved. Let's brew!</p>
+              <p className="text-brew-700 mb-6">Your gear is saved. Let's brew!</p>
               <button
                 onClick={dismiss}
-                className="px-8 py-3 bg-brew-600 text-white rounded-xl font-medium
-                           hover:bg-brew-700 active:scale-[0.98] transition-all"
+                className="px-8 py-3 bg-crema-500 text-white rounded-xl font-medium
+                           hover:bg-crema-600 active:scale-[0.98] transition-all"
               >
                 Start Brewing
               </button>
@@ -178,7 +178,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                   <select
                     value={form.grinder}
                     onChange={(e) => update('grinder', e.target.value)}
-                    className="w-full p-3 rounded-xl border border-brew-200 bg-white
+                    className="w-full p-3 rounded-xl border border-brew-200 bg-parchment-50
                                text-base text-brew-800 focus:outline-none focus:ring-2 focus:ring-brew-400"
                   >
                     {GRINDERS.map(g => (
@@ -223,7 +223,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                   <select
                     value={form.kettle}
                     onChange={(e) => update('kettle', e.target.value)}
-                    className="w-full p-3 rounded-xl border border-brew-200 bg-white
+                    className="w-full p-3 rounded-xl border border-brew-200 bg-parchment-50
                                text-base text-brew-800 focus:outline-none focus:ring-2 focus:ring-brew-400"
                   >
                     <option value="gooseneck-electric">Gooseneck Electric</option>
@@ -243,7 +243,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                     onChange={(e) => update('scale', e.target.value)}
                     placeholder="e.g., Acaia Pearl, Timemore Black Mirror"
                     className="w-full p-3 rounded-xl border border-brew-200
-                               text-base text-brew-800 placeholder:text-brew-300
+                               text-base text-brew-800 placeholder:text-ceramic-400
                                focus:outline-none focus:ring-2 focus:ring-brew-400"
                   />
                 </div>
@@ -258,7 +258,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
                     placeholder="e.g., Fellow Ode has fines issue, kettle holds 900ml..."
                     rows={3}
                     className="w-full p-3 rounded-xl border border-brew-200
-                               text-base text-brew-800 placeholder:text-brew-300
+                               text-base text-brew-800 placeholder:text-ceramic-400
                                focus:outline-none focus:ring-2 focus:ring-brew-400 resize-none"
                   />
                 </div>
@@ -273,7 +273,7 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
               {!isEditing && step > 1 && (
                 <button
                   onClick={() => setStep(s => s - 1)}
-                  className="px-6 py-3 border border-brew-200 text-brew-600 rounded-xl font-medium
+                  className="px-6 py-3 border border-brew-200 text-brew-500 rounded-xl font-medium
                              hover:bg-brew-50 active:scale-[0.98] transition-all"
                 >
                   Back
@@ -284,16 +284,16 @@ export default function EquipmentSetup({ existing, onSave, onClose }) {
               {!isEditing && step < TOTAL_STEPS ? (
                 <button
                   onClick={() => setStep(s => s + 1)}
-                  className="flex-1 py-3 bg-brew-600 text-white rounded-xl font-medium
-                             hover:bg-brew-700 active:scale-[0.98] transition-all"
+                  className="flex-1 py-3 bg-crema-500 text-white rounded-xl font-medium
+                             hover:bg-crema-600 active:scale-[0.98] transition-all"
                 >
                   Next
                 </button>
               ) : (
                 <button
                   onClick={handleSave}
-                  className="flex-1 py-3 bg-brew-600 text-white rounded-xl font-medium
-                             hover:bg-brew-700 active:scale-[0.98] transition-all"
+                  className="flex-1 py-3 bg-crema-500 text-white rounded-xl font-medium
+                             hover:bg-crema-600 active:scale-[0.98] transition-all"
                 >
                   {isEditing ? 'Update Gear' : 'Save & Start Brewing'}
                 </button>

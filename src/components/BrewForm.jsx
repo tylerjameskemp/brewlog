@@ -207,13 +207,13 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       <Section title="Coffee" defaultOpen>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Bean Name</label>
+            <label className="text-xs font-medium text-brew-400 mb-1 block">Bean Name</label>
             <div className="p-3 rounded-xl border border-brew-100 bg-brew-50/50 text-base text-brew-800">
               {form.beanName}
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Roaster</label>
+            <label className="text-xs font-medium text-brew-400 mb-1 block">Roaster</label>
             <input
               type="text"
               value={form.roaster}
@@ -225,7 +225,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Roast Date</label>
+            <label className="text-xs font-medium text-brew-400 mb-1 block">Roast Date</label>
             <input
               type="date"
               value={form.roastDate}
@@ -242,7 +242,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
         <div className="grid grid-cols-2 gap-3">
           {/* Coffee dose */}
           <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">
+            <label className="text-xs font-medium text-brew-400 mb-1 block">
               Coffee (g)
             </label>
             <input
@@ -257,7 +257,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
           {/* Water */}
           <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">
+            <label className="text-xs font-medium text-brew-400 mb-1 block">
               Water (g)
             </label>
             <input
@@ -272,7 +272,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
           {/* Ratio display */}
           <div className="col-span-2 px-3 py-2 bg-brew-50 rounded-lg text-center">
-            <span className="text-xs text-brew-500">Ratio: </span>
+            <span className="text-xs text-brew-400">Ratio: </span>
             <span className="text-sm font-mono font-semibold text-brew-700">
               1:{ratio}
             </span>
@@ -280,7 +280,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
           {/* Grind setting */}
           <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">
+            <label className="text-xs font-medium text-brew-400 mb-1 block">
               Grind ({grinder.name})
             </label>
             {grinder.settingType === 'ode' ? (
@@ -324,7 +324,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
           {/* Water temp */}
           <div>
-            <label className="text-xs font-medium text-brew-500 mb-1 block">
+            <label className="text-xs font-medium text-brew-400 mb-1 block">
               Water Temp ({'\u00B0'}F)
             </label>
             <input
@@ -339,7 +339,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
           {/* Target brew time */}
           <div className="col-span-2">
-            <label className="text-xs font-medium text-brew-500 mb-1 block">Target Time (M:SS or M:SS - M:SS)</label>
+            <label className="text-xs font-medium text-brew-400 mb-1 block">Target Time (M:SS or M:SS - M:SS)</label>
             <input
               type="text"
               value={targetTimeInput}
@@ -373,13 +373,13 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       {/* ---- TIMING ---- */}
       <Section title="Timing" collapsible={false}>
         <div>
-          <label className="text-xs font-medium text-brew-500 mb-1 block">Total Time</label>
+          <label className="text-xs font-medium text-brew-400 mb-1 block">Total Time</label>
           <TimeInput
             value={form.totalTime ?? null}
             onChange={(seconds) => update('totalTime', seconds)}
             placeholder="3:30"
             className="w-full p-3 rounded-xl border border-brew-200 text-base font-mono text-center
-                       placeholder:text-brew-300
+                       placeholder:text-ceramic-400
                        focus:outline-none focus:ring-2 focus:ring-brew-400"
           />
           {form.targetTime && !form.totalTime && (
@@ -435,7 +435,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
           rows={4}
           maxLength={2000}
           className="w-full p-3 rounded-xl border border-brew-200 text-base
-                     text-brew-800 placeholder:text-brew-300
+                     text-brew-800 placeholder:text-ceramic-400
                      focus:outline-none focus:ring-2 focus:ring-brew-400 resize-y"
         />
       </Section>
@@ -453,7 +453,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       }>
         {/* Flavor picker */}
         <div className="mb-4">
-          <label className="text-xs font-medium text-brew-500 mb-2 block">Flavors</label>
+          <label className="text-xs font-medium text-brew-400 mb-2 block">Flavors</label>
           <FlavorPicker
             selected={form.flavors}
             onChange={(flavors) => update('flavors', flavors)}
@@ -462,7 +462,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
         {/* Body */}
         <div className="mb-4">
-          <label className="text-xs font-medium text-brew-500 mb-2 block">Body</label>
+          <label className="text-xs font-medium text-brew-400 mb-2 block">Body</label>
           <div className="flex flex-wrap gap-2">
             {BODY_OPTIONS.map(body => (
               <button
@@ -482,7 +482,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
         {/* Rating */}
         <div>
-          <label className="text-xs font-medium text-brew-500 mb-2 block">Rating</label>
+          <label className="text-xs font-medium text-brew-400 mb-2 block">Rating</label>
           <div className="flex gap-2">
             {RATING_SCALE.map(({ value, label, emoji }) => (
               <button
@@ -495,7 +495,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
                   }`}
               >
                 <div className="text-xl">{emoji}</div>
-                <div className="text-xs text-brew-500 mt-0.5">{label}</div>
+                <div className="text-xs text-brew-400 mt-0.5">{label}</div>
               </button>
             ))}
           </div>
@@ -506,10 +506,10 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
       <button
         onClick={handleSave}
         disabled={saved}
-        className={`w-full py-4 rounded-2xl font-semibold text-lg transition-all
+        className={`w-full py-4 rounded-xl font-semibold text-lg transition-all
           ${saved
             ? 'bg-green-500 text-white'
-            : 'bg-brew-600 text-white hover:bg-brew-700 active:scale-[0.98]'
+            : 'bg-crema-500 text-white hover:bg-crema-600 active:scale-[0.98]'
           }`}
       >
         {saved ? '\u2713 Brew Updated!' : 'Update Brew'}
@@ -549,7 +549,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
       <button
         onClick={onEditComplete}
-        className="w-full py-3 rounded-2xl font-medium text-brew-500
+        className="w-full py-3 rounded-xl font-medium text-brew-500
                    hover:bg-brew-50 transition-colors"
       >
         Cancel
@@ -611,7 +611,7 @@ const PHASE_ACCENTS = {
 function PhaseHeader({ number, title, subtitle, phase }) {
   return (
     <div className={`flex items-center gap-2 px-1 pt-6 pb-2 border-l-4 ${PHASE_ACCENTS[phase]} pl-3`}>
-      <span className="text-xs font-semibold text-brew-600 uppercase tracking-wide">
+      <span className="text-xs font-semibold text-brew-800 uppercase tracking-wide">
         {number}. {title}
       </span>
       {subtitle && (

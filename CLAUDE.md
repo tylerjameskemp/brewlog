@@ -191,6 +191,35 @@ Full tracking: `todos/` (97 items, 81 complete). Plans: `docs/plans/`. Solutions
 - If other files need changes, explain first — don't just change them
 - Commit after each completed change with a descriptive message
 
+## Design System Rules (added March 2026)
+
+### Surfaces
+- App background: bg-parchment-100 (ONLY)
+- Card/elevated: bg-parchment-50 (ONLY — never bg-white)
+- Felt board: bg-felt-800 (ONLY)
+
+### CTA Buttons
+- Primary: bg-crema-500 + hover:bg-crema-600 (ONLY — never bg-brew-600 on buttons)
+- Disabled: leave existing disabled styles unchanged (out of scope)
+
+### Border Radius
+- Cards/modals: rounded-2xl
+- Buttons/inputs: rounded-xl
+- Tags/pills: rounded-full
+- Felt cards: rounded-lg
+
+### Text Colors (five tones)
+- Primary: text-brew-900 or text-brew-800 (headings, body, card titles)
+- Data values: text-brew-700 (with font-mono)
+- Interactive/ghost: text-brew-500 (ghost buttons, text actions, unselected interactive labels)
+- Metadata: text-brew-400 (timestamps, form labels, section labels)
+- Hints/disabled: text-ceramic-400 (placeholders, disabled states)
+- Placeholders: placeholder:text-ceramic-400 (ONLY — never placeholder:text-brew-300)
+- Hover accents: hover:text-brew-700 (close buttons, toggle links, gear icons)
+
+### Bottom CTA Gradient
+- Always: from-parchment-100 via-parchment-100 to-transparent
+
 ## Future Plans (Do NOT implement unless asked)
 - AI brewing coach (Claude API integration)
 - PWA for mobile

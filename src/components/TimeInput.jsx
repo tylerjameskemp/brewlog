@@ -32,9 +32,9 @@ export default function TimeInput({ value, onChange, className, placeholder, dis
       onBlur={handleBlur}
       disabled={disabled}
       placeholder={placeholder || '0:00'}
-      className={className || `w-14 px-2 py-1.5 rounded-lg border border-brew-200 text-base font-mono text-brew-800 text-center
-                 placeholder:text-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400
-                 disabled:bg-brew-50 disabled:text-brew-500`}
+      className={className || `w-14 px-2 py-1.5 rounded-xl border border-brew-200 text-base font-mono text-brew-800 text-center
+                 placeholder:text-ceramic-400 focus:outline-none focus:ring-2 focus:ring-brew-400
+                 disabled:bg-brew-50 disabled:text-ceramic-400`}
     />
   )
 

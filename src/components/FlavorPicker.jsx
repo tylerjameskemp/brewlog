@@ -96,7 +96,7 @@ export default function FlavorPicker({ selected = [], onChange }) {
                 min-h-[44px] flex items-center justify-center
                 ${selected.includes(flavor)
                   ? 'border-brew-500 bg-brew-500 text-white'
-                  : 'border-brew-200 bg-white text-brew-600 hover:border-brew-300'
+                  : 'border-brew-200 bg-parchment-50 text-brew-700 hover:border-brew-300'
                 }
                 ${expandedCategory === 'off' && selected.includes(flavor)
                   ? 'border-red-400 bg-red-400 text-white'
@@ -119,13 +119,13 @@ export default function FlavorPicker({ selected = [], onChange }) {
           onKeyDown={(e) => e.key === 'Enter' && addCustom()}
           placeholder="Add custom flavor..."
           maxLength={50}
-          className="flex-1 p-3 rounded-lg border border-brew-200 text-base
-                     text-brew-800 placeholder:text-brew-300
+          className="flex-1 p-3 rounded-xl border border-brew-200 text-base
+                     text-brew-800 placeholder:text-ceramic-400
                      focus:outline-none focus:ring-2 focus:ring-brew-400"
         />
         <button
           onClick={addCustom}
-          className="px-4 py-3 bg-brew-100 text-brew-600 rounded-lg text-sm
+          className="px-4 py-3 bg-brew-100 text-brew-700 rounded-xl text-sm
                      font-medium hover:bg-brew-200 transition-colors min-h-[44px]"
         >
           Add
