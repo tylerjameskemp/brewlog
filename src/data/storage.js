@@ -226,10 +226,23 @@ export function formStateToRecipeFields(formState) {
   return fields
 }
 
+let _recipesCache = null
+let _recipesCacheRaw = null
+
+function _invalidateRecipesCache() {
+  _recipesCache = null
+  _recipesCacheRaw = null
+}
+
 function _getAllRecipes() {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.RECIPES)
-    return data ? JSON.parse(data) : []
+    if (!data) return []
+    if (data === _recipesCacheRaw && _recipesCache) return [..._recipesCache]
+    const parsed = JSON.parse(data)
+    _recipesCache = parsed
+    _recipesCacheRaw = data
+    return [...parsed]
   } catch {
     return []
   }
@@ -246,6 +259,15 @@ export function getRecipesForBean(beanId) {
   return getRecipes().filter(r => r.beanId === beanId)
 }
 
+export function getTemplateRecipes() {
+  return getRecipes().filter(r => r.beanId === null || r.beanId === undefined)
+}
+
+export function getTemplateRecipesForMethod(method) {
+  if (!method) return []
+  return getTemplateRecipes().filter(r => r.method === method)
+}
+
 export function getRecipeForBeanAndMethod(beanId, method) {
   if (!beanId || !method) return null
   const matches = getRecipesForBean(beanId).filter(r => r.method === method)
@@ -256,27 +278,33 @@ export function getRecipeForBeanAndMethod(beanId, method) {
 }
 
 export function saveRecipe(recipe) {
-  if (!recipe.beanId || !recipe.method) {
-    console.warn('saveRecipe: beanId and method are required')
+  if (!recipe.method) {
+    console.warn('saveRecipe: method is required')
     return null
   }
   const now = new Date().toISOString()
   const newRecipe = {
     ...recipe,
     id: recipe.id || crypto.randomUUID(),
+    beanId: recipe.beanId ?? null,
     version: 1,
     createdAt: recipe.createdAt || now,
     updatedAt: now,
     lastUsedAt: recipe.lastUsedAt || now,
     archivedAt: null,
   }
+  _invalidateRecipesCache()
   const all = _getAllRecipes()
   all.push(newRecipe)
-  if (!safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))) return null
+  if (!safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))) {
+    _invalidateRecipesCache()
+    return null
+  }
   return newRecipe
 }
 
 export function updateRecipe(id, updates) {
+  _invalidateRecipesCache()
   const all = _getAllRecipes()
   const index = all.findIndex(r => r.id === id)
   if (index === -1) return null
@@ -284,12 +312,15 @@ export function updateRecipe(id, updates) {
     ...all[index],
     ...updates,
     id: all[index].id,
-    beanId: all[index].beanId,
+    beanId: all[index].beanId ?? null,
     createdAt: all[index].createdAt,
     version: (all[index].version || 1) + 1,
     updatedAt: new Date().toISOString(),
   }
-  if (!safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))) return null
+  if (!safeSetItem(STORAGE_KEYS.RECIPES, JSON.stringify(all))) {
+    _invalidateRecipesCache()
+    return null
+  }
   return all[index]
 }
 
@@ -305,19 +336,38 @@ export function generateRecipeCopyName(originalName, existingRecipes) {
   return `${originalName} (copy ${i})`
 }
 
-// Fork a recipe: create a copy with field overrides, auto-naming
-export function forkRecipe(recipeId, fieldOverrides = {}) {
+// Fork a recipe: create a copy with field overrides, auto-naming.
+// Optional targetBeanId copies to a different bean (used for template→bean linking).
+export function forkRecipe(recipeId, fieldOverrides = {}, targetBeanId) {
   const all = _getAllRecipes()
   const original = all.find(r => r.id === recipeId)
   if (!original) return null
-  const existingForBean = all.filter(r => r.beanId === original.beanId && !r.archivedAt)
-  const newName = generateRecipeCopyName(original.name, existingForBean)
-  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, version: _version, ...base } = original
-  return saveRecipe({ ...base, name: newName, ...fieldOverrides })
+  const destBeanId = targetBeanId !== undefined ? targetBeanId : original.beanId
+  // Scope name collision check to destination bean's recipes (or all templates if null)
+  const existingForDest = all.filter(r =>
+    r.id !== recipeId && r.beanId === destBeanId && !r.archivedAt
+  )
+  const newName = generateRecipeCopyName(original.name, existingForDest)
+  const {
+    id: _id, createdAt: _ca, updatedAt: _ua, lastUsedAt: _lu,
+    version: _v, archivedAt: _aa,
+    // Strip import metadata when copying to a bean
+    source: _src, sourceUrl: _su, sourceText: _st, sourceName: _sn,
+    originalMethod: _om, qualitativeGrind: _qg, importedAt: _ia,
+    ...base
+  } = original
+  return saveRecipe({
+    ...base,
+    beanId: destBeanId,
+    name: newName,
+    source: targetBeanId !== undefined ? 'forked' : (original.source || 'manual'),
+    ...fieldOverrides,
+  })
 }
 
 export function archiveRecipesForBean(beanId) {
   if (!beanId) return false
+  _invalidateRecipesCache()
   const all = _getAllRecipes()
   let changed = false
   const now = new Date().toISOString()
@@ -786,6 +836,7 @@ export function exportData() {
 
 export function importData(data) {
   _invalidateBrewsCache()
+  _invalidateRecipesCache()
   // Full replace: only touch keys present in the import payload
   if ('brews' in data) {
     safeSetItem(STORAGE_KEYS.BREWS, JSON.stringify(data.brews || []))
@@ -815,6 +866,7 @@ export function importData(data) {
 
 export function mergeData(data) {
   _invalidateBrewsCache()
+  _invalidateRecipesCache()
   // Merge imported data with existing: local wins on ID conflicts, new records are added
   if (data.brews && Array.isArray(data.brews)) {
     const existing = getBrews()
