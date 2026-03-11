@@ -62,7 +62,7 @@ STEP RULES (critical):
 - Step "name" must be SHORT (1-3 words): "Bloom", "First pour", "Second pour", "Swirl", "Drawdown", "Stir"
 - Step "note" holds the full technique detail: "pour in concentric circles", "gentle stir with spoon"
 - NEVER put technique instructions in the "name" field. Name is a label, note is the description.
-- Every step must have a positive "duration" in seconds. If not stated, estimate: bloom ~30-45s, pours ~15-30s, swirl/stir ~5-10s, drawdown ~60-120s
+- Every step must have a "duration" in seconds. If the recipe explicitly states timing, use it. If timing is NOT stated or unclear, set duration to 0 (do NOT invent or estimate timing).
 - Do NOT include prep steps (grinding, rinsing filter, heating water, preheating dripper). Start with the first step that involves coffee grounds + water (usually Bloom).
 
 WATER RULES:
@@ -79,7 +79,12 @@ TIMING RULES:
 EQUIPMENT/METHOD RULES:
 - method IDs: "v60", "chemex", "aeropress", "french-press", "kalita-wave", "stagg", "origami", "december"
 - Fellow Stagg, Stagg X, Stagg XF, and Stagg [X] are Fellow's pour-over drippers — use method "stagg"
-- sourceName should be the recipe author or publication (e.g., "Fellow", "James Hoffmann", "Flower Child Coffee"), NOT the brew method or equipment name
+- sourceName should be the recipe publisher — the person, company, or website sharing the recipe. NOT the coffee roaster, bean producer, or equipment brand mentioned in the recipe. If unsure, prefer the broader publication context over a specific brand name within the recipe.
+
+GRINDER CONTEXT:
+- The user may provide their grinder name via the "grinderName" field in the request.
+- If the recipe text lists grind settings for multiple grinders by name, match the user's grinder and use that specific setting as grindDescription.
+- If no grinder context is provided or no match is found, use the general grind description from the recipe.
 
 OTHER RULES:
 - Extract ALL distinct recipes (different methods/parameters = different recipes)
@@ -227,6 +232,9 @@ export default {
       recipeText = body.text.trim().slice(0, 10240) // Cap at 10KB
     }
 
+    // Optional grinder context from client
+    const grinderName = typeof body.grinderName === 'string' ? body.grinderName.trim() : ''
+
     if (recipeText.length < 10) {
       return jsonResponse({ error: 'Text too short to contain a recipe' }, 400, origin, allowedOrigin)
     }
@@ -237,6 +245,12 @@ export default {
     }
 
     try {
+      // Build user message with optional grinder context
+      let userContent = `<user_recipe_text>\n${recipeText}\n</user_recipe_text>`
+      if (grinderName) {
+        userContent += `\n\n<user_grinder>${grinderName}</user_grinder>`
+      }
+
       const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -251,7 +265,7 @@ export default {
           messages: [
             {
               role: 'user',
-              content: `<user_recipe_text>\n${recipeText}\n</user_recipe_text>`,
+              content: userContent,
             },
           ],
           tools: [

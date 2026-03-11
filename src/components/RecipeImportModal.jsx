@@ -48,7 +48,8 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
     }, 30000)
 
     try {
-      const recipes = await extractRecipes(trimmed, { signal: controller.signal })
+      const grinderName = grinderId ? getGrinderName(grinderId) : ''
+      const recipes = await extractRecipes(trimmed, { signal: controller.signal, grinderName })
 
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
 

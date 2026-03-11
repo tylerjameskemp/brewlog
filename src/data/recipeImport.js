@@ -67,13 +67,14 @@ export const WORKER_URL = import.meta.env.VITE_WORKER_URL || ''
 export const WORKER_TOKEN = import.meta.env.VITE_WORKER_TOKEN || ''
 
 // Call the extraction worker
-export async function extractRecipes(text, { signal } = {}) {
+export async function extractRecipes(text, { signal, grinderName } = {}) {
   if (!WORKER_URL) {
     throw new Error('Recipe import service not configured')
   }
 
   const isUrl = /^https?:\/\//i.test(text.trim())
   const body = isUrl ? { url: text.trim() } : { text: text.trim() }
+  if (grinderName) body.grinderName = grinderName
 
   const response = await fetch(`${WORKER_URL}/extract`, {
     method: 'POST',
