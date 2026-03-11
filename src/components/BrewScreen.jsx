@@ -6,8 +6,9 @@ import {
   computeTimeStatus, getPourTemplates, saveBrew, updateBrew, getBeans,
   updateBean, saveActiveBrew, getActiveBrew, clearActiveBrew,
   normalizeName, getRecipes, saveRecipe, updateRecipe,
-  generateRecipeCopyName,
+  generateRecipeCopyName, getTemplateRecipesForMethod,
   RECIPE_FIELDS, recipeEntityToFormState, formStateToRecipeFields,
+  forkRecipe,
 } from '../data/storage'
 import { getMethodName } from '../data/defaults'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
@@ -104,7 +105,7 @@ function BeanPicker({ beans, previews, onSelect, onNavigate }) {
 }
 
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
-function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onRecipeRenamed, templates }) {
+function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onRecipeRenamed, templates, importedTemplates, onOpenImport }) {
 
   const [showRecipePicker, setShowRecipePicker] = useState(false)
   const [renamingRecipeId, setRenamingRecipeId] = useState(null)
@@ -237,7 +238,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
       )}
 
       {/* Recipe Indicator */}
-      {(beanRecipes.length > 0 || (templates && templates.length > 0)) && (
+      {(beanRecipes.length > 0 || (templates && templates.length > 0) || (importedTemplates && importedTemplates.length > 0)) && (
         <div className="px-4 mt-3">
           <button
             onClick={() => setShowRecipePicker(!showRecipePicker)}
@@ -345,6 +346,29 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                   ))}
                 </>
               )}
+              {/* Imported template recipes */}
+              {importedTemplates && importedTemplates.length > 0 && (
+                <>
+                  <div className="px-4 py-2 text-[10px] uppercase tracking-wider text-brew-300 border-t border-brew-100">
+                    Imported recipes
+                  </div>
+                  {importedTemplates.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        onRecipeSelect({ ...t, _isImported: true })
+                        setShowRecipePicker(false)
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm text-brew-700 hover:bg-brew-50 min-h-[44px]"
+                    >
+                      <div className="font-medium">{t.name}</div>
+                      <div className="text-xs text-brew-400 mt-0.5">
+                        {t.coffeeGrams}g / {t.waterGrams}g · {t.sourceName || 'imported'}
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
               <button
                 onClick={() => {
                   onRecipeSelect(null) // null = new recipe
@@ -355,6 +379,18 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
               >
                 + New Recipe
               </button>
+              {onOpenImport && (
+                <button
+                  onClick={() => {
+                    setShowRecipePicker(false)
+                    onOpenImport()
+                  }}
+                  className="w-full text-left px-4 py-3 text-sm text-brew-500 hover:bg-brew-50
+                             border-t border-brew-100 min-h-[44px]"
+                >
+                  + Import Recipe
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1556,7 +1592,7 @@ function BrewSuccess({ brew, selectedRecipeId, recipes, recipeWasAutoCreated, on
 }
 
 // ─── Main BrewScreen Component ──────────────────────────────
-export default function BrewScreen({ equipment, beans, setBeans, recipes, setRecipes, initialBean, onBrewSaved, onBrewActiveChange, onNavigate, onFlowChange }) {
+export default function BrewScreen({ equipment, beans, setBeans, recipes, setRecipes, initialBean, onOpenImport, onBrewSaved, onBrewActiveChange, onNavigate, onFlowChange }) {
 
   const [phase, setPhase] = useState(() => initialBean ? 'recipe' : 'pick')
   const [selectedBean, setSelectedBean] = useState(initialBean || null)
@@ -1568,6 +1604,11 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
   const savingRef = useRef(false) // Double-tap guard for brew save
 
   const templates = useMemo(() => getPourTemplates(), [])
+
+  // Imported template recipes matching the current equipment method
+  const importedTemplates = useMemo(() => {
+    return getTemplateRecipesForMethod(equipment?.brewMethod)
+  }, [recipes, equipment?.brewMethod])
 
   // Pre-compute recipe previews for BeanPicker
   const beanPreviews = useMemo(() => {
@@ -1924,6 +1965,8 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
           beanRecipes={(recipes || []).filter(r => r.beanId === selectedBean.id)}
           selectedRecipeId={selectedRecipeId}
           templates={templates}
+          importedTemplates={importedTemplates}
+          onOpenImport={onOpenImport}
           onRecipeSelect={(recipeEntity) => {
             if (recipeEntity === null) {
               // "+ New Recipe" — reset to defaults
@@ -1935,6 +1978,14 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
               const defaults = getRecipeDefaults()
               const steps = normalizeSteps(recipeEntity.steps || [])
               setRecipe({ ...defaults, steps })
+            } else if (recipeEntity._isImported) {
+              // Imported template — fork to this bean and select the copy
+              const forked = forkRecipe(recipeEntity.id, {}, selectedBean.id)
+              if (forked) {
+                setRecipes(getRecipes())
+                setSelectedRecipeId(forked.id)
+                setRecipe(recipeEntityToFormState(forked, getRecipeDefaults()))
+              }
             } else {
               // Select an existing recipe
               setSelectedRecipeId(recipeEntity.id)

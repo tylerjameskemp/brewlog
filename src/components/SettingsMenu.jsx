@@ -10,7 +10,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { exportData, importData, mergeData, getBrews, getBeans, getEquipment } from '../data/storage'
 import Modal from './Modal'
 
-export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClose }) {
+export default function SettingsMenu({ onEquipmentClick, onImportComplete, onImportRecipe, onClose }) {
   const [importState, setImportState] = useState(null) // null | parsed data object
   const [feedback, setFeedback] = useState(null) // null | { type: 'success'|'error', message }
   const [isImporting, setIsImporting] = useState(false)
@@ -250,6 +250,13 @@ export default function SettingsMenu({ onEquipmentClick, onImportComplete, onClo
       >
         <span className="text-base">🔧</span>
         Equipment Setup
+      </button>
+      <button
+        onClick={onImportRecipe}
+        className="w-full px-4 py-3 text-left text-sm text-brew-700 hover:bg-brew-50 transition-colors flex items-center gap-3 border-t border-brew-50 min-h-[44px]"
+      >
+        <span className="text-base">📋</span>
+        Import Recipe
       </button>
       <button
         onClick={handleExport}

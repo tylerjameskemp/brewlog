@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getBrews, getEquipment, getBeans, getRecipes, deduplicateBeans, migrateGrindSettings, migrateBloomToSteps, migrateToSchemaV2, migrateExtractRecipes, migrateDropRecipeSteps, seedDefaultPourTemplates, updateRecipe, forkRecipe } from './data/storage'
 import EquipmentSetup from './components/EquipmentSetup'
+import RecipeImportModal from './components/RecipeImportModal'
 import SettingsMenu from './components/SettingsMenu'
 import BrewForm from './components/BrewForm'
 import BrewScreen from './components/BrewScreen'
@@ -38,6 +39,7 @@ function App() {
   const [brewingBean, setBrewingBean] = useState(null)    // Bean selected for BrewScreen
   const [isBrewActive, setIsBrewActive] = useState(false) // Active brew timer running
   const [brewFlowActive, setBrewFlowActive] = useState(false) // BrewScreen is in a flow phase (hides MobileNav)
+  const [showImportModal, setShowImportModal] = useState(false) // Recipe import modal
 
   const viewRef = useRef(null)
   const prevViewRef = useRef(view)
@@ -85,6 +87,7 @@ function App() {
           settingsMenu={showSettings && (
             <SettingsMenu
               onEquipmentClick={() => setShowSetup(true)}
+              onImportRecipe={() => { setShowImportModal(true); setShowSettings(false) }}
               onImportComplete={() => {
                 migrateToSchemaV2()
                 migrateExtractRecipes()
@@ -132,6 +135,7 @@ function App() {
               recipes={recipes}
               setRecipes={setRecipes}
               initialBean={brewingBean}
+              onOpenImport={() => setShowImportModal(true)}
               onBrewSaved={(updatedBrews) => {
                 setBrews(updatedBrews)
                 setBrewingBean(null)
@@ -208,6 +212,19 @@ function App() {
             setShowSetup(false)
           }}
           onClose={() => setShowSetup(false)}
+        />
+      )}
+
+      {/* Recipe import modal */}
+      {showImportModal && (
+        <RecipeImportModal
+          onClose={() => setShowImportModal(false)}
+          onImportComplete={(saved) => {
+            setRecipes(getRecipes())
+            setShowImportModal(false)
+          }}
+          equipment={equipment}
+          grinderId={equipment?.grinder}
         />
       )}
     </div>

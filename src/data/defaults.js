@@ -46,13 +46,22 @@ export const BREW_METHODS = [
     defaultTotalTime: 120,
     icon: '💨',
   },
+  {
+    id: 'stagg',
+    name: 'Fellow Stagg',
+    defaultRatio: 16,
+    defaultBloomTime: 45,
+    defaultTotalTime: 210,
+    icon: '☕',
+  },
 ]
 
 // --- GRINDERS ---
 // Your Fellow Ode is first. Settings are specific to each grinder.
 // Fellow Ode uses 'ode' settingType with X-1/X-2 micro-adjustment notation.
 export const GRINDERS = [
-  { id: 'fellow-ode', name: 'Fellow Ode', settingType: 'ode' },
+  { id: 'fellow-ode', name: 'Fellow Ode (stock burrs)', settingType: 'ode' },
+  { id: 'fellow-ode-gen2-burrs', name: 'Fellow Ode (Gen 2 burrs)', settingType: 'ode' },
   { id: 'fellow-ode-2', name: 'Fellow Ode Gen 2', settingType: 'ode' },
   { id: 'baratza-encore', name: 'Baratza Encore', settingType: 'numeric', min: 1, max: 40 },
   { id: 'comandante', name: 'Comandante C40', settingType: 'clicks', min: 0, max: 40 },
