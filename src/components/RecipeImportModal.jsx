@@ -295,7 +295,7 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
             )}
             {grindSuggestion && (
               <p className="text-xs text-brew-500 mt-1">
-                Suggested range for your {getGrinderName(grinderId)}: {grindSuggestion} (stock burrs)
+                Suggested range for your {getGrinderName(grinderId)}: {grindSuggestion}
               </p>
             )}
             {reviewRecipe.qualitativeGrind && (

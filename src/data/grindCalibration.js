@@ -19,6 +19,13 @@ export const GRIND_CALIBRATION = {
     'medium-coarse': '5 - 7',
     'coarse': '7 - 11',
   },
+  'fellow-ode-gen2-burrs': {
+    'fine': '1-2 - 2',
+    'medium-fine': '2-2 - 5-2',
+    'medium': '5-2 - 7',
+    'medium-coarse': '7 - 9',
+    'coarse': '9 - 11',
+  },
   'fellow-ode-2': {
     'fine': '1-2 - 2',
     'medium-fine': '2-2 - 5-2',
