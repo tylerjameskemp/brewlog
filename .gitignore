@@ -3,4 +3,5 @@ dist
 .DS_Store
 *.local
 worker/.dev.vars
+worker/.wrangler/
 .env
