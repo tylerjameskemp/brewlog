@@ -46,6 +46,14 @@ export const BREW_METHODS = [
     defaultTotalTime: 120,
     icon: '💨',
   },
+  {
+    id: 'stagg',
+    name: 'Fellow Stagg',
+    defaultRatio: 16,
+    defaultBloomTime: 45,
+    defaultTotalTime: 210,
+    icon: '☕',
+  },
 ]
 
 // --- GRINDERS ---

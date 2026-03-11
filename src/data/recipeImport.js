@@ -5,6 +5,21 @@
 // Keeps extraction logic separate from UI and storage.
 
 import { getMethodName } from './defaults'
+import { formatTime } from './storage'
+
+// Normalize a target time value from LLM output to MM:SS string.
+// Handles: "3:30", "3:00-3:30", 210 (seconds), "210", null/undefined
+function normalizeTargetTime(raw) {
+  if (!raw && raw !== 0) return ''
+  // Already a MM:SS string or range
+  if (typeof raw === 'string' && raw.includes(':')) return raw
+  // Numeric seconds — convert to MM:SS
+  const seconds = typeof raw === 'string' ? parseInt(raw, 10) : raw
+  if (typeof seconds === 'number' && !isNaN(seconds) && seconds > 0) {
+    return formatTime(seconds)
+  }
+  return typeof raw === 'string' ? raw : ''
+}
 
 // Map a single extracted recipe (from LLM output) to recipe entity fields.
 // Does NOT set id, beanId, createdAt, etc. — caller handles those.
@@ -30,7 +45,7 @@ export function mapExtractionToRecipe(extracted) {
     waterGrams: extracted.waterGrams ?? 250,
     grindSetting: extracted.grindDescription || '',
     waterTemp: extracted.waterTemp || '',
-    targetTime: extracted.targetTime || '',
+    targetTime: normalizeTargetTime(extracted.targetTime),
     targetTimeRange: '',
     targetTimeMin: null,
     targetTimeMax: null,
