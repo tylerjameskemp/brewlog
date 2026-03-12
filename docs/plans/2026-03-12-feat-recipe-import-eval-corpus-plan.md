@@ -218,7 +218,7 @@ node worker/scripts/eval-recipe-import.mjs --runs=3
 
 ### Phase 2: Fixtures (start with 5, expand to 20)
 - [x] Create 1 text fixture, 1 article fixture, 1 YouTube fixture, 1 failure fixture, 1 edge case
-- [ ] Run end-to-end, tune scoring thresholds based on real outputs
+- [x] Run end-to-end, tune scoring thresholds based on real outputs
 - [x] Expand to full 20-fixture corpus
 - [x] Document fixture creation process in `worker/fixtures/recipe-import/README.md`
 

@@ -13,18 +13,18 @@
         "method": "v60",
         "coffeeGrams": 20,
         "waterGrams": 300,
-        "grindDescription": "coarse",
-        "grindTier": "coarse",
+        "grindDescription": "coarser than typical V60",
+        "grindTier": "medium-coarse",
         "waterTemp": "93",
         "targetTime": "3:30-3:45",
         "steps": [
-          { "name": "First pour", "waterTo": 60, "duration": 45 },
-          { "name": "Second pour", "waterTo": 120, "duration": null },
-          { "name": "Third pour", "waterTo": 180, "duration": null },
-          { "name": "Fourth pour", "waterTo": 240, "duration": null },
-          { "name": "Fifth pour", "waterTo": 300, "duration": null }
+          { "name": "Bloom", "waterTo": 60, "duration": 45 },
+          { "name": "First pour", "waterTo": 120, "duration": 45 },
+          { "name": "Second pour", "waterTo": 180, "duration": 45 },
+          { "name": "Third pour", "waterTo": 240, "duration": 45 },
+          { "name": "Final pour", "waterTo": 300, "duration": null }
         ],
-        "sourceName": "Tetsu Kasuya",
+        "sourceName": null,
         "confidence": "high"
       }
     ]
