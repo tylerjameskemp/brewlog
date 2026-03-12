@@ -3,14 +3,9 @@
 // ============================================================
 // Maps qualitative grind descriptors (medium-fine, coarse, etc.)
 // to suggested setting ranges for supported grinders.
-// Phase 1: stock burrs only. Phase 2 adds generation+burr keys.
 // Research: docs/plans/2026-03-11-research-grinder-calibration.md
 
-export const GRIND_TIERS = [
-  'extra-fine', 'fine', 'medium-fine', 'medium', 'medium-coarse', 'coarse'
-]
-
-// Phase 1: stock burrs only. Keyed by grinder ID from defaults.js.
+// Keyed by grinder ID from defaults.js.
 export const GRIND_CALIBRATION = {
   'fellow-ode': {
     'fine': null,

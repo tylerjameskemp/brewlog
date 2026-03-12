@@ -224,7 +224,6 @@ function App() {
             setShowImportModal(false)
           }}
           equipment={equipment}
-          grinderId={equipment?.grinder}
         />
       )}
     </div>

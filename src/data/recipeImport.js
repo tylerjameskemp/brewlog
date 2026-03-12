@@ -63,8 +63,8 @@ export function mapExtractionToRecipe(extracted) {
 }
 
 // Worker API URL — configured via Vite env variables
-export const WORKER_URL = import.meta.env.VITE_WORKER_URL || ''
-export const WORKER_TOKEN = import.meta.env.VITE_WORKER_TOKEN || ''
+const WORKER_URL = import.meta.env.VITE_WORKER_URL || ''
+const WORKER_TOKEN = import.meta.env.VITE_WORKER_TOKEN || ''
 
 // Call the extraction worker
 export async function extractRecipes(text, { signal, grinderName } = {}) {

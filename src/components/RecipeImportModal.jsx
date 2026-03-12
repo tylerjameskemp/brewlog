@@ -9,7 +9,8 @@ import { mapExtractionToRecipe, extractRecipes } from '../data/recipeImport'
 // Phase state machine: paste → extracting → review
 // Error states handled inline within phases.
 
-export default function RecipeImportModal({ onClose, onImportComplete, equipment, grinderId }) {
+export default function RecipeImportModal({ onClose, onImportComplete, equipment }) {
+  const grinderId = equipment?.grinder
   const [phase, setPhase] = useState('paste')
   const [inputText, setInputText] = useState('')
   const [error, setError] = useState(null)
@@ -42,10 +43,10 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
     const controller = new AbortController()
     controllerRef.current = controller
 
-    // Client-side 30s timeout
+    // Client-side 35s timeout (exceeds worker's 30s to allow network transit)
     timeoutRef.current = setTimeout(() => {
       controller.abort()
-    }, 30000)
+    }, 35000)
 
     try {
       const grinderName = grinderId ? getGrinderName(grinderId) : ''
@@ -90,7 +91,7 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
       }
       setPhase('paste')
     }
-  }, [inputText, equipment])
+  }, [inputText, equipment, grinderId])
 
   const handlePaste = useCallback(async () => {
     try {
