@@ -72,8 +72,8 @@ WATER RULES:
 
 TIMING RULES:
 - All durations in seconds
-- Each step's timing should be sequential — estimate if not explicit
-- If a step has no clear duration, estimate based on common pour-over practice
+- Each step's timing should be sequential when durations are known
+- If a step has no clear duration, set duration to 0 (do NOT estimate or invent timing)
 - targetTime must be a MM:SS string (e.g., "3:30") or a range like "3:00-3:30". NEVER return seconds-only numbers.
 
 EQUIPMENT/METHOD RULES:
@@ -97,9 +97,9 @@ OTHER RULES:
 // --- CORS helpers ---
 
 function corsHeaders(origin, allowedOrigin) {
-  // In local dev, allow any localhost origin
-  const isLocalDev = origin && origin.startsWith('http://localhost:')
-  const isAllowed = !allowedOrigin || origin === allowedOrigin || isLocalDev
+  // Only allow localhost origins when ALLOWED_ORIGIN is not set (dev mode)
+  const isLocalDev = !allowedOrigin && origin && origin.startsWith('http://localhost:')
+  const isAllowed = origin === allowedOrigin || isLocalDev
 
   return {
     'Access-Control-Allow-Origin': isAllowed ? (origin || '*') : (allowedOrigin || '*'),
@@ -151,11 +151,13 @@ function isPrivateUrl(urlStr) {
 async function fetchAndExtractText(url) {
   const response = await fetch(url, {
     headers: { 'User-Agent': 'BrewLog Recipe Importer/1.0' },
-    redirect: 'follow',
+    redirect: 'error',
     signal: AbortSignal.timeout(10000),
   })
   if (!response.ok) throw new Error(`URL fetch failed: ${response.status}`)
-  const html = await response.text()
+  const rawHtml = await response.text()
+  // Cap raw HTML before regex processing to bound CPU time
+  const html = rawHtml.slice(0, 102400)
   // Basic text extraction: strip tags, decode entities, collapse whitespace
   const text = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -196,7 +198,7 @@ export default {
     // Auth check
     const authHeader = request.headers.get('Authorization') || ''
     const token = authHeader.replace(/^Bearer\s+/i, '')
-    if (env.WORKER_AUTH_TOKEN && token !== env.WORKER_AUTH_TOKEN) {
+    if (!env.WORKER_AUTH_TOKEN || token !== env.WORKER_AUTH_TOKEN) {
       return jsonResponse({ error: 'Unauthorized' }, 401, origin, allowedOrigin)
     }
 
