@@ -8,6 +8,9 @@ import {
   extractJsonLdTexts,
   extractArticleText,
   normalizeWhitespace,
+  USER_AGENT,
+  FETCH_TIMEOUT_MS,
+  MAX_SOURCE_TEXT_LENGTH,
 } from '../utils.js'
 
 function buildArticleSourceText(url, rawHtml) {
@@ -27,14 +30,14 @@ function buildArticleSourceText(url, rawHtml) {
   if (articleText) sections.push(`Page text:\n${articleText}`)
   sections.push(`Source URL:\n${url}`)
 
-  return normalizeWhitespace(sections.join('\n\n')).slice(0, 12000)
+  return normalizeWhitespace(sections.join('\n\n')).slice(0, MAX_SOURCE_TEXT_LENGTH)
 }
 
 export async function fetchArticleSource(url) {
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'BrewLog Recipe Importer/1.0' },
+    headers: { 'User-Agent': USER_AGENT },
     redirect: 'error',
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error(`URL fetch failed: ${response.status}`)
   const rawHtml = await response.text()

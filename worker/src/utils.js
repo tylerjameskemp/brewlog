@@ -1,6 +1,10 @@
 // ============================================================
-// SHARED UTILITIES — pure text/HTML helpers
+// SHARED UTILITIES — pure text/HTML helpers + shared constants
 // ============================================================
+
+export const USER_AGENT = 'BrewLog Recipe Importer/1.0'
+export const FETCH_TIMEOUT_MS = 10000
+export const MAX_SOURCE_TEXT_LENGTH = 12000
 
 export function decodeHtmlEntities(text = '') {
   return text

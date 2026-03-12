@@ -10,8 +10,8 @@
 
 import { isYouTubeUrl, fetchYouTubeSource, InsufficientContentError } from './sources/youtube.js'
 import { fetchArticleSource } from './sources/article.js'
-import { extractTextSource } from './sources/text.js'
 import { extractRecipes } from './extract/extractRecipes.js'
+import { MAX_SOURCE_TEXT_LENGTH } from './utils.js'
 
 // --- CORS helpers ---
 
@@ -125,7 +125,7 @@ export default {
         return jsonResponse({ error: 'Failed to fetch URL' }, 504, origin, allowedOrigin)
       }
     } else {
-      source = extractTextSource(body.text)
+      source = { text: body.text.trim().slice(0, MAX_SOURCE_TEXT_LENGTH), sourceType: 'text' }
     }
 
     // Optional grinder context from client
