@@ -1,0 +1,30 @@
+{
+  "id": "article-noisy-blog",
+  "description": "Long blog post with recipe buried in prose — tests noise extraction",
+  "sourceType": "article",
+  "tags": ["article", "single-recipe", "noisy"],
+  "grinderName": "",
+  "sourceText": "Source title:\nMy Coffee Journey: How I Finally Nailed Pour-Over\n\nPage text:\nMy Coffee Journey: How I Finally Nailed Pour-Over\nby Sarah's Coffee Corner\n\nI've been a coffee lover for as long as I can remember. It started with instant coffee in college, moved on to a basic drip machine, and eventually I discovered the world of specialty coffee. Let me tell you, it was a game changer.\n\nI remember the first time I walked into a third-wave coffee shop. The barista was making a pour-over with a Kalita Wave and I was mesmerized. The precision, the care, the aroma — it was beautiful. I knew I had to learn.\n\nI bought my first Kalita Wave about six months ago. The first few brews were terrible. Too sour, too bitter, too watery. I watched probably 50 YouTube videos trying to get it right. I read blogs, joined Reddit communities, and asked every barista I met for advice.\n\nFinally, after weeks of experimentation, I found my recipe. Here it is:\n\nSarah's Kalita Wave Recipe:\n- 20g coffee, medium grind (I use a Baratza Encore at setting 16)\n- 320g water at 92°C\n- Kalita Wave 185 with Wave filter\n\nSteps:\n1. Pour 50g to bloom, wait 30 seconds\n2. At 0:30, slowly pour to 180g (about 45 seconds of pouring)\n3. At 1:30, pour to 320g (about 30 seconds)\n4. Wait for full drawdown\n\nTotal time should be 3:00 to 3:30.\n\nThis recipe has been my go-to for months now. I've tried tweaking it dozens of times but keep coming back to these exact parameters. The key insight for me was temperature — 92°C is the sweet spot for the light roasts I prefer.\n\nIf you're just starting out with pour-over, my advice is: be patient, take notes, and don't be afraid to experiment. Happy brewing!\n\nSource URL:\nhttps://sarahscoffeecorner.com/my-coffee-journey",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "kalita-wave",
+        "coffeeGrams": 20,
+        "waterGrams": 320,
+        "grindDescription": "medium",
+        "grindTier": "medium",
+        "waterTemp": "92",
+        "targetTime": "3:00-3:30",
+        "steps": [
+          { "name": "Bloom", "waterTo": 50, "duration": 30 },
+          { "name": "First pour", "waterTo": 180, "duration": 45 },
+          { "name": "Second pour", "waterTo": 320, "duration": 30 }
+        ],
+        "sourceName": null,
+        "confidence": "high"
+      }
+    ]
+  }
+}

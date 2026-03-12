@@ -1,0 +1,31 @@
+{
+  "id": "text-basic-v60",
+  "description": "Clean V60 recipe with all core fields — pasted text",
+  "sourceType": "text",
+  "tags": ["text", "single-recipe", "complete"],
+  "grinderName": "",
+  "sourceText": "James Hoffmann's Ultimate V60 Technique\n\nRecipe:\n- 15g coffee, medium-fine grind\n- 250g water at 100°C\n- V60 dripper with paper filter\n\nSteps:\n1. Bloom: Pour 50g of water, wait 45 seconds\n2. First pour: Slowly pour to 150g over 30 seconds\n3. Second pour: Pour to 250g over 30 seconds\n4. Swirl gently and let it draw down\n\nTarget brew time: 3:00-3:30",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 15,
+        "waterGrams": 250,
+        "grindDescription": "medium-fine",
+        "grindTier": "medium-fine",
+        "waterTemp": "100",
+        "targetTime": "3:00-3:30",
+        "steps": [
+          { "name": "Bloom", "waterTo": 50, "duration": 45 },
+          { "name": "First pour", "waterTo": 150, "duration": 30 },
+          { "name": "Second pour", "waterTo": 250, "duration": 30 },
+          { "name": "Swirl", "waterTo": null, "duration": 0 }
+        ],
+        "sourceName": "James Hoffmann",
+        "confidence": "high"
+      }
+    ]
+  }
+}

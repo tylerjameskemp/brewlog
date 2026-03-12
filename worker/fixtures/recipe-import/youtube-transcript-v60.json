@@ -1,0 +1,30 @@
+{
+  "id": "youtube-transcript-v60",
+  "description": "V60 recipe from YouTube transcript — full transcript with recipe",
+  "sourceType": "youtube",
+  "tags": ["youtube", "single-recipe"],
+  "grinderName": "",
+  "sourceText": "YouTube title:\nMy Go-To V60 Recipe | Morning Brew Routine\n\nYouTube description:\nHere's the V60 recipe I use every single morning. Simple, consistent, delicious.\n\nYouTube transcript:\nhey everyone welcome back today I want to share my daily V60 recipe this is what I brew every single morning and it has been super consistent so let's get right into it I'm using 16 grams of coffee ground medium fine on my Comandante at about 24 clicks and 260 grams of water heated to 94 degrees Celsius first we bloom with 40 grams of water just pour it right over the grounds and give it a little swirl wait 30 seconds at 30 seconds I start my main pour going in nice slow concentric circles all the way up to 160 grams that takes me about 30 seconds so we're at one minute now then I do my final pour from 160 up to 260 grams again about 30 seconds of pouring and then we just wait for the drawdown total brew time should be somewhere between 2 minutes 45 and 3 minutes 15 and there you have it a beautiful clean cup",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 16,
+        "waterGrams": 260,
+        "grindDescription": null,
+        "grindTier": "medium-fine",
+        "waterTemp": "94",
+        "targetTime": "2:45-3:15",
+        "steps": [
+          { "name": "Bloom", "waterTo": 40, "duration": 30 },
+          { "name": "Main pour", "waterTo": 160, "duration": 30 },
+          { "name": "Final pour", "waterTo": 260, "duration": 30 }
+        ],
+        "sourceName": null,
+        "confidence": "high"
+      }
+    ]
+  }
+}

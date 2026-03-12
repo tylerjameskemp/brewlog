@@ -1,0 +1,31 @@
+{
+  "id": "article-hoffmann-v60",
+  "description": "Well-known Hoffmann V60 technique — article text extraction",
+  "sourceType": "article",
+  "tags": ["article", "single-recipe", "well-known"],
+  "grinderName": "",
+  "sourceText": "Source title:\nThe Ultimate V60 Technique — James Hoffmann\n\nSource summary:\nJames Hoffmann shares his refined V60 pour-over technique, a method he has developed over years of experimentation. This recipe produces a clean, sweet, and balanced cup.\n\nStructured page text:\nThe Ultimate V60 Technique\nby James Hoffmann\n\nWhat you need:\n- 15g of medium-fine ground coffee\n- 250g of water just off the boil (about 100°C / 212°F)\n- Hario V60 dripper\n- Paper filter, rinsed\n- Gooseneck kettle\n\nMethod:\n\n1. Place the V60 on your server, add the rinsed filter and coffee grounds.\n2. Start your timer. Pour 50g of water to bloom the coffee. Give the V60 a gentle swirl to ensure all grounds are wet. Wait 45 seconds.\n3. Starting at 0:45, pour slowly in concentric circles to 150g. This should take about 30 seconds.\n4. At 1:15, pour again in concentric circles to 250g. This should take about 30 seconds.\n5. Give the V60 a gentle swirl to knock grounds off the walls.\n6. Wait for the drawdown to complete.\n\nTotal brew time should be between 3:00 and 3:30.\n\nIf the brew is too fast and tastes sour, grind finer. If it's too slow and tastes bitter, grind coarser.\n\nSource URL:\nhttps://www.jameshoffmann.co.uk/the-ultimate-v60-technique",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 15,
+        "waterGrams": 250,
+        "grindDescription": "medium-fine",
+        "grindTier": "medium-fine",
+        "waterTemp": "100",
+        "targetTime": "3:00-3:30",
+        "steps": [
+          { "name": "Bloom", "waterTo": 50, "duration": 45 },
+          { "name": "First pour", "waterTo": 150, "duration": 30 },
+          { "name": "Second pour", "waterTo": 250, "duration": 30 },
+          { "name": "Swirl", "waterTo": null, "duration": 0 }
+        ],
+        "sourceName": "James Hoffmann",
+        "confidence": "high"
+      }
+    ]
+  }
+}

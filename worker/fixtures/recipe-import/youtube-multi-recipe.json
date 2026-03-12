@@ -1,0 +1,46 @@
+{
+  "id": "youtube-multi-recipe",
+  "description": "Comparison video with V60 and Chemex recipes",
+  "sourceType": "youtube",
+  "tags": ["youtube", "multi-recipe"],
+  "grinderName": "",
+  "sourceText": "YouTube title:\nV60 vs Chemex — Which Makes Better Coffee?\n\nYouTube description:\nWe compare the V60 and Chemex side by side using matched recipes.\n\nYouTube transcript:\ntoday we're going head to head V60 versus Chemex I've got the same coffee for both let's see which one makes the better cup first up the V60 recipe I'm using 15 grams of coffee ground medium fine with 250 grams of water at 96 degrees we bloom with 45 grams for 30 seconds then pour to 150 at 30 seconds then a final pour to 250 at one minute target time is about 2 minutes 30 to 3 minutes now for the Chemex same coffee but 25 grams because we're making a bigger batch 400 grams of water at 96 degrees ground a bit coarser medium coarse bloom with 75 grams for 45 seconds first pour to 250 at 45 seconds second pour to 400 at 1 minute 45 target time 3 minutes 30 to 4 minutes alright let's taste them",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 2,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 15,
+        "waterGrams": 250,
+        "grindDescription": "medium fine",
+        "grindTier": "medium-fine",
+        "waterTemp": "96",
+        "targetTime": "2:30-3:00",
+        "steps": [
+          { "name": "Bloom", "waterTo": 45, "duration": 30 },
+          { "name": null, "waterTo": 150, "duration": null },
+          { "name": null, "waterTo": 250, "duration": null }
+        ],
+        "sourceName": null,
+        "confidence": "high"
+      },
+      {
+        "method": "chemex",
+        "coffeeGrams": 25,
+        "waterGrams": 400,
+        "grindDescription": "medium coarse",
+        "grindTier": "medium-coarse",
+        "waterTemp": "96",
+        "targetTime": "3:30-4:00",
+        "steps": [
+          { "name": "Bloom", "waterTo": 75, "duration": 45 },
+          { "name": null, "waterTo": 250, "duration": null },
+          { "name": null, "waterTo": 400, "duration": null }
+        ],
+        "sourceName": null,
+        "confidence": "high"
+      }
+    ]
+  }
+}

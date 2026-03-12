@@ -1,0 +1,30 @@
+{
+  "id": "article-stagg-recipe",
+  "description": "Fellow Stagg X dripper — tests method: stagg mapping",
+  "sourceType": "article",
+  "tags": ["article", "single-recipe", "stagg"],
+  "grinderName": "",
+  "sourceText": "Source title:\nFellow Stagg [X] Pour-Over Dripper Recipe\n\nPage text:\nFellow Stagg [X] Pour-Over Recipe\nby Fellow Products\n\nThe Stagg [X] dripper features a double-wall vacuum insulated body and a ratio aid to help you brew consistently.\n\nOur recommended recipe:\n- 20g coffee, medium grind\n- 340g water at 205°F (96°C)\n\nBrewing steps:\n1. Bloom: Pour 60g of water slowly over the bed. Wait 30 seconds.\n2. Second pour: At 0:30, pour to 200g in slow concentric circles. Take about 45 seconds.\n3. Third pour: At 1:15, pour to 340g. Take about 30 seconds.\n4. Allow full drawdown.\n\nAim for 3:00-3:30 total brew time.\n\nThe Stagg [X] runs slightly hotter than most drippers thanks to its insulated walls, so you may want to grind slightly coarser than with a standard V60.\n\nSource URL:\nhttps://fellowproducts.com/blogs/brew-guides/stagg-x-pour-over",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "stagg",
+        "coffeeGrams": 20,
+        "waterGrams": 340,
+        "grindDescription": "medium",
+        "grindTier": "medium",
+        "waterTemp": "205",
+        "targetTime": "3:00-3:30",
+        "steps": [
+          { "name": "Bloom", "waterTo": 60, "duration": 30 },
+          { "name": "Second pour", "waterTo": 200, "duration": 45 },
+          { "name": "Third pour", "waterTo": 340, "duration": 30 }
+        ],
+        "sourceName": "Fellow",
+        "confidence": "high"
+      }
+    ]
+  }
+}

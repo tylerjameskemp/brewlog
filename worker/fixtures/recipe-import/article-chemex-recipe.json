@@ -1,0 +1,30 @@
+{
+  "id": "article-chemex-recipe",
+  "description": "Chemex recipe from a coffee blog — article extraction",
+  "sourceType": "article",
+  "tags": ["article", "single-recipe"],
+  "grinderName": "",
+  "sourceText": "Source title:\nHow to Brew the Perfect Chemex\n\nSource summary:\nA step-by-step guide to brewing with the Chemex pour-over coffee maker.\n\nPage text:\nHow to Brew the Perfect Chemex\nby Blue Bottle Coffee\n\nThe Chemex is one of the most elegant ways to brew coffee. Here's our go-to recipe.\n\nYou'll need:\n- 42g of coffee, ground to a medium-coarse consistency (like sea salt)\n- 700g of water at 205°F\n- Chemex with bonded filter\n\nBrewing:\n1. Rinse your filter with hot water, discard the rinse water\n2. Add grounds to the filter, start your timer\n3. Bloom: Pour 100g of water over the grounds in a spiral motion. Wait 45 seconds.\n4. Beginning at 0:45, pour slowly in concentric circles to 400g. Take about 1 minute 15 seconds.\n5. At about 2:00, pour to 700g over 1 minute.\n6. Let the coffee drain completely.\n\nYour total brew time should land between 4:00 and 4:30.\n\nTroubleshooting: If the brew drains too fast, try grinding finer. If too slow, go coarser.\n\nSource URL:\nhttps://bluebottlecoffee.com/brew-guides/chemex",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "chemex",
+        "coffeeGrams": 42,
+        "waterGrams": 700,
+        "grindDescription": "medium-coarse",
+        "grindTier": "medium-coarse",
+        "waterTemp": "205",
+        "targetTime": "4:00-4:30",
+        "steps": [
+          { "name": "Bloom", "waterTo": 100, "duration": 45 },
+          { "name": "First pour", "waterTo": 400, "duration": 75 },
+          { "name": "Second pour", "waterTo": 700, "duration": 60 }
+        ],
+        "sourceName": "Blue Bottle Coffee",
+        "confidence": "high"
+      }
+    ]
+  }
+}

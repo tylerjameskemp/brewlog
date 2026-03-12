@@ -1,0 +1,30 @@
+{
+  "id": "youtube-description-only",
+  "description": "Recipe in YouTube description only, no transcript recipe content",
+  "sourceType": "youtube",
+  "tags": ["youtube", "single-recipe", "description-only"],
+  "grinderName": "",
+  "sourceText": "YouTube title:\nMorning V60 Brew — No Talking ASMR\n\nYouTube description:\nASMR coffee brewing. No talking, just the sounds of brewing.\n\nRecipe used in this video:\n- V60 dripper\n- 18g coffee, medium-fine grind\n- 300g water at 93°C\n- Bloom: 50g, 40 seconds\n- Pour 1: to 180g\n- Pour 2: to 300g\n- Total time: ~3:15\n\nYouTube transcript:\n[ambient sounds of water pouring and dripping for 4 minutes]",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 18,
+        "waterGrams": 300,
+        "grindDescription": "medium-fine",
+        "grindTier": "medium-fine",
+        "waterTemp": "93",
+        "targetTime": "3:15",
+        "steps": [
+          { "name": "Bloom", "waterTo": 50, "duration": 40 },
+          { "name": "Pour", "waterTo": 180, "duration": 0 },
+          { "name": "Pour", "waterTo": 300, "duration": 0 }
+        ],
+        "sourceName": null,
+        "confidence": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "text-multi-recipe",
+  "description": "Two recipes in one paste — V60 and AeroPress",
+  "sourceType": "text",
+  "tags": ["text", "multi-recipe"],
+  "grinderName": "",
+  "sourceText": "My Morning Recipes\n\nV60 Recipe:\n- 15g coffee, medium-fine grind\n- 250g water at 96°C\n- Bloom with 50g for 30 seconds\n- Pour to 150g, then to 250g\n- Total time: 2:30-3:00\n\nAeroPress Recipe:\n- 18g coffee, fine grind\n- 200g water at 85°C\n- Inverted method\n- Add all water, stir 10 times, steep for 1 minute 30 seconds\n- Flip and press for 30 seconds\n- Total time: about 2:30",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 2,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 15,
+        "waterGrams": 250,
+        "grindDescription": "medium-fine",
+        "grindTier": "medium-fine",
+        "waterTemp": "96",
+        "targetTime": "2:30-3:00",
+        "steps": [
+          { "name": "Bloom", "waterTo": 50, "duration": 30 }
+        ],
+        "sourceName": null,
+        "confidence": null
+      },
+      {
+        "method": "aeropress",
+        "coffeeGrams": 18,
+        "waterGrams": 200,
+        "grindDescription": "fine",
+        "grindTier": "fine",
+        "waterTemp": "85",
+        "targetTime": "2:30",
+        "steps": null,
+        "sourceName": null,
+        "confidence": null
+      }
+    ]
+  }
+}

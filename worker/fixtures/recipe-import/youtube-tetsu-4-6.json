@@ -1,0 +1,32 @@
+{
+  "id": "youtube-tetsu-4-6",
+  "description": "Tetsu Kasuya 4:6 method — YouTube transcript extraction",
+  "sourceType": "youtube",
+  "tags": ["youtube", "single-recipe", "well-known"],
+  "grinderName": "",
+  "sourceText": "YouTube title:\nTetsu Kasuya's 4:6 Method — The World Champion V60 Recipe\n\nYouTube description:\nLearn Tetsu Kasuya's award-winning 4:6 V60 method. This technique won the World Brewers Cup and is known for its simplicity and consistency.\n\nYouTube transcript:\ntoday I'm going to show you the four six method this is a technique developed by Tetsu Kasuya who won the World Brewers Cup in 2016 the idea is really simple you split your total water into 40% and 60% the first 40% controls sweetness and acidity the second 60% controls strength so let's get started we're using 20 grams of coffee ground coarse and 300 grams of water at 93 degrees Celsius the total ratio is 1 to 15 step one pour 60 grams of water and wait until 45 seconds step two pour another 60 grams to reach 120 grams and wait until 1 minute 30 now we move to the second phase step three pour 60 grams to reach 180 grams wait until 2 minutes 15 step four pour 60 grams to reach 240 grams wait until 3 minutes step five pour the final 60 grams to reach 300 grams the total drawdown should finish around 3 minutes 30 to 3 minutes 45 the grind size should be coarser than typical V60 recipes because we're doing multiple pours with longer contact time",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 20,
+        "waterGrams": 300,
+        "grindDescription": "coarse",
+        "grindTier": "coarse",
+        "waterTemp": "93",
+        "targetTime": "3:30-3:45",
+        "steps": [
+          { "name": "First pour", "waterTo": 60, "duration": 45 },
+          { "name": "Second pour", "waterTo": 120, "duration": null },
+          { "name": "Third pour", "waterTo": 180, "duration": null },
+          { "name": "Fourth pour", "waterTo": 240, "duration": null },
+          { "name": "Fifth pour", "waterTo": 300, "duration": null }
+        ],
+        "sourceName": "Tetsu Kasuya",
+        "confidence": "high"
+      }
+    ]
+  }
+}
