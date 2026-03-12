@@ -7,6 +7,7 @@ import {
   extractTitle,
   extractJsonAssignment,
   looksRecipeLike,
+  checkResponseSize,
   USER_AGENT,
   FETCH_TIMEOUT_MS,
   MAX_SOURCE_TEXT_LENGTH,
@@ -92,6 +93,7 @@ async function fetchYouTubeTranscript(baseUrl) {
     console.warn(`YouTube transcript fetch failed: ${response.status}`)
     return ''
   }
+  checkResponseSize(response)
   const body = await response.text()
   if (!body) return ''
   return parseYouTubeTranscriptJson(body)
@@ -118,6 +120,7 @@ export async function fetchYouTubeSource(url) {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error(`YouTube fetch failed: ${response.status}`)
+  checkResponseSize(response)
 
   const rawHtml = await response.text()
   const playerResponse = extractJsonAssignment(rawHtml, 'ytInitialPlayerResponse')

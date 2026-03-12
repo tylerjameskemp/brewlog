@@ -8,6 +8,7 @@ import {
   extractJsonLdTexts,
   extractArticleText,
   normalizeWhitespace,
+  checkResponseSize,
   USER_AGENT,
   FETCH_TIMEOUT_MS,
   MAX_SOURCE_TEXT_LENGTH,
@@ -40,6 +41,7 @@ export async function fetchArticleSource(url) {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error(`URL fetch failed: ${response.status}`)
+  checkResponseSize(response)
   const rawHtml = await response.text()
   return { text: buildArticleSourceText(url, rawHtml), sourceType: 'article' }
 }

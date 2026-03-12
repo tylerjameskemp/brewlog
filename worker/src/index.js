@@ -44,10 +44,17 @@ function isPrivateUrl(urlStr) {
     const url = new URL(urlStr)
     if (url.protocol !== 'https:') return true
     const hostname = url.hostname.toLowerCase()
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true
-    if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return true
-    if (hostname === 'metadata.google.internal' || hostname === '169.254.169.254') return true
-    const parts = hostname.split('.')
+    // Strip brackets from IPv6 literals
+    const bare = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname
+    if (bare === 'localhost' || bare === '127.0.0.1' || bare === '::1' || bare === '::') return true
+    if (bare.endsWith('.internal') || bare.endsWith('.local')) return true
+    if (bare === 'metadata.google.internal' || bare === '169.254.169.254') return true
+    // IPv6 private ranges: ULA (fc00::/7), link-local (fe80::/10), IPv4-mapped (::ffff:...)
+    if (bare.startsWith('fc') || bare.startsWith('fd')) return true
+    if (bare.startsWith('fe80')) return true
+    if (bare.startsWith('::ffff:')) return true
+    // IPv4 private ranges
+    const parts = bare.split('.')
     if (parts.length === 4 && parts.every(p => /^\d+$/.test(p))) {
       const [a, b] = parts.map(Number)
       if (a === 10) return true
