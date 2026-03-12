@@ -118,32 +118,32 @@ Fields:
 ## Corpus Composition (20 cases minimum)
 
 ### Pasted text (5)
-- [ ] `text-basic-v60.json` — Clean V60 recipe with all fields
-- [ ] `text-multi-recipe.json` — Two recipes in one paste (V60 + AeroPress)
-- [ ] `text-minimal.json` — Dose + water + method only, no steps
-- [ ] `text-grinder-context.json` — Recipe with multiple grinder settings, test `grinderName` matching
-- [ ] `text-zero-duration-steps.json` — Steps with timing not stated (expect `duration: 0`)
+- [x] `text-basic-v60.json` — Clean V60 recipe with all fields
+- [x] `text-multi-recipe.json` — Two recipes in one paste (V60 + AeroPress)
+- [x] `text-minimal.json` — Dose + water + method only, no steps
+- [x] `text-grinder-context.json` — Recipe with multiple grinder settings, test `grinderName` matching
+- [x] `text-zero-duration-steps.json` — Steps with timing not stated (expect `duration: 0`)
 
 ### Article URLs (5)
-- [ ] `article-hoffmann-v60.json` — Well-known V60 recipe article
-- [ ] `article-chemex-recipe.json` — Chemex recipe from a coffee blog
-- [ ] `article-noisy-blog.json` — Long blog post with recipe buried in prose
-- [ ] `article-jsonld-recipe.json` — Page with structured JSON-LD recipe data
-- [ ] `article-stagg-recipe.json` — Fellow Stagg dripper recipe (tests method: "stagg" mapping)
+- [x] `article-hoffmann-v60.json` — Well-known V60 recipe article
+- [x] `article-chemex-recipe.json` — Chemex recipe from a coffee blog
+- [x] `article-noisy-blog.json` — Long blog post with recipe buried in prose
+- [x] `article-jsonld-recipe.json` — Page with structured JSON-LD recipe data
+- [x] `article-stagg-recipe.json` — Fellow Stagg dripper recipe (tests method: "stagg" mapping)
 
 ### YouTube (5)
-- [ ] `youtube-transcript-v60.json` — Video with full transcript containing recipe
-- [ ] `youtube-description-only.json` — Recipe in description, no usable transcript text
-- [ ] `youtube-tetsu-4-6.json` — Tetsu Kasuya 4:6 method from transcript
-- [ ] `youtube-multi-recipe.json` — Comparison video with multiple recipes
-- [ ] `youtube-brief-mention.json` — Recipe mentioned briefly in a longer video
+- [x] `youtube-transcript-v60.json` — Video with full transcript containing recipe
+- [x] `youtube-description-only.json` — Recipe in description, no usable transcript text
+- [x] `youtube-tetsu-4-6.json` — Tetsu Kasuya 4:6 method from transcript
+- [x] `youtube-multi-recipe.json` — Comparison video with multiple recipes
+- [x] `youtube-brief-mention.json` — Recipe mentioned briefly in a longer video
 
 ### Failure cases (5)
-- [ ] `fail-cookie-recipe.json` — Non-coffee recipe (should return empty)
-- [ ] `fail-gear-review.json` — "Best V60 Grinders 2026" — mentions coffee but no recipe
-- [ ] `fail-marketing-copy.json` — Product page with dose/water in marketing text
-- [ ] `fail-espresso.json` — Espresso recipe (not pour-over, should still extract per current rules)
-- [ ] `fail-prompt-injection.json` — Adversarial input attempting to override extraction instructions
+- [x] `fail-cookie-recipe.json` — Non-coffee recipe (should return empty)
+- [x] `fail-gear-review.json` — "Best V60 Grinders 2026" — mentions coffee but no recipe
+- [x] `fail-marketing-copy.json` — Product page with dose/water in marketing text
+- [x] `fail-espresso.json` — Espresso recipe (not pour-over, should still extract per current rules)
+- [x] `fail-prompt-injection.json` — Adversarial input attempting to override extraction instructions
 
 ## Script: `worker/scripts/eval-recipe-import.mjs`
 
@@ -210,23 +210,23 @@ node worker/scripts/eval-recipe-import.mjs --runs=3
 ## Implementation Tasks
 
 ### Phase 1: Foundation
-- [ ] Add `temperature` parameter to `extractRecipes()` signature (default undefined = API default) — `worker/src/extract/extractRecipes.js`
-- [ ] Create `worker/fixtures/recipe-import/` directory
-- [ ] Create `worker/scripts/eval-recipe-import.mjs` with CLI arg parsing, fixture loading, API key check
-- [ ] Implement scoring functions (exact, numeric tolerance, normalized contains, steps comparison) — `worker/scripts/scoring.mjs`
-- [ ] Add `worker/eval-results/` to `.gitignore`
+- [x] Add `temperature` parameter to `extractRecipes()` signature (default undefined = API default) — `worker/src/extract/extractRecipes.js`
+- [x] Create `worker/fixtures/recipe-import/` directory
+- [x] Create `worker/scripts/eval-recipe-import.mjs` with CLI arg parsing, fixture loading, API key check
+- [x] Implement scoring functions (exact, numeric tolerance, normalized contains, steps comparison) — `worker/scripts/scoring.mjs`
+- [x] Add `worker/eval-results/` to `.gitignore`
 
 ### Phase 2: Fixtures (start with 5, expand to 20)
-- [ ] Create 1 text fixture, 1 article fixture, 1 YouTube fixture, 1 failure fixture, 1 edge case
+- [x] Create 1 text fixture, 1 article fixture, 1 YouTube fixture, 1 failure fixture, 1 edge case
 - [ ] Run end-to-end, tune scoring thresholds based on real outputs
-- [ ] Expand to full 20-fixture corpus
-- [ ] Document fixture creation process in `worker/fixtures/recipe-import/README.md`
+- [x] Expand to full 20-fixture corpus
+- [x] Document fixture creation process in `worker/fixtures/recipe-import/README.md`
 
 ### Phase 3: Polish
-- [ ] Add `--filter` and `--tag` flags
-- [ ] Add `--runs=N` flag for stability testing (reports min/max/median)
-- [ ] Add console summary table with color-coded pass/fail
-- [ ] Add `eval` script to `worker/package.json`
+- [x] Add `--filter` and `--tag` flags
+- [x] Add `--runs=N` flag for stability testing (reports min/max/median)
+- [x] Add console summary table with color-coded pass/fail
+- [x] Add `eval` script to `worker/package.json`
 
 ## Technical Considerations
 
