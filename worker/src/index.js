@@ -11,7 +11,7 @@
 import { isYouTubeUrl, fetchYouTubeSource, InsufficientContentError } from './sources/youtube.js'
 import { fetchArticleSource } from './sources/article.js'
 import { extractRecipes } from './extract/extractRecipes.js'
-import { MAX_SOURCE_TEXT_LENGTH } from './utils.js'
+import { isPrivateUrl, MAX_SOURCE_TEXT_LENGTH } from './utils.js'
 
 // --- CORS helpers ---
 
@@ -19,8 +19,11 @@ function corsHeaders(origin, allowedOrigin) {
   const isLocalDev = !allowedOrigin && origin && origin.startsWith('http://localhost:')
   const isAllowed = origin === allowedOrigin || isLocalDev
 
+  // Fail closed: no CORS headers unless origin is explicitly allowed or local dev
+  if (!isAllowed) return {}
+
   return {
-    'Access-Control-Allow-Origin': isAllowed ? (origin || '*') : (allowedOrigin || '*'),
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
@@ -35,38 +38,6 @@ function jsonResponse(data, status, origin, allowedOrigin) {
       ...corsHeaders(origin, allowedOrigin),
     },
   })
-}
-
-// --- SSRF protection ---
-
-function isPrivateUrl(urlStr) {
-  try {
-    const url = new URL(urlStr)
-    if (url.protocol !== 'https:') return true
-    const hostname = url.hostname.toLowerCase()
-    // Strip brackets from IPv6 literals
-    const bare = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname
-    if (bare === 'localhost' || bare === '127.0.0.1' || bare === '::1' || bare === '::') return true
-    if (bare.endsWith('.internal') || bare.endsWith('.local')) return true
-    if (bare === 'metadata.google.internal' || bare === '169.254.169.254') return true
-    // IPv6 private ranges: ULA (fc00::/7), link-local (fe80::/10), IPv4-mapped (::ffff:...)
-    if (bare.startsWith('fc') || bare.startsWith('fd')) return true
-    if (bare.startsWith('fe80')) return true
-    if (bare.startsWith('::ffff:')) return true
-    // IPv4 private ranges
-    const parts = bare.split('.')
-    if (parts.length === 4 && parts.every(p => /^\d+$/.test(p))) {
-      const [a, b] = parts.map(Number)
-      if (a === 10) return true
-      if (a === 172 && b >= 16 && b <= 31) return true
-      if (a === 192 && b === 168) return true
-      if (a === 127) return true
-      if (a === 0) return true
-    }
-    return false
-  } catch {
-    return true
-  }
 }
 
 // --- Main handler ---

@@ -8,7 +8,8 @@ import {
   extractJsonLdTexts,
   extractArticleText,
   normalizeWhitespace,
-  checkResponseSize,
+  isPrivateUrl,
+  readBoundedBody,
   USER_AGENT,
   FETCH_TIMEOUT_MS,
   MAX_SOURCE_TEXT_LENGTH,
@@ -37,11 +38,12 @@ function buildArticleSourceText(url, rawHtml) {
 export async function fetchArticleSource(url) {
   const response = await fetch(url, {
     headers: { 'User-Agent': USER_AGENT },
-    redirect: 'error',
+    redirect: 'follow',
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error(`URL fetch failed: ${response.status}`)
-  checkResponseSize(response)
-  const rawHtml = await response.text()
+  // Validate final URL after redirects to prevent SSRF via redirect chain
+  if (isPrivateUrl(response.url)) throw new Error('Redirected to private URL')
+  const rawHtml = await readBoundedBody(response)
   return { text: buildArticleSourceText(url, rawHtml), sourceType: 'article' }
 }

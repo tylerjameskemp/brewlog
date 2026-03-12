@@ -145,7 +145,8 @@ export function scoreFixture(actual, fixture) {
     }
   }
 
-  // Match actual recipes to expected by position
+  // Best-fit recipe matching: for each expected recipe, find the actual recipe
+  // that scores highest, to avoid order-sensitivity in multi-recipe fixtures
   const recipeDimensions = {
     coreParameters: [],
     stepsQuality: [],
@@ -154,8 +155,23 @@ export function scoreFixture(actual, fixture) {
     metadata: [],
   }
 
-  for (let i = 0; i < expected.recipes.length; i++) {
-    const recipeScores = scoreRecipe(actualRecipes[i], expected.recipes[i])
+  const usedActualIndices = new Set()
+  for (const expectedRecipe of expected.recipes) {
+    let bestIndex = -1
+    let bestScore = -1
+    for (let j = 0; j < actualRecipes.length; j++) {
+      if (usedActualIndices.has(j)) continue
+      const candidate = scoreRecipe(actualRecipes[j], expectedRecipe)
+      const avg = Object.values(candidate).filter(v => v !== null)
+      const score = avg.length > 0 ? avg.reduce((a, b) => a + b, 0) / avg.length : 0
+      if (score > bestScore) {
+        bestScore = score
+        bestIndex = j
+      }
+    }
+    const matched = bestIndex >= 0 ? actualRecipes[bestIndex] : undefined
+    if (bestIndex >= 0) usedActualIndices.add(bestIndex)
+    const recipeScores = scoreRecipe(matched, expectedRecipe)
     for (const [key, value] of Object.entries(recipeScores)) {
       if (value !== null) recipeDimensions[key].push(value)
     }
