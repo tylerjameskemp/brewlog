@@ -114,11 +114,11 @@ OTHER RULES:
  *
  * @param {string} sourceText - Cleaned source text (max 12KB)
  * @param {string} sourceType - 'text' | 'article' | 'youtube'
- * @param {{ apiKey: string, grinderName?: string }} options
+ * @param {{ apiKey: string, grinderName?: string, temperature?: number }} options
  * @returns {Promise<{ recipes: Array }>} - Only meaningful recipes
  * @throws {Error} On timeout, API error, or missing tool_use result
  */
-export async function extractRecipes(sourceText, sourceType, { apiKey, grinderName = '' }) {
+export async function extractRecipes(sourceText, sourceType, { apiKey, grinderName = '', temperature }) {
   let userContent = `<source_type>${sourceType}</source_type>\n<user_recipe_text>\n${sourceText}\n</user_recipe_text>`
   if (grinderName) {
     userContent += `\n\n<user_grinder>${grinderName}</user_grinder>`
@@ -134,6 +134,7 @@ export async function extractRecipes(sourceText, sourceType, { apiKey, grinderNa
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
+      ...(temperature !== undefined && { temperature }),
       system: SYSTEM_PROMPT,
       messages: [
         {
