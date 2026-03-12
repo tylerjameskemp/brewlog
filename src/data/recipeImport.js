@@ -39,10 +39,10 @@ export function mapExtractionToRecipe(extracted) {
   }
 
   return {
-    name: extracted.name || `Imported ${getMethodName(extracted.method || 'v60')}`,
-    method: extracted.method || 'v60',
-    coffeeGrams: extracted.coffeeGrams ?? 15,
-    waterGrams: extracted.waterGrams ?? 250,
+    name: extracted.name?.trim() || (extracted.method ? `Imported ${getMethodName(extracted.method)}` : 'Imported Recipe'),
+    method: extracted.method || '',
+    coffeeGrams: extracted.coffeeGrams ?? null,
+    waterGrams: extracted.waterGrams ?? null,
     grindSetting: extracted.grindDescription || '',
     waterTemp: extracted.waterTemp || '',
     targetTime: normalizeTargetTime(extracted.targetTime),
@@ -87,6 +87,7 @@ export async function extractRecipes(text, { signal, grinderName } = {}) {
   })
 
   if (!response.ok) {
+    const errorBody = await response.json().catch(() => null)
     const errorMessages = {
       401: 'Authentication failed with recipe service.',
       422: 'No recipe found in the pasted content. Try pasting the recipe text directly.',
@@ -94,7 +95,7 @@ export async function extractRecipes(text, { signal, grinderName } = {}) {
       502: 'Recipe extraction failed. Try pasting the text directly.',
       504: 'Extraction timed out. Try pasting shorter text.',
     }
-    throw new Error(errorMessages[response.status] || `Recipe extraction failed (${response.status})`)
+    throw new Error(errorBody?.error || errorMessages[response.status] || `Recipe extraction failed (${response.status})`)
   }
 
   const data = await response.json()

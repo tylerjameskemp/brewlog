@@ -123,6 +123,16 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
     setReviewRecipe(prev => ({ ...prev, [field]: value }))
   }
 
+  const missingRequiredFields = reviewRecipe
+    ? [
+        !reviewRecipe.name?.trim() ? 'name' : null,
+        !reviewRecipe.method ? 'method' : null,
+        !(reviewRecipe.coffeeGrams > 0) ? 'coffee dose' : null,
+        !(reviewRecipe.waterGrams > 0) ? 'water amount' : null,
+      ].filter(Boolean)
+    : []
+  const canSaveRecipe = missingRequiredFields.length === 0
+
   // --- PASTE PHASE ---
   if (phase === 'paste') {
     return (
@@ -191,7 +201,7 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
   if (phase === 'review' && reviewRecipe) {
     const grinder = GRINDERS.find(g => g.id === reviewRecipe.grinder) || null
     const grindSuggestion = grinderId ? getGrindSuggestion(grinderId, reviewRecipe.qualitativeGrind) : null
-    const methodMismatch = equipment?.brewMethod && reviewRecipe.method !== equipment.brewMethod
+    const methodMismatch = reviewRecipe.method && equipment?.brewMethod && reviewRecipe.method !== equipment.brewMethod
 
     return (
       <Modal title="Review Recipe" onClose={onClose}>
@@ -201,6 +211,12 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700
                             animate-fade-in motion-reduce:animate-none">
               Some fields may be inaccurate. Review carefully.
+            </div>
+          )}
+
+          {missingRequiredFields.length > 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+              Missing required fields: {missingRequiredFields.join(', ')}.
             </div>
           )}
 
@@ -234,11 +250,12 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
               className="w-full px-3 py-2 mt-1 rounded-xl border border-brew-200 text-base text-brew-800
                          focus:outline-none focus:ring-2 focus:ring-brew-400"
             >
+              <option value="">Select method</option>
               {BREW_METHODS.map(m => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
               {/* If extracted method isn't in BREW_METHODS, show it anyway */}
-              {!BREW_METHODS.find(m => m.id === reviewRecipe.method) && (
+              {reviewRecipe.method && !BREW_METHODS.find(m => m.id === reviewRecipe.method) && (
                 <option value={reviewRecipe.method}>{reviewRecipe.method}</option>
               )}
             </select>
@@ -251,7 +268,7 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
               <input
                 type="number"
                 value={reviewRecipe.coffeeGrams ?? ''}
-                onChange={e => updateReviewField('coffeeGrams', Number(e.target.value))}
+                onChange={e => updateReviewField('coffeeGrams', e.target.value === '' ? null : Number(e.target.value))}
                 min={1} max={100}
                 className="w-full px-3 py-2 mt-1 rounded-xl border border-brew-200 text-base text-brew-800
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
@@ -262,7 +279,7 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
               <input
                 type="number"
                 value={reviewRecipe.waterGrams ?? ''}
-                onChange={e => updateReviewField('waterGrams', Number(e.target.value))}
+                onChange={e => updateReviewField('waterGrams', e.target.value === '' ? null : Number(e.target.value))}
                 min={1} max={2000}
                 className="w-full px-3 py-2 mt-1 rounded-xl border border-brew-200 text-base text-brew-800
                            focus:outline-none focus:ring-2 focus:ring-brew-400"
@@ -343,9 +360,10 @@ export default function RecipeImportModal({ onClose, onImportComplete, equipment
           {/* Save */}
           <button
             onClick={handleSave}
+            disabled={!canSaveRecipe}
             className="w-full py-3 bg-crema-500 text-white rounded-xl font-medium
                        hover:bg-crema-600 active:scale-[0.98] transition-all min-h-[44px]
-                       shadow-md shadow-crema-500/20"
+                       shadow-md shadow-crema-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save as Template
           </button>
