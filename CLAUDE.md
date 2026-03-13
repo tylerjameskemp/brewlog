@@ -220,6 +220,15 @@ Full tracking: `todos/` (97 items, 81 complete). Plans: `docs/plans/`. Solutions
 ### Bottom CTA Gradient
 - Always: from-parchment-100 via-parchment-100 to-transparent
 
+## Brew Setup Screen Invariants
+- The brew button background is ALWAYS #C15F3C. No exceptions. No time-of-day variation.
+- The brew button z-index must be HIGHER than all atmospheric/glow layers.
+- Atmospheric layers (glow blobs, wash gradient) are cosmetic only — they must not interfere with touch targets or text readability.
+- The grain texture overlay must have pointer-events: none.
+- All text must remain readable against the time-shifted background at every hour.
+- The note card only appears if the most recent brew of this bean has nextBrewChanges content.
+- This is a COSMETIC change. Do not modify storage service, data model, or TypeScript interfaces.
+
 ## Future Plans (Do NOT implement unless asked)
 - AI brewing coach (Claude API integration)
 - PWA for mobile

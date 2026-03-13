@@ -126,6 +126,30 @@ export default {
           '80%': { opacity: '1', transform: 'scale(1)' },
           '100%': { opacity: '0.3', transform: 'scale(0.8)' },
         },
+        'blob-drift-1': {
+          '0%, 100%': { transform: 'translate(-50%,-50%) translate(0,0)' },
+          '35%': { transform: 'translate(-50%,-50%) translate(15px,-8px)' },
+          '70%': { transform: 'translate(-50%,-50%) translate(-10px,6px)' },
+        },
+        'blob-drift-2': {
+          '0%, 100%': { transform: 'translate(-50%,-50%) translate(0,0)' },
+          '40%': { transform: 'translate(-50%,-50%) translate(-12px,10px)' },
+          '75%': { transform: 'translate(-50%,-50%) translate(18px,-5px)' },
+        },
+        'blob-drift-3': {
+          '0%, 100%': { transform: 'translate(-50%,-50%) translate(0,0)' },
+          '30%': { transform: 'translate(-50%,-50%) translate(8px,12px)' },
+          '65%': { transform: 'translate(-50%,-50%) translate(-14px,-8px)' },
+        },
+        'blob-drift-4': {
+          '0%, 100%': { transform: 'translate(-50%,-50%) translate(0,0)' },
+          '45%': { transform: 'translate(-50%,-50%) translate(-6px,-10px)' },
+          '80%': { transform: 'translate(-50%,-50%) translate(10px,8px)' },
+        },
+        'note-fade-up': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 300ms ease-out',
@@ -140,6 +164,11 @@ export default {
         'slide-up-d3': 'slide-up 500ms ease-out 450ms both',
         'board-slide': 'board-slide 200ms ease-out',
         'countdown-tick': 'countdown-tick 1s ease-out forwards',
+        'blob-drift-1': 'blob-drift-1 22s ease-in-out infinite',
+        'blob-drift-2': 'blob-drift-2 28s ease-in-out infinite',
+        'blob-drift-3': 'blob-drift-3 18s ease-in-out infinite',
+        'blob-drift-4': 'blob-drift-4 32s ease-in-out infinite',
+        'note-fade-up': 'note-fade-up 500ms ease-out 600ms both',
       },
     },
   },

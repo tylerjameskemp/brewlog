@@ -18,6 +18,7 @@ import TimeInput from './TimeInput'
 import useTimer from '../hooks/useTimer'
 import useWakeLock from '../hooks/useWakeLock'
 import FeltBoard from './FeltBoard'
+import { getTimeOfDayTheme, GRAIN_SVG, ACCENT, ACCENT_BG_ACTIVE, SECTION_BORDER, GLOW_POSITIONS } from '../theme/timeOfDay'
 
 // ============================================================
 // BREW SCREEN — Guided brewing experience
@@ -104,6 +105,13 @@ function BeanPicker({ beans, previews, onSelect, onNavigate }) {
   )
 }
 
+// Chip selection style helper — shared across method, dripper, and filter chips
+const chipStyle = (active, tod) => ({
+  color: active ? ACCENT : tod.chipColor,
+  borderColor: active ? ACCENT : tod.chipBorder,
+  background: active ? ACCENT_BG_ACTIVE : 'transparent',
+})
+
 // ─── Phase 1: Recipe Assembly ───────────────────────────────
 function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWithoutTimer, onBack, beanRecipes, selectedRecipeId, onRecipeSelect, onRecipeRenamed, templates, importedTemplates, onOpenImport }) {
 
@@ -113,9 +121,8 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
   const [targetTimeInput, setTargetTimeInput] = useState(
     () => recipe.targetTimeRange || formatTime(recipe.targetTime)
   )
+  const [recipeExpanded, setRecipeExpanded] = useState(false)
 
-  const [stepsOpen, setStepsOpen] = useState(false)
-  const [equipmentOpen, setEquipmentOpen] = useState(false)
   const [showScaleBanner, setShowScaleBanner] = useState(false)
   const prevWaterRef = useRef(recipe.waterGrams)
   const scalingOldWaterRef = useRef(null)
@@ -133,7 +140,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         recipe.steps.some(s => s.waterTo != null)) {
       scalingOldWaterRef.current = oldWater
       setShowScaleBanner(true)
-      setStepsOpen(true) // auto-expand steps so user can see
+      setRecipeExpanded(true) // auto-expand recipe so user can see scaled steps
     }
     prevWaterRef.current = newWater
   }
@@ -156,7 +163,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
   const dismissScaleBanner = () => { setShowScaleBanner(false); scalingOldWaterRef.current = null }
 
   const grinder = GRINDERS.find(g => g.id === recipe.grinder) || GRINDERS[0]
-  const methodObj = BREW_METHODS.find(m => m.id === recipe.method) || BREW_METHODS[0]
 
   // Methods that use a separate dripper (pour-over devices)
   const methodHasDripper = recipe.method === 'v60' || recipe.method === 'chemex'
@@ -201,491 +207,573 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
     setRecipe(prev => ({ ...prev, steps: newSteps }))
   }
 
+  // Time-of-day theme — computed once per render
+  const tod = useMemo(() => getTimeOfDayTheme(), [])
+
+  // Brew count for this bean
+  const brewCount = useMemo(() => {
+    const normalized = normalizeName(bean.name)
+    return getBrews().filter(b => normalizeName(b.beanName) === normalized).length + 1
+  }, [bean.name])
+
+  // Show fixed CTA when inline button scrolls out of view
+  const inlineCtaRef = useRef(null)
+  const [showFixedCta, setShowFixedCta] = useState(false)
+  useEffect(() => {
+    const el = inlineCtaRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowFixedCta(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <div className="pb-28">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2 mb-1">
+    <div className="relative min-h-screen overflow-hidden">
+      {/* === Atmospheric Layer === */}
+      {/* Background color */}
+      <div className="absolute inset-0 z-0" style={{ backgroundColor: tod.bg }} />
+      {/* Top wash — radial gradient light from above */}
+      <div className="absolute top-0 left-0 right-0 h-[480px] pointer-events-none z-[1]"
+        style={{ background: tod.wash }} />
+      {/* Glow blobs */}
+      {GLOW_POSITIONS.map((pos, i) => {
+        const n = i + 1
+        return (
+          <div key={n}
+            className={`absolute rounded-full pointer-events-none z-[1] ${pos.animation} motion-reduce:animate-none`}
+            style={{ top: pos.top, left: pos.left, width: tod[`g${n}w`], height: tod[`g${n}h`],
+                     background: tod[`g${n}`], filter: `blur(${tod[`g${n}f`]}px)` }} />
+        )
+      })}
+      {/* Grain texture overlay */}
+      <div className="absolute inset-0 z-[10] pointer-events-none opacity-[0.04]"
+        style={{ backgroundImage: GRAIN_SVG, backgroundSize: '128px 128px' }} />
+
+      {/* === Content === */}
+      <div className="relative z-[3]">
+        {/* Back button */}
+        <div className="px-6 pt-4 pb-2">
           <button
             onClick={onBack}
-            className="text-brew-500 hover:text-brew-700 min-h-[44px] flex items-center gap-1 -ml-2 px-2"
+            className="flex items-center gap-1.5 min-h-[44px]"
+            style={{ color: tod.roast }}
             aria-label="Back to bean selection"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 4l-6 6 6 6" />
-            </svg>
-            <span className="text-sm font-medium">Back</span>
+            <span className="text-xl">&#8249;</span>
+            <span className="font-condensed text-[11px] font-medium uppercase tracking-[0.1em]">Beans</span>
           </button>
-          <div className="text-xs text-brew-400 uppercase tracking-wider">Recipe</div>
         </div>
-        <h1 className="text-2xl font-semibold text-brew-800">Prepare Your Brew</h1>
-      </div>
 
-      {/* Changes from last brew — top position for maximum visibility */}
-      {changes.length > 0 && (
-        <div className="px-4 mt-3">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="text-xs font-semibold text-brew-400 mb-2 flex items-center gap-1.5">
-              Notes from last brew
-            </div>
-            {changes.map((c, i) => (
-              <div key={i} className={`text-sm text-brew-800 leading-relaxed ${i < changes.length - 1 ? 'mb-1.5' : ''}`}>
-                {c}
-              </div>
-            ))}
+        {/* === ZONE 1: Hero === */}
+        <div className="text-center px-6 mb-2 relative z-[2]">
+          <h1 className="font-display text-[30px] leading-tight tracking-[-0.01em]"
+            style={{ color: tod.bean }}>{bean.name}</h1>
+          <p className="font-condensed text-sm tracking-[0.02em] mt-1"
+            style={{ color: tod.roast }}>
+            {bean.roaster ? `by ${bean.roaster}` : ''}
+          </p>
+          <div className="font-mono text-xs tracking-[0.02em] mt-1.5">
+            <span style={{ color: tod.metaValue }}>{getMethodName(recipe.method)}</span>
+            <span className="mx-1.5" style={{ color: tod.metaDivider }}>&middot;</span>
+            <span style={{ color: tod.metaValue }}>{recipe.coffeeGrams}g</span>
+            <span className="mx-0.5" style={{ color: tod.metaDivider }}>:</span>
+            <span style={{ color: tod.metaValue }}>{recipe.waterGrams}g</span>
+            <span className="mx-1.5" style={{ color: tod.metaDivider }}>&middot;</span>
+            <span style={{ color: tod.metaValue }}>{ratio(recipe.coffeeGrams, recipe.waterGrams)}</span>
+            <span className="mx-1.5" style={{ color: tod.metaDivider }}>&middot;</span>
+            <span style={{ color: tod.metaValue }}>{formatTime(recipe.targetTime || 0)}</span>
           </div>
         </div>
-      )}
 
-      {/* Recipe Indicator */}
-      {(beanRecipes.length > 0 || (templates && templates.length > 0) || (importedTemplates && importedTemplates.length > 0)) && (
-        <div className="px-4 mt-3">
+        {/* === ZONE 2: Action === */}
+        <div ref={inlineCtaRef} className="px-6 py-11 relative z-[6]">
           <button
-            onClick={() => setShowRecipePicker(!showRecipePicker)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                        border transition-all min-h-[44px]
-                        border-brew-300 bg-brew-50 text-brew-700 hover:border-brew-400 cursor-pointer"
+            onClick={() => {
+              commitTargetTimeInputs()
+              onStartBrew()
+            }}
+            className="w-full py-[18px] px-6 rounded-2xl font-display text-xl font-medium
+                       tracking-[0.02em] active:scale-[0.97] transition-transform min-h-[44px]"
+            style={{
+              backgroundColor: ACCENT,
+              color: '#FAF9F6',
+              boxShadow: '0 4px 20px rgba(193,95,60,0.22), 0 1px 4px rgba(193,95,60,0.12)',
+            }}
           >
-            <span>{beanRecipes.find(r => r.id === selectedRecipeId)?.name || 'Recipe'}</span>
-            <span className={`transition-transform ${showRecipePicker ? 'rotate-180' : ''}`}>{'\u25BE'}</span>
+            Brew this
           </button>
+          <button
+            onClick={() => {
+              const timeOverrides = commitTargetTimeInputs()
+              onLogWithoutTimer(timeOverrides || {})
+            }}
+            className="w-full py-3 mt-2 text-sm font-medium min-h-[44px]"
+            style={{ color: tod.link }}
+          >
+            Log without timer
+          </button>
+        </div>
 
-          {/* Recipe Picker Dropdown */}
-          {showRecipePicker && (
-            <div className="mt-2 bg-parchment-50 border border-brew-200 rounded-xl shadow-sm overflow-hidden
-                            animate-fade-in motion-reduce:animate-none">
-              {beanRecipes.map(r => (
-                <div
-                  key={r.id}
-                  className={`flex items-center border-b border-brew-100 last:border-b-0
-                              transition-colors ${
-                    r.id === selectedRecipeId
-                      ? 'bg-brew-50 text-brew-700'
-                      : 'text-brew-500 hover:bg-brew-50'
-                  }`}
+        {/* === ZONE 3: Context + Details === */}
+        <div className="relative z-[5] px-6 pb-8">
+
+          {/* Note to self card */}
+          {changes.length > 0 && (
+            <div
+              className="p-3.5 rounded-r-[10px] rounded-l-sm mb-6 animate-note-fade-up motion-reduce:animate-none"
+              style={{
+                background: tod.noteBg,
+                borderLeft: `3px solid ${tod.noteBorder}`,
+              }}
+            >
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="font-display italic text-[13px]" style={{ color: tod.noteTitle }}>
+                  Note to self
+                </span>
+                <span className="font-mono text-[10px] ml-auto" style={{ color: tod.noteDate }}>
+                  last brew
+                </span>
+              </div>
+              <div className="font-sans italic text-[13px] leading-relaxed" style={{ color: tod.noteBody }}>
+                {changes.map((c, i) => (
+                  <span key={i}>{i > 0 ? ' ' : ''}{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Below fold divider + recipe toggle */}
+          <div className="pt-5 mb-2.5" style={{ borderTop: `1px solid rgba(107,95,85,0.08)` }}>
+            <button
+              onClick={() => setRecipeExpanded(!recipeExpanded)}
+              className="w-full text-center font-sans text-xs min-h-[44px] transition-colors"
+              style={{ color: tod.link }}
+            >
+              {recipeExpanded ? 'Hide recipe \u2191' : 'View full recipe \u2193'}
+            </button>
+          </div>
+
+          {/* Expandable recipe card */}
+          <div
+            className="overflow-hidden transition-[max-height] duration-[400ms] ease-in-out"
+            style={{ maxHeight: recipeExpanded ? '9999px' : '0px' }}
+          >
+            <div className="rounded-xl overflow-hidden"
+              style={{ background: tod.cardBg, border: `1px solid ${tod.cardBorder}` }}>
+
+              {/* Recipe picker header */}
+              <div className="px-4 py-3 flex justify-between items-center">
+                <div>
+                  <button
+                    onClick={() => setShowRecipePicker(!showRecipePicker)}
+                    className="text-[13px] font-medium"
+                    style={{ color: tod.text }}
+                  >
+                    {beanRecipes.find(r => r.id === selectedRecipeId)?.name || 'Recipe'}
+                    {' '}
+                    <span className="font-mono text-[11px]" style={{ color: tod.metaValue }}>
+                      {selectedRecipeId ? `v${beanRecipes.find(r => r.id === selectedRecipeId)?.version || 1}.0` : ''}
+                    </span>
+                  </button>
+                </div>
+                <span
+                  className="font-condensed text-[10px] font-medium uppercase tracking-[0.06em] cursor-pointer"
+                  style={{ color: ACCENT }}
+                  onClick={() => setShowRecipePicker(!showRecipePicker)}
                 >
-                  {renamingRecipeId === r.id ? (
-                    <div className="flex-1 px-4 py-3">
-                      <input
-                        type="text"
-                        value={renameValue}
-                        onChange={e => setRenameValue(e.target.value.slice(0, 50))}
-                        onBlur={() => {
-                          const trimmed = renameValue.trim()
-                          if (trimmed) {
-                            onRecipeRenamed?.(r.id, trimmed)
-                          }
-                          setRenamingRecipeId(null)
-                        }}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') e.target.blur()
-                          if (e.key === 'Escape') {
-                            setRenameValue('')
-                            setRenamingRecipeId(null)
-                          }
-                        }}
-                        autoFocus
-                        maxLength={50}
-                        className="w-full px-2 py-1 rounded-xl border border-brew-300 text-base text-brew-800
-                                   focus:outline-none focus:ring-2 focus:ring-brew-400"
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => {
-                          onRecipeSelect(r)
-                          setShowRecipePicker(false)
-                        }}
-                        className={`flex-1 text-left px-4 py-3 text-sm min-h-[44px] ${
-                          r.id === selectedRecipeId ? 'font-medium' : ''
-                        }`}
-                      >
-                        <div className="font-medium">{r.name}</div>
-                        <div className="text-xs text-brew-400 mt-0.5">
-                          {r.coffeeGrams}g / {r.waterGrams}g · grind {r.grindSetting || '—'}
+                  {showRecipePicker ? 'Close' : 'Open'}
+                </span>
+              </div>
+
+              {/* Recipe Picker Dropdown */}
+              {showRecipePicker && (
+                <div className="border-t animate-fade-in motion-reduce:animate-none"
+                  style={{ borderColor: tod.cardBorder }}>
+                  {beanRecipes.map(r => (
+                    <div
+                      key={r.id}
+                      className={`flex items-center border-b transition-colors ${
+                        r.id === selectedRecipeId ? 'font-medium' : ''
+                      }`}
+                      style={{ borderColor: tod.cardBorder }}
+                    >
+                      {renamingRecipeId === r.id ? (
+                        <div className="flex-1 px-4 py-3">
+                          <input
+                            type="text"
+                            value={renameValue}
+                            onChange={e => setRenameValue(e.target.value.slice(0, 50))}
+                            onBlur={() => {
+                              const trimmed = renameValue.trim()
+                              if (trimmed) onRecipeRenamed?.(r.id, trimmed)
+                              setRenamingRecipeId(null)
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') e.target.blur()
+                              if (e.key === 'Escape') { setRenameValue(''); setRenamingRecipeId(null) }
+                            }}
+                            autoFocus
+                            maxLength={50}
+                            className="w-full px-2 py-1 rounded-xl border text-base focus:outline-none focus:ring-2 focus:ring-brew-400"
+                            style={{ borderColor: tod.chipBorder, color: tod.text }}
+                          />
                         </div>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setRenamingRecipeId(r.id)
-                          setRenameValue(r.name || '')
-                        }}
-                        className="px-3 py-3 text-brew-300 hover:text-brew-500 transition-colors flex-shrink-0"
-                        aria-label="Rename recipe"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => { onRecipeSelect(r); setShowRecipePicker(false) }}
+                            className="flex-1 text-left px-4 py-3 text-sm min-h-[44px]"
+                            style={{ color: r.id === selectedRecipeId ? tod.text : tod.muted }}
+                          >
+                            <div className="font-medium">{r.name}</div>
+                            <div className="text-xs mt-0.5" style={{ color: tod.muted }}>
+                              {r.coffeeGrams}g / {r.waterGrams}g · grind {r.grindSetting || '—'}
+                            </div>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setRenamingRecipeId(r.id); setRenameValue(r.name || '') }}
+                            className="px-3 py-3 flex-shrink-0 transition-colors"
+                            style={{ color: tod.muted }}
+                            aria-label="Rename recipe"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {/* Starter recipes (templates) */}
+                  {templates && templates.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 text-[10px] uppercase tracking-wider border-t"
+                        style={{ color: tod.muted, borderColor: tod.cardBorder }}>
+                        {beanRecipes.length > 0 ? 'or start fresh' : 'Starter recipes'}
+                      </div>
+                      {templates.map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => { onRecipeSelect({ ...t, _isStarter: true }); setShowRecipePicker(false) }}
+                          className="w-full text-left px-4 py-3 text-sm min-h-[44px]"
+                          style={{ color: tod.text }}
+                        >
+                          <div className="font-medium">{t.name}</div>
+                          <div className="text-xs mt-0.5" style={{ color: tod.muted }}>
+                            {t.steps?.length || 0} steps
+                          </div>
+                        </button>
+                      ))}
                     </>
                   )}
+                  {/* Imported template recipes */}
+                  {importedTemplates && importedTemplates.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 text-[10px] uppercase tracking-wider border-t"
+                        style={{ color: tod.muted, borderColor: tod.cardBorder }}>
+                        Imported recipes
+                      </div>
+                      {importedTemplates.map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => { onRecipeSelect({ ...t, _isImported: true }); setShowRecipePicker(false) }}
+                          className="w-full text-left px-4 py-3 text-sm min-h-[44px]"
+                          style={{ color: tod.text }}
+                        >
+                          <div className="font-medium">{t.name}</div>
+                          <div className="text-xs mt-0.5" style={{ color: tod.muted }}>
+                            {t.coffeeGrams}g / {t.waterGrams}g · {t.sourceName || 'imported'}
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  <button
+                    onClick={() => { onRecipeSelect(null); setShowRecipePicker(false) }}
+                    className="w-full text-left px-4 py-3 text-sm border-t min-h-[44px]"
+                    style={{ color: ACCENT, borderColor: tod.cardBorder }}
+                  >
+                    + New Recipe
+                  </button>
+                  {onOpenImport && (
+                    <button
+                      onClick={() => { setShowRecipePicker(false); onOpenImport() }}
+                      className="w-full text-left px-4 py-3 text-sm border-t min-h-[44px]"
+                      style={{ color: ACCENT, borderColor: tod.cardBorder }}
+                    >
+                      + Import Recipe
+                    </button>
+                  )}
                 </div>
-              ))}
-              {/* Starter recipes (templates) */}
-              {templates && templates.length > 0 && (
-                <>
-                  <div className="px-4 py-2 text-[10px] uppercase tracking-wider text-brew-300 border-t border-brew-100">
-                    {beanRecipes.length > 0 ? 'or start fresh' : 'Starter recipes'}
+              )}
+
+              {/* Recipe notes (read-only) */}
+              {selectedRecipeId && (() => {
+                const currentRecipe = beanRecipes.find(r => r.id === selectedRecipeId)
+                if (!currentRecipe?.notes) return null
+                return (
+                  <div className="px-4 py-2 border-t" style={{ borderColor: tod.cardBorder }}>
+                    <div className="text-xs italic leading-relaxed" style={{ color: tod.muted }}>
+                      {currentRecipe.notes}
+                    </div>
                   </div>
-                  {templates.map(t => (
+                )
+              })()}
+
+              {/* Equipment section */}
+              <div className="px-4 py-3 border-t" style={{ borderColor: SECTION_BORDER }}>
+                <div className="font-condensed text-[8px] font-medium uppercase tracking-[0.12em] mb-1.5"
+                  style={{ color: tod.muted }}>Equipment</div>
+                <div className="flex flex-wrap gap-1">
+                  {BREW_METHODS.map(m => (
                     <button
-                      key={t.id}
-                      onClick={() => {
-                        onRecipeSelect({ ...t, _isStarter: true })
-                        setShowRecipePicker(false)
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-brew-700 hover:bg-brew-50 min-h-[44px]"
+                      key={m.id}
+                      onClick={() => setRecipe(prev => ({ ...prev, method: m.id }))}
+                      className="text-[10px] px-2 py-1 rounded-[10px] border transition-all cursor-pointer min-h-[28px]"
+                      style={chipStyle(recipe.method === m.id, tod)}
                     >
-                      <div className="font-medium">{t.name}</div>
-                      <div className="text-xs text-brew-400 mt-0.5">
-                        {t.steps?.length || 0} steps
-                      </div>
+                      {m.icon} {m.name}
                     </button>
                   ))}
-                </>
-              )}
-              {/* Imported template recipes */}
-              {importedTemplates && importedTemplates.length > 0 && (
-                <>
-                  <div className="px-4 py-2 text-[10px] uppercase tracking-wider text-brew-300 border-t border-brew-100">
-                    Imported recipes
+                </div>
+                {methodHasDripper && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {DRIPPER_MATERIALS.map(mat => (
+                      <button
+                        key={mat}
+                        onClick={() => setRecipe(prev => ({ ...prev, dripper: mat }))}
+                        className="text-[10px] px-2 py-1 rounded-[10px] border transition-all capitalize cursor-pointer min-h-[28px]"
+                        style={chipStyle(recipe.dripper === mat, tod)}
+                      >
+                        {mat}
+                      </button>
+                    ))}
                   </div>
-                  {importedTemplates.map(t => (
+                )}
+                <div className="mt-2">
+                  <select
+                    value={recipe.grinder}
+                    onChange={e => handleGrinderChange(e.target.value)}
+                    className="w-full p-2.5 rounded-[10px] border text-[11px] font-medium
+                               focus:outline-none focus:ring-2 focus:ring-brew-400 text-base bg-transparent"
+                    style={{ color: tod.text, borderColor: tod.chipBorder }}
+                  >
+                    {GRINDERS.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {FILTER_TYPES.map(f => (
                     <button
-                      key={t.id}
-                      onClick={() => {
-                        onRecipeSelect({ ...t, _isImported: true })
-                        setShowRecipePicker(false)
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-brew-700 hover:bg-brew-50 min-h-[44px]"
+                      key={f}
+                      onClick={() => setRecipe(prev => ({ ...prev, filterType: f }))}
+                      className="text-[10px] px-2 py-1 rounded-[10px] border transition-all capitalize cursor-pointer min-h-[28px]"
+                      style={chipStyle(recipe.filterType === f, tod)}
                     >
-                      <div className="font-medium">{t.name}</div>
-                      <div className="text-xs text-brew-400 mt-0.5">
-                        {t.coffeeGrams}g / {t.waterGrams}g · {t.sourceName || 'imported'}
-                      </div>
+                      {f.replace('-', ' ')}
                     </button>
                   ))}
-                </>
+                </div>
+              </div>
+
+              {/* Parameters section */}
+              <div className="px-4 py-3 border-t" style={{ borderColor: SECTION_BORDER }}>
+                <div className="font-condensed text-[8px] font-medium uppercase tracking-[0.12em] mb-1.5"
+                  style={{ color: tod.muted }}>Parameters</div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                    <span className="text-[11px]" style={{ color: tod.muted }}>Coffee</span>
+                    <input
+                      type="number"
+                      value={recipe.coffeeGrams}
+                      onChange={e => updateField('coffeeGrams', Number(e.target.value))}
+                      min={1} max={100}
+                      className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                                 focus:outline-none text-base"
+                      style={{ color: tod.text }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                    <span className="text-[11px]" style={{ color: tod.muted }}>Water</span>
+                    <input
+                      type="number"
+                      value={recipe.waterGrams}
+                      onChange={e => updateField('waterGrams', Number(e.target.value))}
+                      onBlur={handleWaterBlur}
+                      min={1} max={2000}
+                      className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                                 focus:outline-none text-base"
+                      style={{ color: tod.text }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-[11px]" style={{ color: tod.muted }}>Ratio</span>
+                    <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>
+                      {ratio(recipe.coffeeGrams, recipe.waterGrams)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                    <span className="text-[11px]" style={{ color: tod.muted }}>Grind</span>
+                    {grinder.settingType === 'ode' ? (
+                      <select
+                        value={recipe.grindSetting}
+                        onChange={e => updateField('grindSetting', e.target.value)}
+                        className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                                   focus:outline-none text-base"
+                        style={{ color: tod.text }}
+                      >
+                        {FELLOW_ODE_POSITIONS.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={recipe.grindSetting}
+                        onChange={e => updateField('grindSetting', e.target.value)}
+                        maxLength={50}
+                        className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                                   focus:outline-none text-base"
+                        style={{ color: tod.text }}
+                      />
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                    <span className="text-[11px]" style={{ color: tod.muted }}>Temp</span>
+                    <input
+                      type="number"
+                      value={recipe.waterTemp}
+                      onChange={e => updateField('waterTemp', Number(e.target.value))}
+                      min={32} max={212}
+                      className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                                 focus:outline-none text-base"
+                      style={{ color: tod.text }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                    <span className="text-[11px]" style={{ color: tod.muted }}>Target</span>
+                    <input
+                      type="text"
+                      value={targetTimeInput}
+                      onChange={e => setTargetTimeInput(e.target.value)}
+                      onBlur={handleTargetTimeBlur}
+                      placeholder="3:00"
+                      maxLength={15}
+                      className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                                 focus:outline-none text-base"
+                      style={{ color: tod.text }}
+                    />
+                  </div>
+                </div>
+
+                {/* Water scaling banner */}
+                {showScaleBanner && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in motion-reduce:animate-none">
+                    <div className="text-sm text-blue-800">
+                      Water changed from {scalingOldWaterRef.current}g → {recipe.waterGrams}g. Scale pour steps to match?
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={applyWaterScaling}
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 min-h-[44px]">
+                        Scale
+                      </button>
+                      <button onClick={dismissScaleBanner}
+                        className="px-3 py-1.5 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 min-h-[44px]">
+                        Keep
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Steps section */}
+              <div className="px-4 py-3 border-t" style={{ borderColor: SECTION_BORDER }}>
+                <div className="font-condensed text-[8px] font-medium uppercase tracking-[0.12em] mb-1.5"
+                  style={{ color: tod.muted }}>Steps</div>
+                <StepEditor
+                  steps={recipe.steps}
+                  onChange={handleStepsChange}
+                  cascadeTime
+                />
+              </div>
+
+              {/* Other recipes section */}
+              {beanRecipes.length > 1 && (
+                <div className="px-4 py-3 border-t" style={{ borderColor: SECTION_BORDER }}>
+                  <div className="font-condensed text-[8px] font-medium uppercase tracking-[0.12em] mb-1.5"
+                    style={{ color: tod.muted }}>Other recipes</div>
+                  {beanRecipes.filter(r => r.id !== selectedRecipeId).map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => { onRecipeSelect(r); setShowRecipePicker(false) }}
+                      className="block w-full text-left text-[11px] py-1.5 cursor-pointer transition-colors"
+                      style={{ color: tod.muted }}
+                    >
+                      {r.name} · {r.coffeeGrams}g/{r.waterGrams}g
+                    </button>
+                  ))}
+                  <div className="text-[11px] py-1.5 cursor-pointer" style={{ color: ACCENT }}>
+                    <button onClick={() => { onRecipeSelect(null); setShowRecipePicker(false) }}>
+                      + New
+                    </button>
+                    {onOpenImport && (
+                      <>
+                        <span className="mx-1" style={{ color: tod.muted }}>&middot;</span>
+                        <button onClick={() => onOpenImport()}>Import</button>
+                      </>
+                    )}
+                  </div>
+                </div>
               )}
-              <button
-                onClick={() => {
-                  onRecipeSelect(null) // null = new recipe
-                  setShowRecipePicker(false)
-                }}
-                className="w-full text-left px-4 py-3 text-sm text-brew-500 hover:bg-brew-50
-                           border-t border-brew-100 min-h-[44px]"
-              >
-                + New Recipe
-              </button>
-              {onOpenImport && (
+
+              {/* Close button */}
+              <div className="text-center py-2 border-t" style={{ borderColor: 'rgba(107,95,85,0.04)' }}>
                 <button
-                  onClick={() => {
-                    setShowRecipePicker(false)
-                    onOpenImport()
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm text-brew-500 hover:bg-brew-50
-                             border-t border-brew-100 min-h-[44px]"
+                  onClick={() => setRecipeExpanded(false)}
+                  className="font-condensed text-[9px] font-medium uppercase tracking-[0.08em] px-3 py-1"
+                  style={{ color: tod.muted }}
                 >
-                  + Import Recipe
+                  Close
                 </button>
-              )}
+              </div>
             </div>
-          )}
+          </div>
+
+          {/* Brew count */}
+          <div className="text-center mt-6 pb-20">
+            <span className="font-condensed text-[11px] tracking-[0.04em]" style={{ color: tod.muted }}>
+              Brew <em className="font-mono not-italic text-[11px]" style={{ color: tod.metaValue }}>#{brewCount}</em> with this bean
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed bottom CTA — appears when inline button scrolls out of view */}
+      {showFixedCta && (
+        <div className="fixed bottom-0 left-0 right-0 z-[20] pointer-events-none pb-safe">
+          <div className="bg-gradient-to-t from-parchment-100 via-parchment-100 to-transparent pt-8 pb-4 px-6 pointer-events-auto">
+            <button
+              onClick={() => {
+                commitTargetTimeInputs()
+                onStartBrew()
+              }}
+              className="w-full py-[18px] px-6 rounded-2xl font-display text-xl font-medium
+                         tracking-[0.02em] active:scale-[0.97] transition-transform min-h-[44px]"
+              style={{
+                backgroundColor: ACCENT,
+                color: '#FAF9F6',
+                boxShadow: '0 4px 20px rgba(193,95,60,0.22), 0 1px 4px rgba(193,95,60,0.12)',
+              }}
+            >
+              Brew this
+            </button>
+          </div>
         </div>
       )}
-
-      {/* Recipe notes (read-only) */}
-      {selectedRecipeId && (() => {
-        const currentRecipe = beanRecipes.find(r => r.id === selectedRecipeId)
-        if (!currentRecipe?.notes) return null
-        return (
-          <div className="px-4 mt-2">
-            <div className="text-xs text-brew-400 italic leading-relaxed">
-              {currentRecipe.notes}
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* Bean + Brew Params — always editable, no card wrapper */}
-      <div className="px-4 mt-4">
-        <div className="bg-parchment-50 rounded-2xl border border-brew-100 shadow-sm p-5">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-semibold text-brew-800 leading-tight">{bean.name}</h2>
-              <p className="text-sm text-brew-400 mt-1">{bean.roaster}</p>
-            </div>
-            {bean.roastDate && (
-              <div className="text-xs text-brew-400 bg-brew-50 px-2.5 py-1.5 rounded-lg shrink-0">
-                Roasted {bean.roastDate}
-              </div>
-            )}
-          </div>
-
-          {/* Coffee / Water / Ratio */}
-          <div className="grid grid-cols-3 gap-3 mt-5">
-            <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Coffee</div>
-              <input
-                type="number"
-                value={recipe.coffeeGrams}
-                onChange={e => updateField('coffeeGrams', Number(e.target.value))}
-                min={1} max={100}
-                className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
-                           border-b border-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
-              />
-            </div>
-            <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Water</div>
-              <input
-                type="number"
-                value={recipe.waterGrams}
-                onChange={e => updateField('waterGrams', Number(e.target.value))}
-                onBlur={handleWaterBlur}
-                min={1} max={2000}
-                className="w-full text-center text-lg font-medium text-brew-800 bg-transparent
-                           border-b border-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
-              />
-            </div>
-            <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Ratio</div>
-              <div className="text-lg font-medium text-brew-800">{ratio(recipe.coffeeGrams, recipe.waterGrams)}</div>
-            </div>
-          </div>
-
-          {/* Water scaling banner */}
-          {showScaleBanner && (
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in motion-reduce:animate-none">
-              <div className="text-sm text-blue-800">
-                Water changed from {scalingOldWaterRef.current}g → {recipe.waterGrams}g. Scale pour steps to match?
-              </div>
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={applyWaterScaling}
-                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium
-                             hover:bg-blue-700 min-h-[44px]"
-                >
-                  Scale
-                </button>
-                <button
-                  onClick={dismissScaleBanner}
-                  className="px-3 py-1.5 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium
-                             hover:bg-blue-100 min-h-[44px]"
-                >
-                  Keep
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Grind / Temp */}
-          <div className="grid grid-cols-2 gap-3 mt-2">
-            <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Grind</div>
-              {grinder.settingType === 'ode' ? (
-                <select
-                  value={recipe.grindSetting}
-                  onChange={e => updateField('grindSetting', e.target.value)}
-                  className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
-                             border-b border-brew-300 focus:outline-none text-base"
-                >
-                  {FELLOW_ODE_POSITIONS.map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={recipe.grindSetting}
-                  onChange={e => updateField('grindSetting', e.target.value)}
-                  maxLength={50}
-                  className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
-                             border-b border-brew-300 focus:outline-none text-base"
-                />
-              )}
-            </div>
-            <div className="text-center p-3 bg-brew-50 rounded-xl">
-              <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Temp</div>
-              <input
-                type="number"
-                value={recipe.waterTemp}
-                onChange={e => updateField('waterTemp', Number(e.target.value))}
-                min={32} max={212}
-                className="w-full text-center text-sm font-medium text-brew-800 bg-transparent
-                           border-b border-brew-300 focus:outline-none text-base"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 text-center">
-            <div className="text-xs text-brew-400 uppercase tracking-wider mb-1">Target Time</div>
-            <input
-              type="text"
-              value={targetTimeInput}
-              onChange={e => setTargetTimeInput(e.target.value)}
-              onBlur={handleTargetTimeBlur}
-              placeholder="3:00 - 3:30"
-              maxLength={15}
-              className="w-32 mx-auto text-center text-lg font-medium text-brew-800 bg-transparent
-                         border-b border-brew-300 focus:outline-none focus:ring-2 focus:ring-brew-400 text-base block"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Pour Steps — collapsed by default */}
-      <div className="px-4 mt-4">
-        <button
-          onClick={() => setStepsOpen(!stepsOpen)}
-          className="w-full flex items-center justify-between py-2 min-h-[44px]"
-        >
-          <div className="text-xs text-brew-400 uppercase tracking-wider">Pour Steps</div>
-          {!stepsOpen && recipe.steps.length > 0 && (
-            <div className="text-xs text-brew-400">
-              {recipe.steps.length} steps{recipe.waterGrams ? ` · ${recipe.waterGrams}g` : ''}
-            </div>
-          )}
-          <span className={`text-brew-400 transition-transform text-xs ml-2 ${stepsOpen ? 'rotate-180' : ''}`}>
-            {'\u25BE'}
-          </span>
-        </button>
-        {stepsOpen && (
-          <div className="pb-2 animate-fade-in motion-reduce:animate-none">
-            <StepEditor
-              steps={recipe.steps}
-              onChange={handleStepsChange}
-              cascadeTime
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Equipment Section */}
-      <div className="px-4 mt-4">
-        <button
-          onClick={() => setEquipmentOpen(!equipmentOpen)}
-          className="w-full flex items-center justify-between py-2 min-h-[44px]"
-        >
-          <div className="text-xs text-brew-400 uppercase tracking-wider">Equipment</div>
-          {!equipmentOpen && (
-            <div className="text-xs text-brew-400">
-              {methodObj.name} · {grinder.name}{recipe.filterType ? ` · ${recipe.filterType.replace('-', ' ')}` : ''}
-            </div>
-          )}
-          <span className={`text-brew-400 transition-transform text-xs ml-2 ${equipmentOpen ? 'rotate-180' : ''}`}>
-            {'\u25BE'}
-          </span>
-        </button>
-
-        {equipmentOpen && (
-          <div className="space-y-4 pb-2 animate-fade-in motion-reduce:animate-none">
-            {/* Method */}
-            <div>
-              <div className="text-xs text-brew-400 mb-1.5">Method</div>
-              <div className="flex flex-wrap gap-2">
-                {BREW_METHODS.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setRecipe(prev => ({ ...prev, method: m.id }))}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all min-h-[44px]
-                      ${recipe.method === m.id
-                        ? 'border-brew-500 bg-brew-50 text-brew-700'
-                        : 'border-brew-200 text-brew-400 hover:border-brew-300'
-                      }`}
-                  >
-                    {m.icon} {m.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Dripper — only for pour-over methods */}
-            {methodHasDripper && (
-              <div>
-                <div className="text-xs text-brew-400 mb-1.5">Dripper</div>
-                <div className="flex flex-wrap gap-2">
-                  {DRIPPER_MATERIALS.map(mat => (
-                    <button
-                      key={mat}
-                      onClick={() => setRecipe(prev => ({ ...prev, dripper: mat }))}
-                      className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
-                        ${recipe.dripper === mat
-                          ? 'border-brew-500 bg-brew-50 text-brew-700'
-                          : 'border-brew-200 text-brew-400 hover:border-brew-300'
-                        }`}
-                    >
-                      {mat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Grinder */}
-            <div>
-              <div className="text-xs text-brew-400 mb-1.5">Grinder</div>
-              <select
-                value={recipe.grinder}
-                onChange={e => handleGrinderChange(e.target.value)}
-                className="w-full p-3 rounded-xl border border-brew-200 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-brew-400 text-base"
-              >
-                {GRINDERS.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filter Type */}
-            <div>
-              <div className="text-xs text-brew-400 mb-1.5">Filter</div>
-              <div className="flex flex-wrap gap-2">
-                {FILTER_TYPES.map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setRecipe(prev => ({ ...prev, filterType: f }))}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize min-h-[44px]
-                      ${recipe.filterType === f
-                        ? 'border-brew-500 bg-brew-50 text-brew-700'
-                        : 'border-brew-200 text-brew-400 hover:border-brew-300'
-                      }`}
-                  >
-                    {f.replace('-', ' ')}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Brew This CTA */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 py-4 pb-safe
-                      bg-gradient-to-t from-parchment-100 via-parchment-100 to-transparent pointer-events-none z-10">
-        <button
-          onClick={() => {
-            commitTargetTimeInputs()
-            onStartBrew()
-          }}
-          className="w-full py-4 bg-crema-500 text-white rounded-xl text-base font-semibold
-                     shadow-lg shadow-crema-500/20 hover:bg-crema-600 active:scale-[0.98] transition-all
-                     pointer-events-auto min-h-[44px]"
-        >
-          Brew This
-        </button>
-        <button
-          onClick={() => {
-            const timeOverrides = commitTargetTimeInputs()
-            onLogWithoutTimer(timeOverrides || {})
-          }}
-          className="w-full py-3 mt-2 text-brew-500 text-sm font-medium
-                     hover:text-brew-700 pointer-events-auto min-h-[44px]"
-        >
-          Log without timer
-        </button>
-      </div>
     </div>
   )
 }
