@@ -19,8 +19,8 @@
         "targetTime": "3:15",
         "steps": [
           { "name": "Bloom", "waterTo": 50, "duration": 40 },
-          { "name": "Pour", "waterTo": 180, "duration": 0 },
-          { "name": "Pour", "waterTo": 300, "duration": 0 }
+          { "name": "Pour", "waterTo": 180, "duration": 78 },
+          { "name": "Pour", "waterTo": 300, "duration": 77 }
         ],
         "sourceName": null,
         "confidence": null

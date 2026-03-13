@@ -76,7 +76,9 @@ STEP RULES (critical):
 - Step "name" must be SHORT (1-3 words): "Bloom", "First pour", "Second pour", "Swirl", "Drawdown", "Stir"
 - Step "note" holds the full technique detail: "pour in concentric circles", "gentle stir with spoon"
 - NEVER put technique instructions in the "name" field. Name is a label, note is the description.
-- Every step must have a "duration" in seconds. If the recipe explicitly states timing, use it. If timing is NOT stated or unclear, set duration to 0 (do NOT invent or estimate timing).
+- Every step must have a "duration" in seconds. If the recipe explicitly states timing, use it.
+- If individual step timing is NOT stated but a total target brew time IS given, distribute the remaining time (after subtracting explicitly timed steps like bloom) evenly across the untimed steps. This is an estimate — it's better than 0.
+- If NEITHER individual timing NOR a total target time is available, set duration to 0.
 - Do NOT include prep steps (grinding, rinsing filter, heating water, preheating dripper). Start with the first step that involves coffee grounds + water (usually Bloom).
 
 WATER RULES:
@@ -87,7 +89,7 @@ WATER RULES:
 TIMING RULES:
 - All durations in seconds
 - Each step's timing should be sequential when durations are known
-- If a step has no clear duration, set duration to 0 (do NOT estimate or invent timing)
+- If a step has no clear duration and no target time exists to distribute from, set duration to 0
 - targetTime must be a MM:SS string (e.g., "3:30") or a range like "3:00-3:30". NEVER return seconds-only numbers.
 
 EQUIPMENT/METHOD RULES:
@@ -97,8 +99,9 @@ EQUIPMENT/METHOD RULES:
 
 GRINDER CONTEXT:
 - The user may provide their grinder name via the "grinderName" field in the request.
-- If the recipe text lists grind settings for multiple grinders by name, match the user's grinder and use that specific setting as grindDescription.
-- If no grinder context is provided or no match is found, use the general grind description from the recipe.
+- If the recipe text lists grind settings for multiple grinders by name, match the user's grinder and use that specific setting as grindDescription (e.g., "4.1 - 5.1" for an Ode grinder).
+- If no grinder context is provided or no match is found, use the QUALITATIVE grind description (e.g., "medium-coarse") — NOT a specific grinder's numeric setting, and NOT full sentences from prep instructions.
+- grindDescription should be concise: a grinder setting number/range or a short grind size description. Never include words like "setting" or full instructions like "grind coffee at...".
 
 OTHER RULES:
 - Extract ALL distinct recipes (different methods/parameters = different recipes)

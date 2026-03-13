@@ -1,6 +1,6 @@
 {
   "id": "text-zero-duration-steps",
-  "description": "Recipe with unstated timing on some steps — should produce duration: 0",
+  "description": "Recipe with unstated step timing but known target time — should distribute remaining time evenly",
   "sourceType": "text",
   "tags": ["text", "single-recipe", "edge-case"],
   "grinderName": "",
@@ -19,9 +19,9 @@
         "targetTime": "4:00",
         "steps": [
           { "name": "Bloom", "waterTo": 60, "duration": 45 },
-          { "name": "First pour", "waterTo": 300, "duration": 0 },
-          { "name": null, "waterTo": null, "duration": 0 },
-          { "name": null, "waterTo": 500, "duration": 0 }
+          { "name": "First pour", "waterTo": 300, "duration": 65 },
+          { "name": null, "waterTo": null, "duration": 65 },
+          { "name": null, "waterTo": 500, "duration": 65 }
         ],
         "sourceName": null,
         "confidence": null
