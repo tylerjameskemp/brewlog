@@ -10,7 +10,7 @@ import {
   RECIPE_FIELDS, recipeEntityToFormState, formStateToRecipeFields,
   forkRecipe,
 } from '../data/storage'
-import { getMethodName } from '../data/defaults'
+import { getMethodName, getGrinderName } from '../data/defaults'
 import { BREW_METHODS, GRINDERS, FELLOW_ODE_POSITIONS, DRIPPER_MATERIALS, FILTER_TYPES, BODY_OPTIONS, RATING_SCALE, BREW_ISSUES } from '../data/defaults'
 import FlavorPicker from './FlavorPicker'
 import StepEditor from './StepEditor'
@@ -140,7 +140,6 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
         recipe.steps.some(s => s.waterTo != null)) {
       scalingOldWaterRef.current = oldWater
       setShowScaleBanner(true)
-      setRecipeExpanded(true) // auto-expand recipe so user can see scaled steps
     }
     prevWaterRef.current = newWater
   }
@@ -216,6 +215,12 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
     return getBrews().filter(b => normalizeName(b.beanName) === normalized).length + 1
   }, [bean.name])
 
+  // Last brew for this recipe — used for card subtitle
+  const lastRecipeBrew = useMemo(() => {
+    if (!selectedRecipeId) return null
+    return getBrews().find(b => b.recipeId === selectedRecipeId) || null
+  }, [selectedRecipeId])
+
   // Show fixed CTA when inline button scrolls out of view
   const inlineCtaRef = useRef(null)
   const [showFixedCta, setShowFixedCta] = useState(false)
@@ -231,7 +236,7 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
   }, [])
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="-mx-4 relative min-h-screen overflow-hidden">
       {/* === Atmospheric Layer === */}
       {/* Background color */}
       <div className="absolute inset-0 z-0" style={{ backgroundColor: tod.bg }} />
@@ -288,6 +293,114 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
           </div>
         </div>
 
+        {/* === ZONE 1.5: Editable Parameters === */}
+        <div className="px-6 mt-4 relative z-[3]">
+          <div className="grid grid-cols-3 gap-1.5">
+            <div className="flex justify-between items-center py-1">
+              <span className="text-[11px]" style={{ color: tod.muted }}>Coffee</span>
+              <input
+                type="number"
+                value={recipe.coffeeGrams}
+                onChange={e => updateField('coffeeGrams', Number(e.target.value))}
+                min={1} max={100}
+                className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                           focus:outline-none text-base"
+                style={{ color: tod.text }}
+              />
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-[11px]" style={{ color: tod.muted }}>Water</span>
+              <input
+                type="number"
+                value={recipe.waterGrams}
+                onChange={e => updateField('waterGrams', Number(e.target.value))}
+                onBlur={handleWaterBlur}
+                min={1} max={2000}
+                className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                           focus:outline-none text-base"
+                style={{ color: tod.text }}
+              />
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-[11px]" style={{ color: tod.muted }}>Ratio</span>
+              <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>
+                {ratio(recipe.coffeeGrams, recipe.waterGrams)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-[11px]" style={{ color: tod.muted }}>Grind</span>
+              {grinder.settingType === 'ode' ? (
+                <select
+                  value={recipe.grindSetting}
+                  onChange={e => updateField('grindSetting', e.target.value)}
+                  className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                             focus:outline-none text-base"
+                  style={{ color: tod.text }}
+                >
+                  {FELLOW_ODE_POSITIONS.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={recipe.grindSetting}
+                  onChange={e => updateField('grindSetting', e.target.value)}
+                  maxLength={50}
+                  className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                             focus:outline-none text-base"
+                  style={{ color: tod.text }}
+                />
+              )}
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-[11px]" style={{ color: tod.muted }}>Temp</span>
+              <input
+                type="number"
+                value={recipe.waterTemp}
+                onChange={e => updateField('waterTemp', Number(e.target.value))}
+                min={32} max={212}
+                className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                           focus:outline-none text-base"
+                style={{ color: tod.text }}
+              />
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-[11px]" style={{ color: tod.muted }}>Target</span>
+              <input
+                type="text"
+                value={targetTimeInput}
+                onChange={e => setTargetTimeInput(e.target.value)}
+                onBlur={handleTargetTimeBlur}
+                placeholder="3:00"
+                maxLength={15}
+                className="w-12 text-right font-mono text-xs font-medium bg-transparent
+                           focus:outline-none text-base"
+                style={{ color: tod.text }}
+              />
+            </div>
+          </div>
+
+          {/* Water scaling banner */}
+          {showScaleBanner && (
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in motion-reduce:animate-none">
+              <div className="text-sm text-blue-800">
+                Water changed from {scalingOldWaterRef.current}g → {recipe.waterGrams}g. Scale pour steps to match?
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button onClick={applyWaterScaling}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 min-h-[44px]">
+                  Scale
+                </button>
+                <button onClick={dismissScaleBanner}
+                  className="px-3 py-1.5 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 min-h-[44px]">
+                  Keep
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* === ZONE 2: Action === */}
         <div ref={inlineCtaRef} className="px-6 py-11 relative z-[6]">
           <button
@@ -338,9 +451,9 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                 </span>
               </div>
               <div className="font-sans italic text-[13px] leading-relaxed" style={{ color: tod.noteBody }}>
-                {changes.map((c, i) => (
+                {"\u201C"}{changes.map((c, i) => (
                   <span key={i}>{i > 0 ? ' ' : ''}{c}</span>
-                ))}
+                ))}{"\u201D"}
               </div>
             </div>
           )}
@@ -378,6 +491,12 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                       {selectedRecipeId ? `v${beanRecipes.find(r => r.id === selectedRecipeId)?.version || 1}.0` : ''}
                     </span>
                   </button>
+                  {lastRecipeBrew && (
+                    <div className="text-[10px] mt-0.5" style={{ color: tod.muted }}>
+                      Last brewed {new Date(lastRecipeBrew.brewedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {lastRecipeBrew.rating != null && ` · rated ${RATING_SCALE.find(r => r.value === lastRecipeBrew.rating)?.label || 'unrated'}`}
+                    </div>
+                  )}
                 </div>
                 <span
                   className="font-condensed text-[10px] font-medium uppercase tracking-[0.06em] cursor-pointer"
@@ -580,125 +699,75 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
                 </div>
               </div>
 
-              {/* Parameters section */}
+              {/* Parameters section — read-only */}
               <div className="px-4 py-3 border-t" style={{ borderColor: SECTION_BORDER }}>
                 <div className="font-condensed text-[8px] font-medium uppercase tracking-[0.12em] mb-1.5"
                   style={{ color: tod.muted }}>Parameters</div>
                 <div className="grid grid-cols-3 gap-1.5">
-                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                  <div className="flex justify-between items-center py-1">
                     <span className="text-[11px]" style={{ color: tod.muted }}>Coffee</span>
-                    <input
-                      type="number"
-                      value={recipe.coffeeGrams}
-                      onChange={e => updateField('coffeeGrams', Number(e.target.value))}
-                      min={1} max={100}
-                      className="w-12 text-right font-mono text-xs font-medium bg-transparent
-                                 focus:outline-none text-base"
-                      style={{ color: tod.text }}
-                    />
+                    <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>{recipe.coffeeGrams}g</span>
                   </div>
-                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                  <div className="flex justify-between items-center py-1">
                     <span className="text-[11px]" style={{ color: tod.muted }}>Water</span>
-                    <input
-                      type="number"
-                      value={recipe.waterGrams}
-                      onChange={e => updateField('waterGrams', Number(e.target.value))}
-                      onBlur={handleWaterBlur}
-                      min={1} max={2000}
-                      className="w-12 text-right font-mono text-xs font-medium bg-transparent
-                                 focus:outline-none text-base"
-                      style={{ color: tod.text }}
-                    />
+                    <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>{recipe.waterGrams}g</span>
                   </div>
                   <div className="flex justify-between items-center py-1">
                     <span className="text-[11px]" style={{ color: tod.muted }}>Ratio</span>
-                    <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>
-                      {ratio(recipe.coffeeGrams, recipe.waterGrams)}
-                    </span>
+                    <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>{ratio(recipe.coffeeGrams, recipe.waterGrams)}</span>
                   </div>
-                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                  <div className="flex justify-between items-center py-1">
                     <span className="text-[11px]" style={{ color: tod.muted }}>Grind</span>
-                    {grinder.settingType === 'ode' ? (
-                      <select
-                        value={recipe.grindSetting}
-                        onChange={e => updateField('grindSetting', e.target.value)}
-                        className="w-12 text-right font-mono text-xs font-medium bg-transparent
-                                   focus:outline-none text-base"
-                        style={{ color: tod.text }}
-                      >
-                        {FELLOW_ODE_POSITIONS.map(p => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        value={recipe.grindSetting}
-                        onChange={e => updateField('grindSetting', e.target.value)}
-                        maxLength={50}
-                        className="w-12 text-right font-mono text-xs font-medium bg-transparent
-                                   focus:outline-none text-base"
-                        style={{ color: tod.text }}
-                      />
-                    )}
+                    <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>{recipe.grindSetting || '—'}</span>
                   </div>
-                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                  <div className="flex justify-between items-center py-1">
                     <span className="text-[11px]" style={{ color: tod.muted }}>Temp</span>
-                    <input
-                      type="number"
-                      value={recipe.waterTemp}
-                      onChange={e => updateField('waterTemp', Number(e.target.value))}
-                      min={32} max={212}
-                      className="w-12 text-right font-mono text-xs font-medium bg-transparent
-                                 focus:outline-none text-base"
-                      style={{ color: tod.text }}
-                    />
+                    <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>{recipe.waterTemp}°F</span>
                   </div>
-                  <div className="flex justify-between items-center py-1 cursor-pointer">
+                  <div className="flex justify-between items-center py-1">
                     <span className="text-[11px]" style={{ color: tod.muted }}>Target</span>
-                    <input
-                      type="text"
-                      value={targetTimeInput}
-                      onChange={e => setTargetTimeInput(e.target.value)}
-                      onBlur={handleTargetTimeBlur}
-                      placeholder="3:00"
-                      maxLength={15}
-                      className="w-12 text-right font-mono text-xs font-medium bg-transparent
-                                 focus:outline-none text-base"
-                      style={{ color: tod.text }}
-                    />
+                    <span className="font-mono text-xs font-medium" style={{ color: tod.text }}>{formatTime(recipe.targetTime || 0)}</span>
                   </div>
                 </div>
-
-                {/* Water scaling banner */}
-                {showScaleBanner && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in motion-reduce:animate-none">
-                    <div className="text-sm text-blue-800">
-                      Water changed from {scalingOldWaterRef.current}g → {recipe.waterGrams}g. Scale pour steps to match?
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <button onClick={applyWaterScaling}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 min-h-[44px]">
-                        Scale
-                      </button>
-                      <button onClick={dismissScaleBanner}
-                        className="px-3 py-1.5 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 min-h-[44px]">
-                        Keep
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Steps section */}
+              {/* Steps section — read-only */}
               <div className="px-4 py-3 border-t" style={{ borderColor: SECTION_BORDER }}>
                 <div className="font-condensed text-[8px] font-medium uppercase tracking-[0.12em] mb-1.5"
                   style={{ color: tod.muted }}>Steps</div>
-                <StepEditor
-                  steps={recipe.steps}
-                  onChange={handleStepsChange}
-                  cascadeTime
-                />
+                {recipe.steps.length === 0 ? (
+                  <div className="text-[11px] italic py-2" style={{ color: tod.muted }}>No steps defined</div>
+                ) : recipe.steps.map((step, i) => {
+                  const n = step.name?.toLowerCase() || ''
+                  const type = /rinse|measure|grind|heat|preheat/.test(n) ? 'prep'
+                    : /pour|bloom|circle/.test(n) ? 'pour'
+                    : /wait|degas|swirl|drain|draw/.test(n) ? 'wait'
+                    : step.waterTo > 0 ? 'pour' : null
+                  return (
+                    <div key={step.id} className="flex gap-2 py-1.5">
+                      <span className="font-mono text-[9px] min-w-[14px] pt-0.5"
+                        style={{ color: tod.muted }}>{i + 1}</span>
+                      <div>
+                        <div className="text-[11px] leading-snug" style={{ color: tod.text }}>
+                          {step.name}
+                        </div>
+                        {step.duration > 0 && (
+                          <div className="font-mono text-[9px] mt-0.5" style={{ color: tod.metaValue }}>
+                            {formatTime(step.time)}–{formatTime(step.time + step.duration)}
+                          </div>
+                        )}
+                        {type && (
+                          <span className="inline-block text-[7px] font-condensed uppercase tracking-[0.06em] px-1.5 py-0.5 rounded-sm mt-0.5"
+                            style={type === 'prep' ? { background: '#E8ECDF', color: '#7D8966' }
+                              : type === 'pour' ? { background: '#F5E6DE', color: ACCENT }
+                              : { background: 'rgba(210,180,140,0.2)', color: '#6F4E37' }}>
+                            {type}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Other recipes section */}
@@ -755,7 +824,8 @@ function RecipeAssembly({ bean, recipe, setRecipe, changes, onStartBrew, onLogWi
       {/* Fixed bottom CTA — appears when inline button scrolls out of view */}
       {showFixedCta && (
         <div className="fixed bottom-0 left-0 right-0 z-[20] pointer-events-none pb-safe">
-          <div className="bg-gradient-to-t from-parchment-100 via-parchment-100 to-transparent pt-8 pb-4 px-6 pointer-events-auto">
+          <div className="pt-8 pb-4 px-6 pointer-events-auto"
+            style={{ background: `linear-gradient(to top, ${tod.bg}, ${tod.bg} 60%, transparent)` }}>
             <button
               onClick={() => {
                 commitTargetTimeInputs()
