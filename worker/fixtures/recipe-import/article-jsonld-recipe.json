@@ -1,0 +1,29 @@
+{
+  "id": "article-jsonld-recipe",
+  "description": "Page with structured JSON-LD recipe data in structured text",
+  "sourceType": "article",
+  "tags": ["article", "single-recipe", "jsonld"],
+  "grinderName": "",
+  "sourceText": "Source title:\nOrigami Dripper Recipe — Pour Over Perfection\n\nStructured page text:\nOrigami Dripper Recipe\nA light, clean, and sweet cup using the Origami dripper with a conical filter.\n\nUse 13g of fine-medium ground coffee with 210g of water heated to 95°C. Begin with a 40g bloom for 35 seconds, then pour in a single continuous pour to 210g over about 1 minute. Let the drawdown complete. Total brew time: 2:15 to 2:45.\n\nPage text:\nOrigami Dripper Recipe — Pour Over Perfection\nby Kurasu Kyoto\n\nThe Origami dripper is a versatile brewer that works with both conical and flat-bottom filters. Here we use a cone filter for a cleaner cup.\n\nRecipe:\n- 13g coffee, fine-medium grind\n- 210g water at 95°C\n- Origami dripper with paper cone filter\n\n1. Bloom: Pour 40g, wait 35 seconds\n2. Main pour: Single continuous pour to 210g, about 1 minute\n3. Drawdown\n\nTotal time: 2:15-2:45\n\nSource URL:\nhttps://kurasu.kyoto/origami-recipe",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "origami",
+        "coffeeGrams": 13,
+        "waterGrams": 210,
+        "grindDescription": null,
+        "grindTier": "medium-fine",
+        "waterTemp": "95",
+        "targetTime": "2:15-2:45",
+        "steps": [
+          { "name": "Bloom", "waterTo": 40, "duration": 35 },
+          { "name": "Main pour", "waterTo": 210, "duration": 60 }
+        ],
+        "sourceName": "Kurasu",
+        "confidence": "high"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "text-minimal",
+  "description": "Minimal viable recipe — dose, water, method only, no steps",
+  "sourceType": "text",
+  "tags": ["text", "single-recipe", "minimal", "edge-case"],
+  "grinderName": "",
+  "sourceText": "Quick V60 recipe: 15g coffee, 250g water, medium grind, 96°C. Target time around 3 minutes.",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 15,
+        "waterGrams": 250,
+        "grindDescription": "medium",
+        "grindTier": "medium",
+        "waterTemp": "96",
+        "targetTime": "3:00",
+        "steps": null,
+        "sourceName": null,
+        "confidence": null
+      }
+    ]
+  }
+}

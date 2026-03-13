@@ -7,6 +7,38 @@ export const FETCH_TIMEOUT_MS = 10000
 export const MAX_SOURCE_TEXT_LENGTH = 12000
 export const MAX_RESPONSE_BYTES = 2_000_000
 
+// --- SSRF protection ---
+
+export function isPrivateUrl(urlStr) {
+  try {
+    const url = new URL(urlStr)
+    if (url.protocol !== 'https:') return true
+    const hostname = url.hostname.toLowerCase()
+    // Strip brackets from IPv6 literals
+    const bare = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname
+    if (bare === 'localhost' || bare === '127.0.0.1' || bare === '::1' || bare === '::') return true
+    if (bare.endsWith('.internal') || bare.endsWith('.local')) return true
+    if (bare === 'metadata.google.internal' || bare === '169.254.169.254') return true
+    // IPv6 private ranges: ULA (fc00::/7), link-local (fe80::/10), IPv4-mapped (::ffff:...)
+    if (bare.startsWith('fc') || bare.startsWith('fd')) return true
+    if (bare.startsWith('fe80')) return true
+    if (bare.startsWith('::ffff:')) return true
+    // IPv4 private ranges
+    const parts = bare.split('.')
+    if (parts.length === 4 && parts.every(p => /^\d+$/.test(p))) {
+      const [a, b] = parts.map(Number)
+      if (a === 10) return true
+      if (a === 172 && b >= 16 && b <= 31) return true
+      if (a === 192 && b === 168) return true
+      if (a === 127) return true
+      if (a === 0) return true
+    }
+    return false
+  } catch {
+    return true
+  }
+}
+
 export function checkResponseSize(response) {
   const contentLength = response.headers.get('content-length')
   if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_BYTES) {
@@ -14,7 +46,33 @@ export function checkResponseSize(response) {
   }
 }
 
-export function decodeHtmlEntities(text = '') {
+export async function readBoundedBody(response, maxBytes = MAX_RESPONSE_BYTES) {
+  // Content-Length fast-reject (covers non-chunked responses)
+  checkResponseSize(response)
+  // Streaming guard for chunked responses without Content-Length
+  const reader = response.body.getReader()
+  const chunks = []
+  let total = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > maxBytes) {
+      reader.cancel()
+      throw new Error('Response too large')
+    }
+    chunks.push(value)
+  }
+  const combined = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    combined.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(combined)
+}
+
+function decodeHtmlEntities(text = '') {
   return text
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
@@ -36,7 +94,7 @@ export function normalizeWhitespace(text = '') {
     .trim()
 }
 
-export function stripHtml(html = '') {
+function stripHtml(html = '') {
   const withLineBreaks = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div|section|article|main|li|ul|ol|h[1-6])>/gi, '\n')
@@ -62,7 +120,7 @@ export function extractTitle(html) {
   return match?.[1] ? normalizeWhitespace(decodeHtmlEntities(match[1])) : ''
 }
 
-export function collectJsonLdText(node, output) {
+function collectJsonLdText(node, output) {
   if (!node) return
   if (Array.isArray(node)) {
     node.forEach(item => collectJsonLdText(item, output))
@@ -97,7 +155,7 @@ export function extractJsonLdTexts(html) {
   return [...new Set(texts.filter(Boolean))]
 }
 
-export function recipeSignalScore(text = '') {
+function recipeSignalScore(text = '') {
   const lower = text.toLowerCase()
   const keywordHits = [
     /\bbloom\b/g,
@@ -119,7 +177,7 @@ export function looksRecipeLike(text = '') {
   return recipeSignalScore(text) >= 5
 }
 
-export function removeCommonNoise(html) {
+function removeCommonNoise(html) {
   return html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
@@ -146,12 +204,15 @@ export function extractArticleText(html) {
   return candidates[0] || ''
 }
 
-export function extractBalancedJson(text, startIndex) {
+const MAX_JSON_SCAN_LENGTH = 200_000
+
+function extractBalancedJson(text, startIndex) {
   let depth = 0
   let inString = false
   let escaped = false
+  const maxIndex = Math.min(text.length, startIndex + MAX_JSON_SCAN_LENGTH)
 
-  for (let i = startIndex; i < text.length; i++) {
+  for (let i = startIndex; i < maxIndex; i++) {
     const char = text[i]
     if (inString) {
       if (escaped) {

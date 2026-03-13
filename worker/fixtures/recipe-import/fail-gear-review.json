@@ -1,0 +1,13 @@
+{
+  "id": "fail-gear-review",
+  "description": "Gear review article — mentions coffee terms but no recipe",
+  "sourceType": "article",
+  "tags": ["article", "failure", "not-recipe"],
+  "grinderName": "",
+  "sourceText": "Source title:\nBest V60 Grinders of 2026 — Our Top Picks\n\nPage text:\nBest V60 Grinders of 2026\nby Gear Patrol\n\nIf you're serious about pour-over coffee, your grinder is the most important piece of equipment. A consistent, even grind is essential for a balanced extraction.\n\nWe tested 12 grinders head-to-head, using them to grind coffee for V60 brews at various settings from fine to coarse. We measured particle distribution, retention, and ease of use.\n\nOur top pick is the Fellow Ode Gen 2. It produces remarkably uniform grinds for pour-over, from medium-fine to coarse. The 64mm flat burrs are excellent for filter coffee. At $299, it's a solid investment.\n\nRunner up: the Baratza Encore ESP. At $169, it offers great grind quality for the price. Perfect for beginners getting into pour-over.\n\nBest hand grinder: the 1Zpresso J-Max. If you don't mind the manual labor, this produces competition-level grinds.\n\nAll three grinders were tested with light, medium, and dark roast coffee. Water temperature was kept at 96°C for all brews.\n\nSource URL:\nhttps://gearpatrol.com/best-v60-grinders-2026",
+  "expected": {
+    "result": "fail",
+    "recipeCount": 0,
+    "recipes": []
+  }
+}

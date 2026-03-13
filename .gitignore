@@ -4,4 +4,5 @@ dist
 *.local
 worker/.dev.vars
 worker/.wrangler/
+worker/eval-results/
 .env

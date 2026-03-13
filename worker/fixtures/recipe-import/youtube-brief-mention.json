@@ -1,0 +1,30 @@
+{
+  "id": "youtube-brief-mention",
+  "description": "Recipe mentioned briefly in a longer video about coffee gear",
+  "sourceType": "youtube",
+  "tags": ["youtube", "single-recipe", "noisy"],
+  "grinderName": "",
+  "sourceText": "YouTube title:\nTop 5 Coffee Gadgets of 2026\n\nYouTube description:\nMy favorite coffee gear this year. Links below!\n\nYouTube transcript:\nhey guys welcome back to another gadget review today I'm counting down my top five coffee gadgets of 2026 starting at number five we have the Acaia Pearl S scale this thing is so precise let me show you I'm going to brew a quick V60 while I demonstrate 15 grams of coffee medium fine 250 grams of water 95 degrees bloom 45 grams 30 seconds pour to 150 grams then 250 grams total time was about 3 minutes nice anyway back to the scale what I love about it is the flow rate display number four is the Fellow Atmos vacuum canister I've been storing all my beans in these for about six months now and they really do keep coffee fresher longer number three is the Timemore C3 hand grinder incredible value for the price number two the Origami dripper beautiful design and so versatile and my number one pick of the year is the Weber Key grinder",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 15,
+        "waterGrams": 250,
+        "grindDescription": "medium fine",
+        "grindTier": "medium-fine",
+        "waterTemp": "95",
+        "targetTime": "3:00",
+        "steps": [
+          { "name": "Bloom", "waterTo": 45, "duration": 30 },
+          { "name": null, "waterTo": 150, "duration": null },
+          { "name": null, "waterTo": 250, "duration": null }
+        ],
+        "sourceName": null,
+        "confidence": null
+      }
+    ]
+  }
+}

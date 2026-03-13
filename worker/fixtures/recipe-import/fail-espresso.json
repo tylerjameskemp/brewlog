@@ -1,0 +1,13 @@
+{
+  "id": "fail-espresso",
+  "description": "Espresso recipe — not pour-over, tests extraction boundaries",
+  "sourceType": "text",
+  "tags": ["text", "failure", "not-pourover"],
+  "grinderName": "",
+  "sourceText": "Espresso Recipe for La Marzocco Linea Mini\n\nDose: 18g in, 36g out\nGrind: Extra fine (Niche Zero at 12)\nWater temp: 93°C\nPressure: 9 bar\nExtraction time: 25-30 seconds\n\nPre-infusion: 3 seconds at low pressure\nMain extraction: Pull until 36g in cup\nTotal time: 28-33 seconds\n\nLook for a steady flow that starts thin and gradually thickens. Tiger striping on the surface is a good sign. The shot should taste sweet and balanced with no sourness or bitterness.\n\nIf the shot runs too fast, grind finer. If it chokes, grind coarser.",
+  "expected": {
+    "result": "fail",
+    "recipeCount": 0,
+    "recipes": []
+  }
+}

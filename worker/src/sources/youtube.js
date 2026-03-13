@@ -7,7 +7,8 @@ import {
   extractTitle,
   extractJsonAssignment,
   looksRecipeLike,
-  checkResponseSize,
+  isPrivateUrl,
+  readBoundedBody,
   USER_AGENT,
   FETCH_TIMEOUT_MS,
   MAX_SOURCE_TEXT_LENGTH,
@@ -66,35 +67,22 @@ function parseYouTubeTranscriptJson(text) {
   }
 }
 
-function isPrivateTranscriptUrl(urlStr) {
-  try {
-    const url = new URL(urlStr)
-    if (url.protocol !== 'https:') return true
-    const hostname = url.hostname.toLowerCase()
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true
-    if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return true
-    return false
-  } catch {
-    return true
-  }
-}
-
 async function fetchYouTubeTranscript(baseUrl) {
-  if (isPrivateTranscriptUrl(baseUrl)) return ''
+  if (isPrivateUrl(baseUrl)) return ''
   const response = await fetch(`${baseUrl}&fmt=json3`, {
     headers: {
       'User-Agent': USER_AGENT,
       'Accept-Language': 'en-US,en;q=0.9',
     },
-    redirect: 'error',
+    redirect: 'follow',
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
+  if (isPrivateUrl(response.url)) return ''
   if (!response.ok) {
     console.warn(`YouTube transcript fetch failed: ${response.status}`)
     return ''
   }
-  checkResponseSize(response)
-  const body = await response.text()
+  const body = await readBoundedBody(response)
   if (!body) return ''
   return parseYouTubeTranscriptJson(body)
 }
@@ -116,13 +104,13 @@ export async function fetchYouTubeSource(url) {
       'User-Agent': USER_AGENT,
       'Accept-Language': 'en-US,en;q=0.9',
     },
-    redirect: 'error',
+    redirect: 'follow',
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error(`YouTube fetch failed: ${response.status}`)
-  checkResponseSize(response)
+  if (isPrivateUrl(response.url)) throw new Error('Redirected to private URL')
 
-  const rawHtml = await response.text()
+  const rawHtml = await readBoundedBody(response)
   const playerResponse = extractJsonAssignment(rawHtml, 'ytInitialPlayerResponse')
   const videoDetails = playerResponse?.videoDetails || {}
   const title = normalizeWhitespace(videoDetails.title || extractTitle(rawHtml))

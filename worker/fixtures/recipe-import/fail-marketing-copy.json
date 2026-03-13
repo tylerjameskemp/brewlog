@@ -1,0 +1,27 @@
+{
+  "id": "fail-marketing-copy",
+  "description": "Product page with real brew parameters in marketing text — low-confidence extraction",
+  "sourceType": "article",
+  "tags": ["article", "edge-case", "marketing", "low-confidence"],
+  "grinderName": "",
+  "sourceText": "Source title:\nEthiopia Yirgacheffe — Single Origin Light Roast\n\nPage text:\nEthiopia Yirgacheffe — Single Origin Light Roast\nby Onyx Coffee Lab\n\nTasting Notes: Blueberry, Jasmine, Bergamot\nProcess: Washed\nRegion: Gedeb, Yirgacheffe\nAltitude: 1,900-2,100 masl\nVarietal: Heirloom\n\nThis coffee is perfect for pour-over. We recommend 15g of coffee to 250g of water at around 96°C for a clean, sweet cup. Grind medium-fine.\n\nOur roasters cup this coffee daily and it consistently scores 88+ points. The floral aromatics and bright berry acidity make it one of our most popular offerings.\n\nAvailable in 250g and 1kg bags. Roasted to order every Tuesday and Friday. Free shipping on orders over $40.\n\nSubscribe and save 15%! Use code POUROVER at checkout.\n\nSource URL:\nhttps://onyxcoffeelab.com/products/ethiopia-yirgacheffe",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "coffeeGrams": 15,
+        "waterGrams": 250,
+        "waterTemp": "96",
+        "grindTier": "medium-fine",
+        "grindDescription": "medium-fine",
+        "confidence": "low",
+        "method": null,
+        "steps": null,
+        "targetTime": null,
+        "sourceName": null,
+        "name": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "text-grinder-context",
+  "description": "Recipe with multiple grinder settings — tests grinderName matching",
+  "sourceType": "text",
+  "tags": ["text", "single-recipe", "grinder-context"],
+  "grinderName": "Fellow Ode",
+  "sourceText": "V60 Recipe — Grind Settings by Grinder\n\n15g coffee, 250g water at 94°C\n\nGrind settings:\n- Commandante C40: 22 clicks\n- Fellow Ode: 4.5\n- 1Zpresso JX-Pro: 3.0.0 (30 clicks)\n- Baratza Encore: 14\n\nBrew steps:\n1. Bloom: 45g water, 30 seconds\n2. Main pour: pour to 250g over 1 minute\n3. Drawdown: wait for complete drain\n\nTarget time: 2:45-3:15\nSource: Coffee Blog Weekly",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "v60",
+        "coffeeGrams": 15,
+        "waterGrams": 250,
+        "grindDescription": "4.5",
+        "grindTier": null,
+        "waterTemp": "94",
+        "targetTime": "2:45-3:15",
+        "steps": [
+          { "name": "Bloom", "waterTo": 45, "duration": 30 },
+          { "name": "Main pour", "waterTo": 250, "duration": 60 }
+        ],
+        "sourceName": "Coffee Blog Weekly",
+        "confidence": "high"
+      }
+    ]
+  }
+}

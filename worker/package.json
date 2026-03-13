@@ -2,9 +2,11 @@
   "name": "brewlog-recipe-import",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "eval": "node scripts/eval-recipe-import.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.72.0"

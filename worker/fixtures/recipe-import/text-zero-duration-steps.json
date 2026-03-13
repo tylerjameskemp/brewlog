@@ -1,0 +1,31 @@
+{
+  "id": "text-zero-duration-steps",
+  "description": "Recipe with unstated timing on some steps — should produce duration: 0",
+  "sourceType": "text",
+  "tags": ["text", "single-recipe", "edge-case"],
+  "grinderName": "",
+  "sourceText": "Chemex Recipe\n\n30g medium-coarse ground coffee\n500g water at 200°F\n\n1. Bloom with 60g of water for 45 seconds\n2. Pour in slow circles to 300g\n3. Wait for water to drain a bit\n4. Pour to 500g\n5. Let it drain completely\n\nTotal brew time around 4 minutes.",
+  "expected": {
+    "result": "pass",
+    "recipeCount": 1,
+    "recipes": [
+      {
+        "method": "chemex",
+        "coffeeGrams": 30,
+        "waterGrams": 500,
+        "grindDescription": "medium-coarse",
+        "grindTier": "medium-coarse",
+        "waterTemp": "200",
+        "targetTime": "4:00",
+        "steps": [
+          { "name": "Bloom", "waterTo": 60, "duration": 45 },
+          { "name": "First pour", "waterTo": 300, "duration": 0 },
+          { "name": null, "waterTo": null, "duration": 0 },
+          { "name": null, "waterTo": 500, "duration": 0 }
+        ],
+        "sourceName": null,
+        "confidence": null
+      }
+    ]
+  }
+}
