@@ -37,7 +37,7 @@ A pour-over coffee brewing journal. Track brews, manage a bean library, compare 
 
 All brews use one canonical format (`schemaVersion: 2`). Legacy brews are migrated on app load by `migrateToSchemaV2()`. Steps use format: `{ id, name, waterTo, time, duration, note }`.
 
-**Core fields:** `id`, `schemaVersion`, `beanName`, `roaster`, `roastDate`, `coffeeGrams`, `waterGrams`, `grindSetting`, `waterTemp`, `targetTime`, `targetTimeRange`, `targetTimeMin`, `targetTimeMax`, `totalTime`, `timeStatus`, `flavors`, `body`, `rating`, `issues`, `notes`, `nextBrewChanges`, `method`, `grinder`, `dripper`, `filterType`, `pourTemplateId`, `recipeId`, `brewedAt`
+**Core fields:** `id`, `schemaVersion`, `beanName`, `roaster`, `roastDate`, `coffeeGrams`, `waterGrams`, `grindSetting`, `waterTemp`, `targetTime`, `targetTimeRange`, `targetTimeMin`, `targetTimeMax`, `totalTime`, `timeStatus`, `flavors`, `body`, `rating`, `issues`, `notes`, `tastingNotes`, `nextBrewChanges`, `method`, `grinder`, `dripper`, `filterType`, `pourTemplateId`, `recipeId`, `brewedAt`
 
 **Recipe snapshot:** `recipeSnapshot` object frozen at brew start — captures all recipe fields + equipment + steps. Never edited after creation. Enables planned-vs-actual comparison.
 

@@ -1291,6 +1291,7 @@ function ActiveBrew({ recipe, onFinish, onBrewActiveChange, persistState, savedB
 // "Done" calls updateBrew() to merge tasting data into the saved record.
 function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
   const [notes, setNotes] = useState(brew.notes || '')
+  const [tastingNotes, setTastingNotes] = useState(brew.tastingNotes ?? '')
   const [nextBrewChanges, setNextBrewChanges] = useState(brew.nextBrewChanges || '')
   const [flavors, setFlavors] = useState(brew.flavors || [])
   const [body, setBody] = useState(brew.body || '')
@@ -1320,6 +1321,7 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
         rating,
         issues,
         notes,
+        tastingNotes,
         nextBrewChanges,
         grindSetting,
         totalTime: resolvedTime,
@@ -1533,11 +1535,12 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
           className={`transition-transform duration-200 ${showTasting ? 'rotate-90' : ''}`}>
           <polyline points="4 2 8 6 4 10" />
         </svg>
-        {!showTasting && (flavors.length > 0 || body || issues.length > 0) && (
+        {!showTasting && (flavors.length > 0 || body || tastingNotes || issues.length > 0) && (
           <span className="text-xs text-brew-400 font-normal">
             ({[
               flavors.length > 0 && `${flavors.length} flavor${flavors.length !== 1 ? 's' : ''}`,
               body && body,
+              tastingNotes && 'notes',
               issues.length > 0 && `${issues.length} issue${issues.length !== 1 ? 's' : ''}`,
             ].filter(Boolean).join(', ')})
           </span>
@@ -1571,6 +1574,20 @@ function RateThisBrew({ brew, bean, onComplete, onBrewUpdated, setBeans }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Tasting Notes */}
+          <div>
+            <div className="text-xs text-brew-400 uppercase tracking-wider mb-2">Tasting Notes</div>
+            <textarea
+              value={tastingNotes}
+              onChange={e => setTastingNotes(e.target.value)}
+              placeholder="Bright citrus acidity, chocolate finish, silky mouthfeel..."
+              maxLength={2000}
+              rows={3}
+              className="w-full bg-parchment-100 border border-brew-200 rounded-xl px-3 py-2 text-base text-brew-800
+                         placeholder:text-ceramic-400 focus:outline-none focus:ring-2 focus:ring-brew-300 resize-y"
+            />
           </div>
 
           {/* Issues */}
@@ -1954,7 +1971,7 @@ export default function BrewScreen({ equipment, beans, setBeans, recipes, setRec
       totalTime: null,
       stepResults: null,
       // Tasting fields
-      flavors: [], body: '', rating: null, issues: [], notes: '', nextBrewChanges: '',
+      flavors: [], body: '', rating: null, issues: [], notes: '', tastingNotes: '', nextBrewChanges: '',
       brewedAt: new Date().toISOString(),
       ...overrides,
     }

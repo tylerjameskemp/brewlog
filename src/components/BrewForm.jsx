@@ -73,6 +73,7 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
 
       // Notes
       notes: editBrew?.notes || '',
+      tastingNotes: editBrew?.tastingNotes ?? '',
 
       // Pour steps — single field (actuals)
       steps: getActualSteps(editBrew),
@@ -478,6 +479,21 @@ export default function BrewForm({ equipment, setBeans, editBrew, onBrewSaved, o
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Tasting Notes */}
+        <div className="mb-4">
+          <label className="text-xs font-medium text-brew-400 mb-2 block">Tasting Notes</label>
+          <textarea
+            value={form.tastingNotes}
+            onChange={(e) => update('tastingNotes', e.target.value)}
+            placeholder="Bright citrus acidity, chocolate finish, silky mouthfeel..."
+            rows={3}
+            maxLength={2000}
+            className="w-full p-3 rounded-xl border border-brew-200 text-base
+                       text-brew-800 placeholder:text-ceramic-400
+                       focus:outline-none focus:ring-2 focus:ring-brew-400 resize-y"
+          />
         </div>
 
         {/* Rating */}

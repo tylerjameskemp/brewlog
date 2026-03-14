@@ -461,6 +461,25 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
               changed={comparison.body.changed}
             />
 
+            {/* Tasting Notes */}
+            {(comparisonBrews[0].tastingNotes || comparisonBrews[1].tastingNotes) && (
+              <div className="px-3 py-2">
+                <div className="text-xs font-medium text-brew-400 mb-1.5">Tasting Notes</div>
+                <div className="flex gap-3">
+                  <div className="flex-1 p-2 bg-brew-50 rounded-xl">
+                    <p className="text-xs text-brew-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                      {comparisonBrews[0].tastingNotes || '—'}
+                    </p>
+                  </div>
+                  <div className="flex-1 p-2 bg-brew-50 rounded-xl">
+                    <p className="text-xs text-brew-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                      {comparisonBrews[1].tastingNotes || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Rating */}
             <ComparisonRow
               label="Rating"
@@ -635,6 +654,14 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                   </div>
                 )}
 
+                {/* Tasting notes preview in summary */}
+                {brew.tastingNotes && (
+                  <div className="mt-1 text-xs text-brew-700 italic">
+                    <span className="text-brew-400 not-italic">Tasting: </span>
+                    {brew.tastingNotes.length > 80 ? brew.tastingNotes.slice(0, 80) + '...' : brew.tastingNotes}
+                  </div>
+                )}
+
                 {/* Edit & Delete (moved up to summary) */}
                 <div className="mt-3 flex items-center gap-2">
                   {onEditBrew && (
@@ -767,13 +794,21 @@ export default function BrewHistory({ brews, recipes, onBrewsChange, onNavigate,
                     </div>
 
                     {/* --- TASTING DETAILS --- */}
-                    {brew.body && (
+                    {(brew.body || (brew.tastingNotes && brew.tastingNotes.length > 80)) && (
                       <div className="mt-3">
                         <span className="text-[10px] font-semibold text-brew-400 uppercase tracking-wide">Tasting</span>
-                        <div className="mt-1.5 text-xs">
-                          <span className="text-brew-400">Body: </span>
-                          <span className="text-brew-700">{brew.body}</span>
-                        </div>
+                        {brew.body && (
+                          <div className="mt-1.5 text-xs">
+                            <span className="text-brew-400">Body: </span>
+                            <span className="text-brew-700">{brew.body}</span>
+                          </div>
+                        )}
+                        {brew.tastingNotes && brew.tastingNotes.length > 80 && (
+                          <div className="mt-2 p-3 bg-brew-50 rounded-xl">
+                            <span className="text-xs font-medium text-brew-400">Tasting Notes:</span>
+                            <p className="text-sm text-brew-700 mt-1 whitespace-pre-wrap max-h-40 overflow-y-auto">{brew.tastingNotes}</p>
+                          </div>
+                        )}
                       </div>
                     )}
 
